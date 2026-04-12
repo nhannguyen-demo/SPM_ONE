@@ -32,9 +32,9 @@ export function PlantOverview() {
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className="flex-1 min-w-0 p-6 overflow-y-auto">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto flex flex-col">
         {/* Main Dashboard Card */}
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6 flex-1 flex flex-col">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
               {plant.name} Overview Dashboard
@@ -44,7 +44,7 @@ export function PlantOverview() {
             </button>
           </div>
           
-          <div className="flex h-72">
+          <div className="flex flex-1 min-h-[288px]">
             {/* Left stats panel */}
             <div className="w-1/3 p-4 border-r border-border">
               <div className="grid grid-cols-2 gap-4 mb-4">
@@ -102,7 +102,7 @@ export function PlantOverview() {
         </div>
 
         {/* Dashboards Section */}
-        <div className="mb-6">
+        <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Dashboards of {plant.name}</h2>
             <div className="flex items-center gap-2">

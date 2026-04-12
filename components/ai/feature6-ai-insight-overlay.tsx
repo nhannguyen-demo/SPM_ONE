@@ -55,7 +55,7 @@ export function AIKPIBadgeWrapper({
   const [popoverOpen, setPopoverOpen] = useState(false)
 
   return (
-    <div style={{ position: "relative", display: "inline-flex" }}>
+    <div className="relative flex w-full h-full">
       {children}
 
       {/* Badge — only visible when AI Insight is active */}
