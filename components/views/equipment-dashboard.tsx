@@ -96,8 +96,8 @@ export function EquipmentDashboard() {
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6 flex-1 flex flex-col">
           <div className="flex flex-1 min-h-0">
             {/* KPI Pills Row */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 p-4 border-b border-border flex-wrap">
+            <div className="flex-1 min-w-0 flex flex-col min-h-0">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 border-b border-border flex-shrink-0">
                 {/* FEATURE 6A — each KPI pill wrapped with AI badge that appears when AI Insight is active */}
                 <AIKPIBadgeWrapper kpiKey="dmg">
                   <KPIPill label="DMG" value={equipmentKPIs.dmg} isEdit={isEditMode} />
@@ -113,10 +113,10 @@ export function EquipmentDashboard() {
                 </AIKPIBadgeWrapper>
               </div>
 
-              <div className="flex flex-1 min-h-[320px]">
+              <div className="flex flex-1 min-h-0 overflow-hidden">
                 {/* Left navigation column */}
                 <div className={cn(
-                  "w-36 border-r border-border p-2 space-y-1 flex-shrink-0",
+                  "w-1/5 min-w-[120px] max-w-[200px] border-r border-border p-2 space-y-1 flex-shrink-0 overflow-y-auto",
                   isEditMode && "opacity-50"
                 )}>
                   {monitoringItems.map((item, i) => (
@@ -135,7 +135,7 @@ export function EquipmentDashboard() {
                 </div>
 
                 {/* Main widgets area */}
-                <div className="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4 min-w-0">
+                <div className="flex-1 p-4 grid grid-cols-1 xl:grid-cols-2 auto-rows-[minmax(160px,1fr)] gap-4 min-w-0 overflow-y-auto">
                   {/* Line Chart — FEATURE 6B: wrapped in relative container for marker overlay */}
                   <DashboardWidget title="Fatigue Trend" isEdit={isEditMode}>
                     <div style={{ position: "relative" }}>
@@ -181,7 +181,7 @@ export function EquipmentDashboard() {
             {/* 3D Model Panel — hidden when expanded or modules open */}
             {!showModules && !dashboardExpanded && (
               <div className={cn(
-                "w-64 flex-shrink-0 border-l border-border",
+                "w-1/4 min-w-[200px] max-w-[320px] flex-shrink-0 border-l border-border relative",
                 isEditMode && "relative"
               )}>
                 {isEditMode && (
@@ -342,21 +342,19 @@ function KPIPill({
 }) {
   return (
     <div className={cn(
-      "relative px-3 py-1.5 bg-secondary rounded-lg",
-      isEdit && "pl-6 pr-7"
+      "relative p-4 bg-secondary/30 border border-border/50 rounded-xl flex flex-col justify-center items-center w-full min-h-[80px]",
+      isEdit && "pl-8 pr-8"
     )}>
       {isEdit && (
-        <div className="absolute left-1 top-1/2 -translate-y-1/2">
-          <GripVertical className="w-3 h-3 text-muted-foreground" />
+        <div className="absolute left-2 top-1/2 -translate-y-1/2">
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
         </div>
       )}
-      <span className="text-sm font-medium text-foreground">
-        {label && <span className="text-muted-foreground">{label}: </span>}
-        {value}
-      </span>
+      {label && <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</span>}
+      <span className="text-2xl font-bold text-foreground">{value}</span>
       {isEdit && (
-        <div className="absolute right-1 top-1/2 -translate-y-1/2">
-          <MoreVertical className="w-3 h-3 text-muted-foreground" />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <MoreVertical className="w-4 h-4 text-muted-foreground" />
         </div>
       )}
     </div>
@@ -374,7 +372,7 @@ function DashboardWidget({
 }) {
   return (
     <div className={cn(
-      "bg-secondary/30 rounded-lg p-3 relative",
+      "bg-secondary/30 rounded-lg p-3 relative flex flex-col h-full",
       isEdit && "opacity-70"
     )}>
       {isEdit && (
@@ -384,10 +382,12 @@ function DashboardWidget({
         </div>
       )}
       <h5 className={cn(
-        "text-xs font-medium text-muted-foreground mb-2",
+        "text-xs font-medium text-muted-foreground mb-2 flex-shrink-0",
         isEdit && "ml-6"
       )}>{title}</h5>
-      {children}
+      <div className="flex-1 min-h-0 flex flex-col justify-center">
+        {children}
+      </div>
     </div>
   )
 }
