@@ -43,7 +43,7 @@ function AnomalyIndicator({
   position,
   tooltip,
 }: {
-  position: Record<string, string>
+  position: React.CSSProperties
   tooltip: string
 }) {
   const [hovered, setHovered] = useState(false)
