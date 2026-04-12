@@ -2,12 +2,12 @@
 
 import { useAppStore } from "@/lib/store"
 import { sites, plantDocuments, equipmentKPIs, monitoringItems, dashboardCards } from "@/lib/data"
-import { 
-  Maximize2, 
+import {
+  Maximize2,
   Minimize2,
-  Search, 
-  ExternalLink, 
-  GripVertical, 
+  Search,
+  ExternalLink,
+  GripVertical,
   MoreVertical,
   Plus,
   X
@@ -17,22 +17,25 @@ import { TrendLineChart, BarChartVertical, GaugeChart } from "@/components/mini-
 import { ModuleLibrary } from "@/components/module-library"
 import { Equipment3DViewer } from "@/components/equipment-3d"
 import { cn } from "@/lib/utils"
+// FEATURE 6A — KPI Pill AI Badge Wrappers
+// FEATURE 6B — Chart Anomaly Markers
+import { AIKPIBadgeWrapper, AILineChartMarkers, AIBarChartThreshold } from "@/components/ai/feature6-ai-insight-overlay"
 
 export function EquipmentDashboard() {
-  const { 
-    currentPath, 
+  const {
+    currentPath,
     setCurrentPath,
-    viewMode, 
+    viewMode,
     setViewMode,
     setWhatIfModalOpen,
     dashboardExpanded,
     setDashboardExpanded,
   } = useAppStore()
-  
+
   const site = sites.find((s) => s.id === currentPath.site)
   const plant = site?.plants.find((p) => p.id === currentPath.plant)
   const equipment = plant?.equipment.find((e) => e.id === currentPath.equipment)
-  
+
   if (!site || !plant || !equipment) return null
 
   const activeTab = currentPath.tab || "#process"
@@ -95,10 +98,19 @@ export function EquipmentDashboard() {
             {/* KPI Pills Row */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 p-4 border-b border-border flex-wrap">
-                <KPIPill label="DMG" value={equipmentKPIs.dmg} isEdit={isEditMode} />
-                <KPIPill label="Re-Life" value={equipmentKPIs.reLife} isEdit={isEditMode} />
-                <KPIPill value={equipmentKPIs.date} isEdit={isEditMode} />
-                <KPIPill label="ID" value={equipmentKPIs.id} isEdit={isEditMode} />
+                {/* FEATURE 6A — each KPI pill wrapped with AI badge that appears when AI Insight is active */}
+                <AIKPIBadgeWrapper kpiKey="dmg">
+                  <KPIPill label="DMG" value={equipmentKPIs.dmg} isEdit={isEditMode} />
+                </AIKPIBadgeWrapper>
+                <AIKPIBadgeWrapper kpiKey="reLife">
+                  <KPIPill label="Re-Life" value={equipmentKPIs.reLife} isEdit={isEditMode} />
+                </AIKPIBadgeWrapper>
+                <AIKPIBadgeWrapper kpiKey="date">
+                  <KPIPill value={equipmentKPIs.date} isEdit={isEditMode} />
+                </AIKPIBadgeWrapper>
+                <AIKPIBadgeWrapper kpiKey="id">
+                  <KPIPill label="ID" value={equipmentKPIs.id} isEdit={isEditMode} />
+                </AIKPIBadgeWrapper>
               </div>
 
               <div className="flex h-80">
@@ -112,8 +124,8 @@ export function EquipmentDashboard() {
                       key={item.id}
                       className={cn(
                         "w-full px-3 py-2 rounded-lg text-sm text-left transition-colors",
-                        i === 3 
-                          ? "bg-primary text-primary-foreground" 
+                        i === 3
+                          ? "bg-primary text-primary-foreground"
                           : "hover:bg-secondary text-foreground"
                       )}
                     >
@@ -124,9 +136,13 @@ export function EquipmentDashboard() {
 
                 {/* Main widgets area */}
                 <div className="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4 min-w-0">
-                  {/* Line Chart */}
+                  {/* Line Chart — FEATURE 6B: wrapped in relative container for marker overlay */}
                   <DashboardWidget title="Fatigue Trend" isEdit={isEditMode}>
-                    <TrendLineChart height={100} />
+                    <div style={{ position: "relative" }}>
+                      <TrendLineChart height={100} />
+                      {/* FEATURE 6B — dashed vertical anomaly markers on line chart */}
+                      <AILineChartMarkers height={100} />
+                    </div>
                   </DashboardWidget>
 
                   {/* Gauge */}
@@ -134,9 +150,13 @@ export function EquipmentDashboard() {
                     <GaugeChart value={75} label="Re-Life: 40 yrs" />
                   </DashboardWidget>
 
-                  {/* Bar Chart */}
+                  {/* Bar Chart — FEATURE 6B: wrapped in relative container for threshold overlay */}
                   <DashboardWidget title="Historical Data" isEdit={isEditMode}>
-                    <BarChartVertical height={100} />
+                    <div style={{ position: "relative" }}>
+                      <BarChartVertical height={100} />
+                      {/* FEATURE 6B — dashed red AI threshold line on bar chart */}
+                      <AIBarChartThreshold />
+                    </div>
                   </DashboardWidget>
 
                   {/* Data Table */}
@@ -234,8 +254,9 @@ export function EquipmentDashboard() {
           </div>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-2">
-            {dashboardCards.slice(0, 2).map((card) => (
-              <DashboardCard key={card.id} card={card} />
+            {dashboardCards.slice(0, 2).map((card, idx) => (
+              // FEATURE 4: pass cardIndex for AI insight strip selection
+              <DashboardCard key={card.id} card={card} cardIndex={idx} />
             ))}
           </div>
         )}
@@ -254,7 +275,7 @@ export function EquipmentDashboard() {
               ))}
             </div>
             <hr className="border-border my-4" />
-            
+
             <div className="space-y-2 mb-4">
               {[1, 2].map((i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -269,7 +290,7 @@ export function EquipmentDashboard() {
             </div>
 
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-foreground">Plant Document</h4>
+              <h4 className="font-medium text-foreground">Equipment Document</h4>
               <button className="p-1.5 hover:bg-secondary rounded transition-colors">
                 <Search className="w-4 h-4 text-muted-foreground" />
               </button>
@@ -310,14 +331,14 @@ export function EquipmentDashboard() {
   )
 }
 
-function KPIPill({ 
-  label, 
-  value, 
-  isEdit 
-}: { 
+function KPIPill({
+  label,
+  value,
+  isEdit
+}: {
   label?: string
   value: string
-  isEdit?: boolean 
+  isEdit?: boolean
 }) {
   return (
     <div className={cn(
@@ -342,14 +363,14 @@ function KPIPill({
   )
 }
 
-function DashboardWidget({ 
-  title, 
-  children, 
-  isEdit 
-}: { 
+function DashboardWidget({
+  title,
+  children,
+  isEdit
+}: {
   title: string
   children: React.ReactNode
-  isEdit?: boolean 
+  isEdit?: boolean
 }) {
   return (
     <div className={cn(

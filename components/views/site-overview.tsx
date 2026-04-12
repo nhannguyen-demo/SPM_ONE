@@ -5,6 +5,10 @@ import { sites, siteDocuments, dashboardCards } from "@/lib/data"
 import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink, ChevronRight } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniLineChart, MiniPieChart, MiniBarChart } from "@/components/mini-charts"
+// FEATURE 3 — AI Health Summary Card
+import { AIHealthSummaryCard } from "@/components/ai/feature3-health-summary"
+// FEATURE 6C — AI Map Badges (activated via FEATURE 1 AI Insight button)
+import { AIMapBadges } from "@/components/ai/feature6-ai-insight-overlay"
 
 export function SiteOverview() {
   const { currentPath, setCurrentPath, setCurrentView, togglePlantExpanded, dashboardExpanded, setDashboardExpanded } = useAppStore()
@@ -70,6 +74,8 @@ export function SiteOverview() {
                 Plant 2
               </span>
             </button>
+            {/* FEATURE 6C — AI Map Badges: positioned over plant bounding boxes (appears when AI Insight is active) */}
+            <AIMapBadges />
 
             {/* Stats overlay - left side */}
             <div className="absolute top-12 left-12 bg-white/95 backdrop-blur rounded-lg p-4 shadow-lg z-10">
@@ -122,8 +128,9 @@ export function SiteOverview() {
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-2">
-            {dashboardCards.map((card) => (
-              <DashboardCard key={card.id} card={card} />
+            {dashboardCards.map((card, idx) => (
+              // FEATURE 4: pass cardIndex for AI insight strip selection
+              <DashboardCard key={card.id} card={card} cardIndex={idx} />
             ))}
             <button className="flex-shrink-0 w-48 h-36 border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
               <ChevronRight className="w-6 h-6 text-muted-foreground" />
@@ -134,6 +141,8 @@ export function SiteOverview() {
 
       {/* Right Panel - Site Information (hidden when expanded) */}
       <div className={`w-72 flex-shrink-0 bg-card border-l border-border p-4 overflow-y-auto transition-all duration-300 ${dashboardExpanded ? "hidden" : ""}`}>
+        {/* FEATURE 3 — AI Health Summary Card: inserted above Site Information header */}
+        <AIHealthSummaryCard level="site" />
         <h3 className="font-semibold text-foreground mb-4">Site Information</h3>
         <div className="space-y-2 mb-4">
           {[1, 2, 3, 4].map((i) => (
