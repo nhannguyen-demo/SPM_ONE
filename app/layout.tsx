@@ -9,7 +9,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'SPM ONE - Industrial Asset Management',
   description: 'Strategic Performance Management for Industrial Assets',
-  generator: 'v0.app',
   icons: {
     icon: [
       {

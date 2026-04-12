@@ -136,10 +136,28 @@ spm-one/
 
 ---
 
+## Deploying to Vercel
+
+### Option A — Deploy directly from v0 (easiest)
+
+Click the **Publish** button in the top-right corner of the v0 interface. Vercel handles everything automatically.
+
+### Option B — Deploy from GitHub
+
+1. Push this project to a GitHub repository.
+2. Go to https://vercel.com/new and import the repository.
+3. Leave all build settings at their defaults — Vercel auto-detects Next.js.
+4. Click **Deploy**. No environment variables are required.
+
+**Custom images on Vercel:**
+If you want `site-map.jpg` and `pid-diagram.jpg` to appear on the deployed site, commit them into `public/images/` in your repository before deploying. Files in `public/` are served as static assets.
+
+---
+
 ## Notes
 
 - **No database, no backend, no API keys required.** All data is static mock data in `lib/data.ts`.
-- **No `.env` file needed.** Delete `.env.development.local` from the ZIP (it is a v0-internal file, not needed locally).
+- **No `.env` file needed.** Delete `.env.development.local` from the ZIP (it is a v0-internal file, not needed locally or on Vercel).
 - The `node_modules` folder is not included in the ZIP — `pnpm install` creates it fresh.
 - The `.next` build cache folder is also not included — it is created automatically on first `pnpm dev` run.
 - If port 3000 is already in use on your machine, Next.js will automatically try 3001, 3002, etc. and print the actual URL in the terminal.
