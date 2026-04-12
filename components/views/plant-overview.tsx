@@ -5,6 +5,10 @@ import { sites, plantDocuments, dashboardCards } from "@/lib/data"
 import { Maximize2, Plus, Filter, Search, ExternalLink } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniPieChart, MiniBarChart } from "@/components/mini-charts"
+// FEATURE 3 — AI Health Summary Card
+import { AIHealthSummaryCard } from "@/components/ai/feature3-health-summary"
+// FEATURE 5 — P&ID Anomaly Overlay
+import { PIDAnomalyOverlay } from "@/components/ai/feature5-pid-anomaly"
 
 export function PlantOverview() {
   const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded } = useAppStore()
@@ -91,6 +95,8 @@ export function PlantOverview() {
                 <div className="w-3 h-3 rounded-full bg-green-500" />
                 <span className="text-xs font-medium text-foreground bg-white/80 px-1.5 py-0.5 rounded">On</span>
               </div>
+              {/* FEATURE 5 — P&ID Anomaly Overlay: pulsing rings over component positions */}
+              <PIDAnomalyOverlay />
             </div>
           </div>
         </div>
@@ -118,9 +124,10 @@ export function PlantOverview() {
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-2">
-            {dashboardCards.slice(0, 2).map((card) => (
+            {dashboardCards.slice(0, 2).map((card, idx) => (
               <div key={card.id} onClick={() => handleEquipmentClick("equipment-a")} className="cursor-pointer">
-                <DashboardCard card={card} />
+                {/* FEATURE 4: pass cardIndex for AI insight strip selection */}
+                <DashboardCard card={card} cardIndex={idx} />
               </div>
             ))}
           </div>
@@ -129,6 +136,8 @@ export function PlantOverview() {
 
       {/* Right Panel - Plant Information */}
       <div className="w-72 flex-shrink-0 bg-card border-l border-border p-4 overflow-y-auto">
+        {/* FEATURE 3 — AI Health Summary Card: inserted above Plant Information header */}
+        <AIHealthSummaryCard level="plant" />
         <h3 className="font-semibold text-foreground mb-4">Plant Information</h3>
         <div className="space-y-2 mb-4">
           {[1, 2, 3, 4, 5].map((i) => (

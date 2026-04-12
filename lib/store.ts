@@ -45,6 +45,15 @@ interface AppState {
   whatIfResultOpen: boolean
   setWhatIfModalOpen: (open: boolean) => void
   setWhatIfResultOpen: (open: boolean) => void
+
+  // ── AI FEATURE STATE ──────────────────────────────────────────────────────
+  // FEATURE 1 — Global Floating AI Spark Button
+  aiSparkExpanded: boolean
+  setAiSparkExpanded: (expanded: boolean) => void
+  // FEATURE 6 — AI Insight Overlay (toggled via FEATURE 1 AI Insight button)
+  aiInsightActive: boolean
+  setAiInsightActive: (active: boolean) => void
+  // ─────────────────────────────────────────────────────────────────────────
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -97,4 +106,13 @@ export const useAppStore = create<AppState>((set) => ({
   whatIfResultOpen: false,
   setWhatIfModalOpen: (open) => set({ whatIfModalOpen: open }),
   setWhatIfResultOpen: (open) => set({ whatIfResultOpen: open }),
+
+  // ── AI FEATURE STATE ──────────────────────────────────────────────────────
+  // FEATURE 1 — Global Floating AI Spark Button
+  aiSparkExpanded: false,
+  setAiSparkExpanded: (expanded) => set({ aiSparkExpanded: expanded }),
+  // FEATURE 6 — AI Insight Overlay
+  aiInsightActive: false,
+  setAiInsightActive: (active) => set({ aiInsightActive: active }),
+  // ─────────────────────────────────────────────────────────────────────────
 }))

@@ -1,21 +1,15 @@
 "use client"
 
-import { Search, Bell, Settings, Sparkles } from "lucide-react"
+import { Bell, Settings } from "lucide-react"
+// FEATURE 2 — AI-Powered Search Bar Autocomplete
+import { AISearchAutocomplete } from "@/components/ai/feature2-search-autocomplete"
 
 export function Header() {
   return (
     <header className="h-14 bg-card border-b border-border flex items-center justify-between px-6">
-      {/* Search Bar */}
+      {/* Search Bar — FEATURE 2: wrapped with AI autocomplete */}
       <div className="flex-1 max-w-xl">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search assets, tags, or ask AI..."
-            className="w-full h-10 pl-10 pr-10 bg-secondary rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <Sparkles className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        </div>
+        <AISearchAutocomplete />
       </div>
 
       {/* Right Actions */}

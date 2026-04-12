@@ -2,6 +2,8 @@
 
 import { MiniLineChart, MiniPieChart } from "@/components/mini-charts"
 import { X } from "lucide-react"
+// FEATURE 4 — AI Insight Strips on Dashboard Thumbnail Cards
+import { AIInsightStrip } from "@/components/ai/feature4-insight-strips"
 
 interface DashboardCardProps {
   card: {
@@ -10,9 +12,11 @@ interface DashboardCardProps {
     tag: string
     metrics: { value1: string; value2: string } | null
   }
+  // FEATURE 4: cardIndex determines which hardcoded insight to show (0–3)
+  cardIndex?: number
 }
 
-export function DashboardCard({ card }: DashboardCardProps) {
+export function DashboardCard({ card, cardIndex = 0 }: DashboardCardProps) {
   return (
     <div className="flex-shrink-0 w-48 bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-shadow">
       <div className="p-3 h-24 flex items-center justify-center gap-3">
@@ -39,6 +43,9 @@ export function DashboardCard({ card }: DashboardCardProps) {
           {card.tag}
         </span>
       </div>
+      {/* FEATURE 4 — AI Insight Strip: sits flush at bottom of card */}
+      <AIInsightStrip cardIndex={cardIndex} />
     </div>
   )
 }
+

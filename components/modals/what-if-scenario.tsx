@@ -5,6 +5,12 @@ import { useAppStore } from "@/lib/store"
 import { whatIfResults } from "@/lib/data"
 import { X, Info, ChevronDown, Check, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+// FEATURE 8 — What-If AI Summary Card
+import { AIWhatIfSummaryCard } from "@/components/ai/feature8-whatif-summary"
+// FEATURE 9 — AI Optimization Recommendation Card
+import { AIOptimizationCard } from "@/components/ai/feature9-optimization-rec"
+// FEATURE 10 — Generate AI Report Share Option
+import { AIShareDropdown } from "@/components/ai/feature10-generate-report"
 
 export function WhatIfScenarioModal() {
   const { whatIfModalOpen, setWhatIfModalOpen, setWhatIfResultOpen } = useAppStore()
@@ -247,6 +253,9 @@ export function WhatIfResultModal() {
           </button>
         </div>
 
+        {/* FEATURE 8 — AI Summary Card: inserted between modal header and results table */}
+        <AIWhatIfSummaryCard />
+
         {/* Results List */}
         <div className="p-4 max-h-[50vh] overflow-y-auto">
           <div className="space-y-2">
@@ -268,6 +277,9 @@ export function WhatIfResultModal() {
           </div>
         </div>
 
+        {/* FEATURE 9 — AI Optimization Recommendation: inserted below results, above Share footer */}
+        <AIOptimizationCard />
+
         {/* Footer */}
         <div className="p-4 border-t border-border flex justify-end">
           <div className="relative">
@@ -280,20 +292,8 @@ export function WhatIfResultModal() {
               <ChevronDown className="w-4 h-4" />
             </button>
 
-            {/* Share dropdown menu */}
-            {shareMenuOpen && (
-              <div className="absolute bottom-full right-0 mb-2 w-56 bg-card border border-border rounded-lg shadow-lg py-1 z-10">
-                <button className="w-full px-4 py-2 text-sm text-foreground hover:bg-secondary text-left transition-colors">
-                  Publish Report & Save to Storage
-                </button>
-                <button className="w-full px-4 py-2 text-sm text-foreground hover:bg-secondary text-left transition-colors">
-                  Save to Storage
-                </button>
-                <button className="w-full px-4 py-2 text-sm text-foreground hover:bg-secondary text-left transition-colors">
-                  Share to Stakeholders
-                </button>
-              </div>
-            )}
+            {/* Share dropdown menu — FEATURE 10: replaced with AIShareDropdown that adds Generate AI Report item */}
+            {shareMenuOpen && <AIShareDropdown />}
           </div>
         </div>
       </div>

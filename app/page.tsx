@@ -8,6 +8,8 @@ import { EquipmentDashboard } from "@/components/views/equipment-dashboard"
 import { DataSyncView } from "@/components/views/data-sync"
 import { WhatIfScenarioModal, WhatIfResultModal } from "@/components/modals/what-if-scenario"
 import { useAppStore } from "@/lib/store"
+// FEATURE 1 — Global Floating AI Spark Button (also houses FEATURE 7 logic)
+import { AISparkButton } from "@/components/ai/feature1-spark-button"
 
 export default function Home() {
   const { currentView } = useAppStore()
@@ -28,6 +30,10 @@ export default function Home() {
       {/* Modals */}
       <WhatIfScenarioModal />
       <WhatIfResultModal />
+
+      {/* FEATURE 1 — Global Floating AI Spark Button
+          Only renders on site/plant/equipment views; self-excludes on data-sync and modals */}
+      <AISparkButton />
     </div>
   )
 }
