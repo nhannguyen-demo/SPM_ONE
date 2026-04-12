@@ -26,9 +26,9 @@ export function PlantOverview() {
   }
 
   return (
-    <div className="flex-1 flex">
+    <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto">
         {/* Main Dashboard Card */}
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -72,62 +72,24 @@ export function PlantOverview() {
               </div>
             </div>
 
-            {/* Right P&ID diagram */}
-            <div className="flex-1 p-4 relative bg-gradient-to-br from-slate-50 to-slate-100">
-              {/* P&ID Process Flow Diagram */}
-              <div className="absolute inset-4">
-                {/* On indicator */}
-                <div className="absolute top-2 left-2 flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-green-500" />
-                  <span className="text-xs font-medium text-foreground">On</span>
-                </div>
-
-                {/* Equipment shapes */}
-                <svg viewBox="0 0 400 200" className="w-full h-full">
-                  {/* Purple vessel */}
-                  <rect x="40" y="40" width="40" height="60" rx="4" fill="#8B5CF6" />
-                  
-                  {/* Blue columns */}
-                  <rect x="120" y="20" width="25" height="120" rx="3" fill="#3B82F6" />
-                  <rect x="160" y="30" width="25" height="100" rx="3" fill="#3B82F6" />
-                  
-                  {/* Cyan tall cylinders */}
-                  <rect x="220" y="10" width="20" height="140" rx="10" fill="#06B6D4" />
-                  <rect x="250" y="20" width="20" height="130" rx="10" fill="#06B6D4" />
-                  <rect x="280" y="15" width="20" height="135" rx="10" fill="#06B6D4" />
-
-                  {/* Red X flanges */}
-                  <circle cx="100" cy="70" r="10" fill="none" stroke="#EF4444" strokeWidth="2" />
-                  <line x1="94" y1="64" x2="106" y2="76" stroke="#EF4444" strokeWidth="2" />
-                  <line x1="106" y1="64" x2="94" y2="76" stroke="#EF4444" strokeWidth="2" />
-
-                  {/* Red butterfly valve */}
-                  <circle cx="180" cy="160" r="12" fill="none" stroke="#EF4444" strokeWidth="2" />
-                  <line x1="168" y1="160" x2="192" y2="160" stroke="#EF4444" strokeWidth="2" />
-
-                  {/* Green valve */}
-                  <circle cx="220" cy="170" r="10" fill="#22C55E" />
-
-                  {/* Gray heat exchanger */}
-                  <rect x="320" y="80" width="50" height="70" rx="4" fill="#9CA3AF" />
-                  <line x1="330" y1="90" x2="360" y2="90" stroke="#fff" strokeWidth="2" />
-                  <line x1="330" y1="100" x2="360" y2="100" stroke="#fff" strokeWidth="2" />
-                  <line x1="330" y1="110" x2="360" y2="110" stroke="#fff" strokeWidth="2" />
-
-                  {/* Piping */}
-                  <path d="M80 70 H100" stroke="#64748B" strokeWidth="2" fill="none" />
-                  <path d="M145 70 H160" stroke="#64748B" strokeWidth="2" fill="none" />
-                  <path d="M185 70 H220" stroke="#64748B" strokeWidth="2" fill="none" />
-                  <path d="M300 70 H320" stroke="#64748B" strokeWidth="2" fill="none" />
-
-                  {/* Output label */}
-                  <text x="350" y="170" fontSize="10" fill="#64748B">Output 1</text>
-                </svg>
-
-                {/* Radiation symbol */}
-                <div className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center">
-                  <span className="text-black text-xs">☢</span>
-                </div>
+            {/* Right P&ID diagram — place your image at public/images/pid-diagram.jpg */}
+            <div className="flex-1 relative bg-slate-50 overflow-hidden">
+              <img
+                src="/images/pid-diagram.jpg"
+                alt="P&ID Process Flow Diagram"
+                className="absolute inset-0 w-full h-full object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none"
+                }}
+              />
+              {/* Fallback placeholder shown until image is provided */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="text-xs text-muted-foreground/40 select-none">P&amp;ID Diagram</span>
+              </div>
+              {/* On indicator overlay */}
+              <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-xs font-medium text-foreground bg-white/80 px-1.5 py-0.5 rounded">On</span>
               </div>
             </div>
           </div>
@@ -166,7 +128,7 @@ export function PlantOverview() {
       </div>
 
       {/* Right Panel - Plant Information */}
-      <div className="w-72 bg-card border-l border-border p-4 overflow-y-auto">
+      <div className="w-72 flex-shrink-0 bg-card border-l border-border p-4 overflow-y-auto">
         <h3 className="font-semibold text-foreground mb-4">Plant Information</h3>
         <div className="space-y-2 mb-4">
           {[1, 2, 3, 4, 5].map((i) => (

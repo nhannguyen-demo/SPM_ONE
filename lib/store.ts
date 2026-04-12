@@ -31,6 +31,10 @@ interface AppState {
   // Dashboard edit mode
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
+
+  // Dashboard expanded (full-screen panel)
+  dashboardExpanded: boolean
+  setDashboardExpanded: (expanded: boolean) => void
   
   // What-If Scenario Modal
   whatIfModalOpen: boolean
@@ -74,6 +78,10 @@ export const useAppStore = create<AppState>((set) => ({
   // Dashboard edit mode
   viewMode: "view",
   setViewMode: (mode) => set({ viewMode: mode }),
+
+  // Dashboard expanded
+  dashboardExpanded: false,
+  setDashboardExpanded: (expanded) => set({ dashboardExpanded: expanded }),
   
   // What-If Scenario Modal
   whatIfModalOpen: false,

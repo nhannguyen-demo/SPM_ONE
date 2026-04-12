@@ -2,12 +2,12 @@
 
 import { useAppStore } from "@/lib/store"
 import { sites, siteDocuments, dashboardCards } from "@/lib/data"
-import { Maximize2, Plus, Filter, Search, ExternalLink, ChevronRight } from "lucide-react"
+import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink, ChevronRight } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniLineChart, MiniPieChart, MiniBarChart } from "@/components/mini-charts"
 
 export function SiteOverview() {
-  const { currentPath, setCurrentPath, setCurrentView, togglePlantExpanded } = useAppStore()
+  const { currentPath, setCurrentPath, setCurrentView, togglePlantExpanded, dashboardExpanded, setDashboardExpanded } = useAppStore()
   
   const site = sites.find((s) => s.id === currentPath.site)
   if (!site) return null
@@ -19,29 +19,44 @@ export function SiteOverview() {
   }
 
   return (
-    <div className="flex-1 flex">
+    <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto">
         {/* Main Dashboard Card */}
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
               {site.name} Overview Dashboard
             </span>
-            <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
-              <Maximize2 className="w-4 h-4 text-muted-foreground" />
+            <button
+              onClick={() => setDashboardExpanded(!dashboardExpanded)}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+            >
+              {dashboardExpanded
+                ? <Minimize2 className="w-4 h-4 text-muted-foreground" />
+                : <Maximize2 className="w-4 h-4 text-muted-foreground" />
+              }
             </button>
           </div>
           
           {/* Map with overlay stats */}
-          <div className="relative h-80 bg-amber-100/50">
-            {/* Simulated aerial map background */}
+          <div className="relative h-80 bg-stone-100 overflow-hidden">
+            {/* Site aerial image — place your image at public/images/site-map.jpg */}
+            <img
+              src="/images/site-map.jpg"
+              alt="Site aerial view"
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none"
+              }}
+            />
+            {/* Fallback tinted background shown until image is provided */}
             <div className="absolute inset-0 bg-gradient-to-br from-amber-200/60 via-amber-100/40 to-stone-200/60" />
-            
+
             {/* Plant markers */}
             <button
               onClick={() => handlePlantClick("plant-1")}
-              className="absolute top-8 left-8 right-1/2 bottom-1/2 border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer"
+              className="absolute top-8 left-8 right-1/2 bottom-1/2 border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer z-10"
             >
               <span className="px-3 py-1 bg-white/90 rounded text-sm font-medium text-foreground shadow">
                 Plant 1
@@ -49,7 +64,7 @@ export function SiteOverview() {
             </button>
             <button
               onClick={() => handlePlantClick("plant-2")}
-              className="absolute bottom-8 right-8 left-1/2 top-1/2 border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer"
+              className="absolute bottom-8 right-8 left-1/2 top-1/2 border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer z-10"
             >
               <span className="px-3 py-1 bg-white/90 rounded text-sm font-medium text-foreground shadow">
                 Plant 2
@@ -57,7 +72,7 @@ export function SiteOverview() {
             </button>
 
             {/* Stats overlay - left side */}
-            <div className="absolute top-12 left-12 bg-white/95 backdrop-blur rounded-lg p-4 shadow-lg">
+            <div className="absolute top-12 left-12 bg-white/95 backdrop-blur rounded-lg p-4 shadow-lg z-10">
               <div className="space-y-3">
                 <MiniLineChart />
                 <div className="flex gap-3">
@@ -71,7 +86,7 @@ export function SiteOverview() {
             </div>
 
             {/* Stats overlay - bottom right */}
-            <div className="absolute bottom-12 right-12 bg-white/95 backdrop-blur rounded-lg p-4 shadow-lg">
+            <div className="absolute bottom-12 right-12 bg-white/95 backdrop-blur rounded-lg p-4 shadow-lg z-10">
               <div className="text-3xl font-bold text-foreground">90%</div>
               <div className="flex gap-1 my-2">
                 <div className="w-2 h-2 rounded-full bg-muted" />
@@ -117,8 +132,8 @@ export function SiteOverview() {
         </div>
       </div>
 
-      {/* Right Panel - Site Information */}
-      <div className="w-72 bg-card border-l border-border p-4 overflow-y-auto">
+      {/* Right Panel - Site Information (hidden when expanded) */}
+      <div className={`w-72 flex-shrink-0 bg-card border-l border-border p-4 overflow-y-auto transition-all duration-300 ${dashboardExpanded ? "hidden" : ""}`}>
         <h3 className="font-semibold text-foreground mb-4">Site Information</h3>
         <div className="space-y-2 mb-4">
           {[1, 2, 3, 4].map((i) => (

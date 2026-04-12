@@ -4,6 +4,7 @@ import { useAppStore } from "@/lib/store"
 import { sites, plantDocuments, equipmentKPIs, monitoringItems, dashboardCards } from "@/lib/data"
 import { 
   Maximize2, 
+  Minimize2,
   Search, 
   ExternalLink, 
   GripVertical, 
@@ -23,7 +24,9 @@ export function EquipmentDashboard() {
     setCurrentPath,
     viewMode, 
     setViewMode,
-    setWhatIfModalOpen 
+    setWhatIfModalOpen,
+    dashboardExpanded,
+    setDashboardExpanded,
   } = useAppStore()
   
   const site = sites.find((s) => s.id === currentPath.site)
@@ -41,9 +44,9 @@ export function EquipmentDashboard() {
   }
 
   return (
-    <div className="flex-1 flex">
+    <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className={cn("flex-1 p-6 overflow-y-auto", showModules && "pr-0")}>
+      <div className={cn("flex-1 min-w-0 p-6 overflow-y-auto", showModules && "pr-0")}>
         {/* Header with controls */}
         <div className="flex items-center justify-between mb-4">
           <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
@@ -73,8 +76,15 @@ export function EquipmentDashboard() {
                 Edit Dashboard
               </button>
             )}
-            <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
-              <Maximize2 className="w-4 h-4 text-muted-foreground" />
+            <button
+              onClick={() => setDashboardExpanded(!dashboardExpanded)}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              aria-label={dashboardExpanded ? "Collapse dashboard" : "Expand dashboard"}
+            >
+              {dashboardExpanded
+                ? <Minimize2 className="w-4 h-4 text-muted-foreground" />
+                : <Maximize2 className="w-4 h-4 text-muted-foreground" />
+              }
             </button>
           </div>
         </div>
@@ -83,8 +93,8 @@ export function EquipmentDashboard() {
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
           <div className="flex">
             {/* KPI Pills Row */}
-            <div className="flex-1">
-              <div className="flex items-center gap-3 p-4 border-b border-border">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 p-4 border-b border-border flex-wrap">
                 <KPIPill label="DMG" value={equipmentKPIs.dmg} isEdit={isEditMode} />
                 <KPIPill label="Re-Life" value={equipmentKPIs.reLife} isEdit={isEditMode} />
                 <KPIPill value={equipmentKPIs.date} isEdit={isEditMode} />
@@ -94,7 +104,7 @@ export function EquipmentDashboard() {
               <div className="flex h-80">
                 {/* Left navigation column */}
                 <div className={cn(
-                  "w-36 border-r border-border p-2 space-y-1",
+                  "w-36 border-r border-border p-2 space-y-1 flex-shrink-0",
                   isEditMode && "opacity-50"
                 )}>
                   {monitoringItems.map((item, i) => (
@@ -113,7 +123,7 @@ export function EquipmentDashboard() {
                 </div>
 
                 {/* Main widgets area */}
-                <div className="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4">
+                <div className="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4 min-w-0">
                   {/* Line Chart */}
                   <DashboardWidget title="Fatigue Trend" isEdit={isEditMode}>
                     <TrendLineChart height={100} />
@@ -148,10 +158,10 @@ export function EquipmentDashboard() {
               </div>
             </div>
 
-            {/* 3D Model Panel */}
-            {!showModules && (
+            {/* 3D Model Panel — hidden when expanded or modules open */}
+            {!showModules && !dashboardExpanded && (
               <div className={cn(
-                "w-64 border-l border-border",
+                "w-64 flex-shrink-0 border-l border-border",
                 isEditMode && "relative"
               )}>
                 {isEditMode && (
@@ -166,89 +176,35 @@ export function EquipmentDashboard() {
           </div>
         </div>
 
-        {/* Tab Bar */}
-        <div className="flex items-center gap-2 mb-6">
-          {equipment.tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              className={cn(
-                "px-4 py-2 rounded-full text-sm font-medium transition-colors",
-                activeTab === tab
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              )}
-            >
-              {tab}
-            </button>
-          ))}
-          <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-            <Plus className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-
-        {/* Dashboard Cards */}
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {dashboardCards.slice(0, 2).map((card) => (
-            <DashboardCard key={card.id} card={card} />
-          ))}
-        </div>
-      </div>
-
-      {/* Right Panel - Equipment Info or Module Library */}
-      {showModules ? (
-        <ModuleLibrary onClose={() => setViewMode("edit")} />
-      ) : (
-        <div className="w-72 bg-card border-l border-border p-4 overflow-y-auto">
-          <h3 className="font-semibold text-foreground mb-4">Equipment Information</h3>
-          <div className="space-y-2 mb-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-3 bg-muted rounded" style={{ width: `${50 + Math.random() * 40}%` }} />
-            ))}
-          </div>
-          <hr className="border-border my-4" />
-          
-          {/* Tabular placeholder */}
-          <div className="space-y-2 mb-4">
-            {[1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-                <div className="flex-1 flex gap-2">
-                  <div className="h-3 bg-muted rounded flex-1" />
-                  <div className="h-3 bg-muted rounded flex-1" />
-                  <div className="h-3 bg-muted rounded flex-1" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-medium text-foreground">Plant Document</h4>
-            <button className="p-1.5 hover:bg-secondary rounded transition-colors">
-              <Search className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
-
-          <div className="space-y-2 mb-6">
-            {plantDocuments.map((doc, i) => (
+        {/* Bottom tab bar — with Run What-If Scenarios button when expanded */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            {equipment.tabs.map((tab) => (
               <button
-                key={i}
-                className="w-full flex items-center justify-between px-3 py-2 bg-secondary/50 hover:bg-secondary rounded-lg text-sm text-foreground transition-colors"
+                key={tab}
+                onClick={() => handleTabChange(tab)}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                  activeTab === tab
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                )}
               >
-                <span className="truncate">{doc.name}</span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-2" />
+                {tab}
               </button>
             ))}
+            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
+              <Plus className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
 
-          {/* What-If Scenarios */}
-          <div className="mt-6">
-            <h4 className="font-medium text-foreground mb-3">What-If Scenarios</h4>
+          {/* Run What-If Scenarios moves here when dashboard is expanded */}
+          {dashboardExpanded && (
             <button
               onClick={() => setWhatIfModalOpen(true)}
               disabled={isEditMode}
               className={cn(
-                "w-full py-3 rounded-lg text-sm font-medium transition-colors",
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                 isEditMode
                   ? "bg-muted text-muted-foreground cursor-not-allowed"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -256,8 +212,99 @@ export function EquipmentDashboard() {
             >
               Run What-If Scenarios
             </button>
-          </div>
+          )}
         </div>
+
+        {/* Dashboard Thumbnail Cards — compact pill-cards when expanded */}
+        {dashboardExpanded ? (
+          <div className="flex gap-3">
+            {["#process", "#integrity"].map((label) => (
+              <button
+                key={label}
+                onClick={() => handleTabChange(label)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-xl border bg-card shadow-sm text-sm font-medium transition-colors hover:border-primary/50",
+                  activeTab === label ? "border-primary text-primary" : "border-border text-foreground"
+                )}
+              >
+                <div className="w-2 h-2 rounded-full bg-primary/60" />
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {dashboardCards.slice(0, 2).map((card) => (
+              <DashboardCard key={card.id} card={card} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Right Panel — Equipment Info or Module Library (hidden when expanded) */}
+      {!dashboardExpanded && (
+        showModules ? (
+          <ModuleLibrary onClose={() => setViewMode("edit")} />
+        ) : (
+          <div className="w-72 flex-shrink-0 bg-card border-l border-border p-4 overflow-y-auto">
+            <h3 className="font-semibold text-foreground mb-4">Equipment Information</h3>
+            <div className="space-y-2 mb-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-3 bg-muted rounded" style={{ width: `${50 + i * 10}%` }} />
+              ))}
+            </div>
+            <hr className="border-border my-4" />
+            
+            <div className="space-y-2 mb-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                  <div className="flex-1 flex gap-2">
+                    <div className="h-3 bg-muted rounded flex-1" />
+                    <div className="h-3 bg-muted rounded flex-1" />
+                    <div className="h-3 bg-muted rounded flex-1" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-foreground">Plant Document</h4>
+              <button className="p-1.5 hover:bg-secondary rounded transition-colors">
+                <Search className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="space-y-2 mb-6">
+              {plantDocuments.map((doc, i) => (
+                <button
+                  key={i}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-secondary/50 hover:bg-secondary rounded-lg text-sm text-foreground transition-colors"
+                >
+                  <span className="truncate">{doc.name}</span>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-2" />
+                </button>
+              ))}
+            </div>
+
+            {/* What-If Scenarios — shown in right panel when NOT expanded */}
+            <div className="mt-6">
+              <h4 className="font-medium text-foreground mb-3">What-If Scenarios</h4>
+              <button
+                onClick={() => setWhatIfModalOpen(true)}
+                disabled={isEditMode}
+                className={cn(
+                  "w-full py-3 rounded-lg text-sm font-medium transition-colors",
+                  isEditMode
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+              >
+                Run What-If Scenarios
+              </button>
+            </div>
+          </div>
+        )
       )}
     </div>
   )
@@ -275,7 +322,7 @@ function KPIPill({
   return (
     <div className={cn(
       "relative px-3 py-1.5 bg-secondary rounded-lg",
-      isEdit && "pr-8"
+      isEdit && "pl-6 pr-7"
     )}>
       {isEdit && (
         <div className="absolute left-1 top-1/2 -translate-y-1/2">

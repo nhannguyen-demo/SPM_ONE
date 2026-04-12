@@ -15,9 +15,9 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 flex overflow-hidden">
+        <main className="flex-1 min-w-0 flex overflow-hidden">
           {currentView === "site" && <SiteOverview />}
           {currentView === "plant" && <PlantOverview />}
           {currentView === "equipment" && <EquipmentDashboard />}
