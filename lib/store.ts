@@ -24,6 +24,10 @@ interface AppState {
   togglePlantExpanded: (plantId: string) => void
   toggleEquipmentExpanded: (equipmentId: string) => void
   
+  // Sidebar collapsed state
+  sidebarCollapsed: boolean
+  toggleSidebarCollapsed: () => void
+
   // Current view
   currentView: "site" | "plant" | "equipment" | "data-sync"
   setCurrentView: (view: "site" | "plant" | "equipment" | "data-sync") => void
@@ -70,6 +74,11 @@ export const useAppStore = create<AppState>((set) => ({
         ? state.expandedEquipment.filter((id) => id !== equipmentId)
         : [...state.expandedEquipment, equipmentId],
     })),
+
+  // Sidebar collapsed
+  sidebarCollapsed: false,
+  toggleSidebarCollapsed: () =>
+    set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   
   // Current view
   currentView: "site",
