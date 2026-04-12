@@ -241,9 +241,9 @@ export function WhatIfResultModal() {
       />
       
       {/* Modal */}
-      <div className="relative bg-card rounded-xl shadow-2xl w-[600px] max-h-[80vh] overflow-hidden">
+      <div className="relative bg-card rounded-xl shadow-2xl w-[600px] max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
           <h3 className="font-semibold text-foreground">What-If scenario Result</h3>
           <button
             onClick={() => setWhatIfResultOpen(false)}
@@ -254,10 +254,12 @@ export function WhatIfResultModal() {
         </div>
 
         {/* FEATURE 8 — AI Summary Card: inserted between modal header and results table */}
-        <AIWhatIfSummaryCard />
+        <div className="flex-shrink-0">
+          <AIWhatIfSummaryCard />
+        </div>
 
         {/* Results List */}
-        <div className="p-4 max-h-[50vh] overflow-y-auto">
+        <div className="p-4 flex-1 min-h-[100px] overflow-y-auto">
           <div className="space-y-2">
             {whatIfResults.map((result, i) => (
               <div key={i} className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg">
@@ -278,10 +280,12 @@ export function WhatIfResultModal() {
         </div>
 
         {/* FEATURE 9 — AI Optimization Recommendation: inserted below results, above Share footer */}
-        <AIOptimizationCard />
+        <div className="flex-shrink-0">
+          <AIOptimizationCard />
+        </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border flex justify-end">
+        <div className="p-4 border-t border-border flex justify-end flex-shrink-0">
           <div className="relative">
             <button
               onClick={() => setShareMenuOpen(!shareMenuOpen)}

@@ -25,9 +25,9 @@ export function SiteOverview() {
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className="flex-1 min-w-0 p-6 overflow-y-auto">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto flex flex-col">
         {/* Main Dashboard Card */}
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6 flex-1 flex flex-col">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
               {site.name} Overview Dashboard
@@ -44,7 +44,7 @@ export function SiteOverview() {
           </div>
           
           {/* Map with overlay stats */}
-          <div className="relative h-80 bg-stone-100 overflow-hidden">
+          <div className="relative flex-1 min-h-[320px] bg-stone-100 overflow-hidden">
             {/* Site aerial image — place your image at public/images/site-map.jpg */}
             <img
               src="/images/site-map.jpg"
@@ -107,7 +107,7 @@ export function SiteOverview() {
         </div>
 
         {/* Dashboards Section */}
-        <div className="mb-6">
+        <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Dashboards of {site.name}</h2>
             <div className="flex items-center gap-2">

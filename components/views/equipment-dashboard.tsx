@@ -49,7 +49,7 @@ export function EquipmentDashboard() {
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className={cn("flex-1 min-w-0 p-6 overflow-y-auto", showModules && "pr-0")}>
+      <div className={cn("flex-1 min-w-0 p-6 overflow-y-auto flex flex-col", showModules && "pr-0")}>
         {/* Header with controls */}
         <div className="flex items-center justify-between mb-4">
           <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
@@ -93,8 +93,8 @@ export function EquipmentDashboard() {
         </div>
 
         {/* Main Dashboard Card */}
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
-          <div className="flex">
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6 flex-1 flex flex-col">
+          <div className="flex flex-1 min-h-0">
             {/* KPI Pills Row */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 p-4 border-b border-border flex-wrap">
@@ -113,7 +113,7 @@ export function EquipmentDashboard() {
                 </AIKPIBadgeWrapper>
               </div>
 
-              <div className="flex h-80">
+              <div className="flex flex-1 min-h-[320px]">
                 {/* Left navigation column */}
                 <div className={cn(
                   "w-36 border-r border-border p-2 space-y-1 flex-shrink-0",
