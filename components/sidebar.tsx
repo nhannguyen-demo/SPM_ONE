@@ -18,6 +18,7 @@ import {
   Hash,
   ChevronsLeft,
   ChevronsRight,
+  Lightbulb,
 } from "lucide-react"
 
 export function Sidebar() {
@@ -35,6 +36,7 @@ export function Sidebar() {
     setViewMode,
     sidebarCollapsed,
     toggleSidebarCollapsed,
+    setWhatIfModalOpen,
   } = useAppStore()
 
   const handleSiteClick = (siteId: string) => {
@@ -273,8 +275,8 @@ export function Sidebar() {
                                       <span>{equipment.name}</span>
                                     </button>
 
-                                    {/* Tabs */}
-                                    {isEquipmentExpanded && equipment.tabs.length > 0 && (
+                                    {/* Tabs and Scenarios */}
+                                    {isEquipmentExpanded && (
                                       <div className="ml-6 mt-1">
                                         {equipment.tabs.map((tab) => {
                                           const isTabActive = currentPath.tab === tab && currentPath.equipment === equipment.id
@@ -295,6 +297,18 @@ export function Sidebar() {
                                             </button>
                                           )
                                         })}
+                                        
+                                        <button
+                                          onClick={() => {
+                                            if (equipment.id === "equipment-a") {
+                                              setWhatIfModalOpen(true)
+                                            }
+                                          }}
+                                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors hover:bg-sidebar-hover text-sidebar-foreground"
+                                        >
+                                          <Lightbulb className="w-3.5 h-3.5" />
+                                          <span>What-If scenario</span>
+                                        </button>
                                       </div>
                                     )}
                                   </div>
