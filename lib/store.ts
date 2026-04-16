@@ -11,6 +11,8 @@ export type NavigationPath = {
 
 export type ViewMode = "view" | "edit" | "modules"
 
+export type ActiveModule = 'portfolio' | 'workspace' | 'insights' | 'comms' | 'settings'
+
 interface AppState {
   // Navigation
   currentPath: NavigationPath
@@ -24,9 +26,21 @@ interface AppState {
   togglePlantExpanded: (plantId: string) => void
   toggleEquipmentExpanded: (equipmentId: string) => void
   
-  // Sidebar collapsed state
+  // Sidebar collapsed state (kept for backward compat; panel open/close replaces it in new nav)
   sidebarCollapsed: boolean
   toggleSidebarCollapsed: () => void
+
+  // ── TWO-LAYER NAV STATE ───────────────────────────────────────────────────
+  // Active module selected in the Module Rail
+  activeModule: ActiveModule
+  setActiveModule: (module: ActiveModule) => void
+  // Whether the contextual panel is open
+  isPanelOpen: boolean
+  togglePanel: () => void
+  // Search query for filtering the asset tree in the Portfolio panel
+  assetSearchQuery: string
+  setAssetSearchQuery: (query: string) => void
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
   currentView: "site" | "plant" | "equipment" | "data-sync"
@@ -84,10 +98,19 @@ export const useAppStore = create<AppState>((set) => ({
         : [...state.expandedEquipment, equipmentId],
     })),
 
-  // Sidebar collapsed
+  // Sidebar collapsed (legacy; kept for backward compat)
   sidebarCollapsed: false,
   toggleSidebarCollapsed: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+  // ── TWO-LAYER NAV STATE ───────────────────────────────────────────────────
+  activeModule: 'portfolio',
+  setActiveModule: (module) => set({ activeModule: module, isPanelOpen: true }),
+  isPanelOpen: true,
+  togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
+  assetSearchQuery: '',
+  setAssetSearchQuery: (query) => set({ assetSearchQuery: query }),
+  // ─────────────────────────────────────────────────────────────────────────
   
   // Current view
   currentView: "site",
