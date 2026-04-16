@@ -17,6 +17,9 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+// dnd-kit import
+import { useDraggable } from "@dnd-kit/core"
+
 const iconMap: Record<string, React.ReactNode> = {
   "bar-chart": <BarChart3 className="w-4 h-4" />,
   "table": <Table className="w-4 h-4" />,
@@ -33,6 +36,36 @@ interface ModuleLibraryProps {
   onClose: () => void
 }
 
+function LibraryDraggableItem({ module }: { module: any }) {
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: `library-item-${module.id}`,
+    data: { isLibraryItem: true, module },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors cursor-grab active:cursor-grabbing"
+    >
+      <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      <div className="flex items-center gap-2 flex-1">
+        <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center pointer-events-none">
+          {iconMap[module.icon] || <BarChart3 className="w-4 h-4" />}
+        </div>
+        <span className="text-sm font-medium text-foreground pointer-events-none">{module.name}</span>
+      </div>
+      <div className="flex items-center gap-1 pointer-events-none">
+        <button className="px-2 py-1 text-xs text-muted-foreground hover:bg-muted rounded flex items-center gap-1">
+          Options
+          <ChevronDown className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function ModuleLibrary({ onClose }: ModuleLibraryProps) {
   const [activeCategory, setActiveCategory] = useState("Asset Efficiency")
   const [searchQuery, setSearchQuery] = useState("")
@@ -44,7 +77,7 @@ export function ModuleLibrary({ onClose }: ModuleLibraryProps) {
   })
 
   return (
-    <div className="w-80 bg-card border-l border-border flex flex-col">
+    <div className="w-80 bg-card border-l border-border flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <button
@@ -53,7 +86,7 @@ export function ModuleLibrary({ onClose }: ModuleLibraryProps) {
         >
           <X className="w-5 h-5 text-muted-foreground" />
         </button>
-        <h3 className="font-semibold text-foreground">Module Library</h3>
+        <h3 className="font-semibold text-foreground">Add Widgets</h3>
         <div className="w-6" />
       </div>
 
@@ -63,7 +96,7 @@ export function ModuleLibrary({ onClose }: ModuleLibraryProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search modules..."
+            placeholder="Search widgets..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-10 pl-10 pr-4 bg-secondary rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -89,32 +122,10 @@ export function ModuleLibrary({ onClose }: ModuleLibraryProps) {
         ))}
       </div>
 
-      {/* Module List */}
+      {/* Widget List */}
       <div className="flex-1 overflow-y-auto p-2">
         {filteredModules.map((module) => (
-          <div
-            key={module.id}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors cursor-grab active:cursor-grabbing"
-            draggable
-          >
-            <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <div className="flex items-center gap-2 flex-1">
-              <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center">
-                {iconMap[module.icon] || <BarChart3 className="w-4 h-4" />}
-              </div>
-              <span className="text-sm font-medium text-foreground">{module.name}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button className="px-2 py-1 text-xs text-muted-foreground hover:bg-muted rounded flex items-center gap-1">
-                Options
-                <ChevronDown className="w-3 h-3" />
-              </button>
-              <button className="px-2 py-1 text-xs text-muted-foreground hover:bg-muted rounded flex items-center gap-1">
-                Options
-                <ChevronDown className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
+          <LibraryDraggableItem key={module.id} module={module} />
         ))}
       </div>
     </div>

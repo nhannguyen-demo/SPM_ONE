@@ -23,6 +23,20 @@ export function SiteOverview() {
     togglePlantExpanded(plantId)
   }
 
+  const handleDashboardClick = (card: any) => {
+    // Map "Equipment: a" -> "equipment-a" safely
+    const equipId = card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
+    // Fallback plant
+    const plantId = currentPath.plant || "plant-1"
+    setCurrentPath({
+      ...currentPath,
+      plant: plantId,
+      equipment: equipId,
+      tab: card.tag
+    })
+    setCurrentView("equipment")
+  }
+
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
@@ -134,8 +148,10 @@ export function SiteOverview() {
 
             <div className="flex gap-4 overflow-x-auto pb-2">
               {dashboardCards.map((card, idx) => (
-                // FEATURE 4: pass cardIndex for AI insight strip selection
-                <DashboardCard key={card.id} card={card} cardIndex={idx} />
+                <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer">
+                  {/* FEATURE 4: pass cardIndex for AI insight strip selection */}
+                  <DashboardCard card={card} cardIndex={idx} />
+                </div>
               ))}
               <button className="flex-shrink-0 w-48 h-36 border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
                 <ChevronRight className="w-6 h-6 text-muted-foreground" />
@@ -173,7 +189,9 @@ export function SiteOverview() {
 
             <div className="flex gap-4 overflow-x-auto pb-2">
               {dashboardCards.map((card, idx) => (
-                <DashboardCard key={card.id} card={card} cardIndex={idx} />
+                <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer">
+                  <DashboardCard card={card} cardIndex={idx} />
+                </div>
               ))}
               <button className="flex-shrink-0 w-48 h-36 border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
                 <ChevronRight className="w-6 h-6 text-muted-foreground" />

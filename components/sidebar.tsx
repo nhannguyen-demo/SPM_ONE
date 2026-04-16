@@ -226,7 +226,8 @@ function PortfolioPanel({
   }
 
   const handleEquipmentClick = (siteId: string, plantId: string, equipmentId: string) => {
-    setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: "#process" })
+    // Set 'Demo Engineer Team's Dashboard' (or empty string mapped later) as the first default tab
+    setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: "Demo Engineer Team's Dashboard" })
     setCurrentView("equipment")
     setViewMode("view")
     if (!expandedEquipment.includes(equipmentId)) toggleEquipmentExpanded(equipmentId)
@@ -387,72 +388,15 @@ function PortfolioPanel({
                                     onClick={() => handleEquipmentClick(site.id, plant.id, equipment.id)}
                                     className={cn(
                                       "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
-                                      isEquipActive && currentView === "equipment" && !currentPath.tab
+                                      isEquipActive && currentView === "equipment"
                                         ? "bg-sidebar-active text-white"
                                         : "hover:bg-sidebar-hover text-sidebar-foreground"
                                     )}
                                   >
-                                    {equipment.tabs.length > 0 ? (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          toggleEquipmentExpanded(equipment.id)
-                                        }}
-                                        className="p-0.5 flex-shrink-0"
-                                      >
-                                        {isEquipExpanded ? (
-                                          <ChevronDown className="w-3.5 h-3.5" />
-                                        ) : (
-                                          <ChevronRight className="w-3.5 h-3.5" />
-                                        )}
-                                      </button>
-                                    ) : (
-                                      <span className="w-4 flex-shrink-0" />
-                                    )}
+                                    <span className="w-4 flex-shrink-0" />
                                     <Box className="w-4 h-4 flex-shrink-0" />
                                     <span className="truncate">{equipment.name}</span>
                                   </button>
-
-                                  {/* Tabs + What-If */}
-                                  {isEquipExpanded && (
-                                    <div className="ml-6 mt-0.5">
-                                      {equipment.tabs.map((tab) => {
-                                        const isTabActive =
-                                          currentPath.tab === tab &&
-                                          currentPath.equipment === equipment.id
-                                        return (
-                                          <button
-                                            key={tab}
-                                            onClick={() =>
-                                              handleTabClick(site.id, plant.id, equipment.id, tab)
-                                            }
-                                            className={cn(
-                                              "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
-                                              isTabActive
-                                                ? "bg-sidebar-active text-white"
-                                                : "hover:bg-sidebar-hover text-sidebar-foreground"
-                                            )}
-                                          >
-                                            <Hash className="w-3.5 h-3.5 flex-shrink-0" />
-                                            <span className="truncate">{tab.replace("#", "")}</span>
-                                          </button>
-                                        )
-                                      })}
-
-                                      {/* What-If scenario — opens modal (equipment-a functional, others placeholder) */}
-                                      <button
-                                        onClick={() => {
-                                          if (equipment.id === "equipment-a") {
-                                            setWhatIfModalOpen(true)
-                                          }
-                                        }}
-                                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors hover:bg-sidebar-hover text-sidebar-foreground"
-                                      >
-                                        <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" />
-                                        <span className="truncate">What-If scenario</span>
-                                      </button>
-                                    </div>
-                                  )}
                                 </div>
                               )
                             })}
