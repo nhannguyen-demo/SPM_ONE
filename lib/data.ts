@@ -12,17 +12,17 @@ export const sites = [
           {
             id: "equipment-a",
             name: "Equipment a",
-            tabs: ["#process", "#integrity"],
+            tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
           },
           {
             id: "equipment-b",
             name: "Equipment b",
-            tabs: ["#test"],
+            tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
           },
           {
             id: "equipment-c",
             name: "Equipment c",
-            tabs: ["#test"],
+            tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
           },
         ],
       },
@@ -60,26 +60,39 @@ export const dashboardCards = [
   {
     id: "dash-1",
     equipment: "Equipment: a",
-    tag: "#process",
-    metrics: { value1: "90%", value2: "0.001%" },
+    tag: "Demo Engineer Team's Dashboard",
+    metrics: { value1: "80%", value2: "0.005%" },
   },
   {
     id: "dash-2",
     equipment: "Equipment: a",
-    tag: "#integrity",
-    metrics: { value1: "201%", value2: "0.001%" },
+    tag: "Monitoring",
+    metrics: { value1: "95%", value2: "0.002%" },
   },
   {
     id: "dash-3",
-    equipment: "Equipment: b",
-    tag: "#test",
-    metrics: null,
+    equipment: "Equipment: a",
+    tag: "Process",
+    metrics: { value1: "92%", value2: "0.001%" },
   },
   {
     id: "dash-4",
-    equipment: "Equipment: c",
-    tag: "#test",
-    metrics: null,
+    equipment: "Equipment: a",
+    tag: "Fatigue",
+    // Keep 90% and 0.001% as it originally was on #process to not break expectations
+    metrics: { value1: "90%", value2: "0.001%" },
+  },
+  {
+    id: "dash-5",
+    equipment: "Equipment: a",
+    tag: "Bulging",
+    metrics: { value1: "201%", value2: "0.04%" },
+  },
+  {
+    id: "dash-6",
+    equipment: "Equipment: a",
+    tag: "Cracking",
+    metrics: { value1: "76%", value2: "0.01%" },
   },
 ]
 

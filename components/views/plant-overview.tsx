@@ -12,7 +12,21 @@ import { AIHealthSummaryCard } from "@/components/ai/feature3-health-summary"
 import { PIDAnomalyOverlay } from "@/components/ai/feature5-pid-anomaly"
 
 export function PlantOverview() {
-  const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded } = useAppStore()
+  const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded, expandedEquipment } = useAppStore()
+
+  const handleDashboardClick = (card: any) => {
+    // Map "Equipment: a" -> "equipment-a" safely
+    const equipId = card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
+    setCurrentPath({
+      ...currentPath,
+      equipment: equipId,
+      tab: card.tag
+    })
+    setCurrentView("equipment")
+    if (!expandedEquipment.includes(equipId)) {
+      toggleEquipmentExpanded(equipId)
+    }
+  }
   
   const site = sites.find((s) => s.id === currentPath.site)
   const plant = site?.plants.find((p) => p.id === currentPath.plant)
@@ -136,7 +150,7 @@ export function PlantOverview() {
 
             <div className="flex gap-4 overflow-x-auto pb-2">
               {dashboardCards.slice(0, 2).map((card, idx) => (
-                <div key={card.id} onClick={() => handleEquipmentClick("equipment-a")} className="cursor-pointer">
+                <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer">
                   {/* FEATURE 4: pass cardIndex for AI insight strip selection */}
                   <DashboardCard card={card} cardIndex={idx} />
                 </div>
@@ -175,7 +189,7 @@ export function PlantOverview() {
 
             <div className="flex gap-4 overflow-x-auto pb-2">
               {dashboardCards.slice(0, 2).map((card, idx) => (
-                <div key={card.id} onClick={() => handleEquipmentClick("equipment-a")} className="cursor-pointer">
+                <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer">
                   <DashboardCard card={card} cardIndex={idx} />
                 </div>
               ))}
