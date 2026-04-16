@@ -5,6 +5,7 @@ import { sites, siteDocuments, dashboardCards } from "@/lib/data"
 import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink, ChevronRight } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniLineChart, MiniPieChart, MiniBarChart } from "@/components/mini-charts"
+import { cn } from "@/lib/utils"
 // FEATURE 3 — AI Health Summary Card
 import { AIHealthSummaryCard } from "@/components/ai/feature3-health-summary"
 // FEATURE 6C — AI Map Badges (activated via FEATURE 1 AI Insight button)
@@ -25,9 +26,12 @@ export function SiteOverview() {
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className="flex-1 min-w-0 p-6 overflow-y-auto flex flex-col">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto flex flex-col relative">
         {/* Main Dashboard Card */}
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6 flex-1 flex flex-col">
+        <div className={cn(
+          "bg-card rounded-xl border border-border shadow-sm overflow-hidden flex-1 flex flex-col",
+          dashboardExpanded ? "mb-0" : "mb-6"
+        )}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
               {site.name} Overview Dashboard
@@ -107,36 +111,76 @@ export function SiteOverview() {
         </div>
 
         {/* Dashboards Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Dashboards of {site.name}</h2>
-            <div className="flex items-center gap-2">
-              <select className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm">
-                <option>Plant 1</option>
-                <option>Plant 2</option>
-              </select>
-              <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
-                <Plus className="w-4 h-4 text-muted-foreground" />
-              </button>
-              <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-              </button>
-              <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
-                <Search className="w-4 h-4 text-muted-foreground" />
+        {!dashboardExpanded && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Dashboards of {site.name}</h2>
+              <div className="flex items-center gap-2">
+                <select className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm">
+                  <option>Plant 1</option>
+                  <option>Plant 2</option>
+                </select>
+                <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {dashboardCards.map((card, idx) => (
+                // FEATURE 4: pass cardIndex for AI insight strip selection
+                <DashboardCard key={card.id} card={card} cardIndex={idx} />
+              ))}
+              <button className="flex-shrink-0 w-48 h-36 border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                <ChevronRight className="w-6 h-6 text-muted-foreground" />
               </button>
             </div>
           </div>
+        )}
 
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {dashboardCards.map((card, idx) => (
-              // FEATURE 4: pass cardIndex for AI insight strip selection
-              <DashboardCard key={card.id} card={card} cardIndex={idx} />
-            ))}
-            <button className="flex-shrink-0 w-48 h-36 border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
-              <ChevronRight className="w-6 h-6 text-muted-foreground" />
-            </button>
+        {/* Slide-up bottom panel — shown when expanded */}
+        {dashboardExpanded && (
+          <div className="absolute left-6 right-6 bottom-0 translate-y-[calc(100%-12px)] hover:translate-y-0 transition-transform duration-300 z-50 bg-background border border-border shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-xl px-6 py-4 flex flex-col">
+            {/* Hover trigger handle */}
+            <div className="absolute -top-3 left-0 right-0 h-4 cursor-pointer flex items-center justify-center">
+              <div className="w-16 h-1.5 rounded-full bg-border/80" />
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Dashboards of {site.name}</h2>
+              <div className="flex items-center gap-2">
+                <select className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm">
+                  <option>Plant 1</option>
+                  <option>Plant 2</option>
+                </select>
+                <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {dashboardCards.map((card, idx) => (
+                <DashboardCard key={card.id} card={card} cardIndex={idx} />
+              ))}
+              <button className="flex-shrink-0 w-48 h-36 border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                <ChevronRight className="w-6 h-6 text-muted-foreground" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Right Panel - Site Information (hidden when expanded) */}

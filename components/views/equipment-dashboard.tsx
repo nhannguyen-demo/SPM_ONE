@@ -49,7 +49,7 @@ export function EquipmentDashboard() {
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className={cn("flex-1 min-w-0 p-6 overflow-y-auto flex flex-col", showModules && "pr-0")}>
+      <div className={cn("flex-1 min-w-0 p-6 overflow-y-auto flex flex-col relative", showModules && "pr-0")}>
         {/* Header with controls */}
         <div className="flex items-center justify-between mb-4">
           <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
@@ -93,7 +93,10 @@ export function EquipmentDashboard() {
         </div>
 
         {/* Main Dashboard Card */}
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6 flex-1 flex flex-col">
+        <div className={cn(
+          "bg-card rounded-xl border border-border shadow-sm overflow-hidden flex-1 flex flex-col",
+          dashboardExpanded ? "mb-0" : "mb-6"
+        )}>
           <div className="flex flex-1 min-h-0">
             {/* KPI Pills Row */}
             <div className="flex-1 min-w-0 flex flex-col min-h-0">
@@ -196,68 +199,89 @@ export function EquipmentDashboard() {
           </div>
         </div>
 
-        {/* Bottom tab bar — with Run What-If Scenarios button when expanded */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            {equipment.tabs.map((tab) => (
+        {/* Regular bottom items — hidden when expanded */}
+        {!dashboardExpanded && (
+          <>
+            {/* Bottom tab bar */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                {equipment.tabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => handleTabChange(tab)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                      activeTab === tab
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+                <button className="p-2 hover:bg-secondary rounded-full transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+
+            {/* Dashboard Thumbnail Cards */}
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {dashboardCards.slice(0, 2).map((card, idx) => (
+                <DashboardCard key={card.id} card={card} cardIndex={idx} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Slide-up bottom panel — shown when expanded */}
+        {dashboardExpanded && (
+          <div className="absolute left-6 right-6 bottom-0 translate-y-[calc(100%-12px)] hover:translate-y-0 transition-transform duration-300 z-50 bg-background border border-border shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-xl px-6 py-4 flex flex-col">
+            {/* Hover trigger handle */}
+            <div className="absolute -top-3 left-0 right-0 h-4 cursor-pointer flex items-center justify-center">
+              <div className="w-16 h-1.5 rounded-full bg-border/80" />
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                {equipment.tabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => handleTabChange(tab)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                      activeTab === tab
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+                <button className="p-2 hover:bg-secondary rounded-full transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+
               <button
-                key={tab}
-                onClick={() => handleTabChange(tab)}
+                onClick={() => setWhatIfModalOpen(true)}
+                disabled={isEditMode}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium transition-colors",
-                  activeTab === tab
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isEditMode
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
                 )}
               >
-                {tab}
+                Run What-If Scenarios
               </button>
-            ))}
-            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-              <Plus className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
+            </div>
 
-          {/* Run What-If Scenarios moves here when dashboard is expanded */}
-          {dashboardExpanded && (
-            <button
-              onClick={() => setWhatIfModalOpen(true)}
-              disabled={isEditMode}
-              className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                isEditMode
-                  ? "bg-muted text-muted-foreground cursor-not-allowed"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
-              )}
-            >
-              Run What-If Scenarios
-            </button>
-          )}
-        </div>
-
-        {/* Dashboard Thumbnail Cards — compact pill-cards when expanded */}
-        {dashboardExpanded ? (
-          <div className="flex gap-3">
-            {["#process", "#integrity"].map((label) => (
-              <button
-                key={label}
-                onClick={() => handleTabChange(label)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl border bg-card shadow-sm text-sm font-medium transition-colors hover:border-primary/50",
-                  activeTab === label ? "border-primary text-primary" : "border-border text-foreground"
-                )}
-              >
-                <div className="w-2 h-2 rounded-full bg-primary/60" />
-                {label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {dashboardCards.slice(0, 2).map((card, idx) => (
-              // FEATURE 4: pass cardIndex for AI insight strip selection
-              <DashboardCard key={card.id} card={card} cardIndex={idx} />
-            ))}
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {dashboardCards.slice(0, 2).map((card, idx) => (
+                <DashboardCard key={card.id} card={card} cardIndex={idx} />
+              ))}
+            </div>
           </div>
         )}
       </div>
