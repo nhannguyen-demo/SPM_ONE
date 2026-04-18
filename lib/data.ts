@@ -11,18 +11,18 @@ export const sites = [
         equipment: [
           {
             id: "equipment-a",
-            name: "Equipment a",
+            name: "Coke Drum",
             tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
           },
           {
             id: "equipment-b",
-            name: "Equipment b",
-            tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
+            name: "HCU",
+            tabs: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
           },
           {
             id: "equipment-c",
-            name: "Equipment c",
-            tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
+            name: "Pump ND.1X02",
+            tabs: ["Pump Performance"],
           },
         ],
       },
@@ -59,40 +59,81 @@ export const plantDocuments = [
 export const dashboardCards = [
   {
     id: "dash-1",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Demo Engineer Team's Dashboard",
     metrics: { value1: "80%", value2: "0.005%" },
   },
   {
     id: "dash-2",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Monitoring",
     metrics: { value1: "95%", value2: "0.002%" },
   },
   {
     id: "dash-3",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Process",
     metrics: { value1: "92%", value2: "0.001%" },
   },
   {
     id: "dash-4",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Fatigue",
     // Keep 90% and 0.001% as it originally was on #process to not break expectations
     metrics: { value1: "90%", value2: "0.001%" },
   },
   {
     id: "dash-5",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Bulging",
     metrics: { value1: "201%", value2: "0.04%" },
   },
   {
     id: "dash-6",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Cracking",
     metrics: { value1: "76%", value2: "0.01%" },
+  },
+  {
+    id: "dash-hcu-1",
+    equipment: "HCU",
+    equipId: "equipment-b",
+    tag: "Overview",
+    metrics: { value1: "95%", value2: "0.003%" },
+  },
+  {
+    id: "dash-hcu-2",
+    equipment: "HCU",
+    equipId: "equipment-b",
+    tag: "Reactor Health",
+    metrics: { value1: "88%", value2: "0.010%" },
+  },
+  {
+    id: "dash-hcu-3",
+    equipment: "HCU",
+    equipId: "equipment-b",
+    tag: "Process Control",
+    metrics: { value1: "92%", value2: "0.005%" },
+  },
+  {
+    id: "dash-hcu-4",
+    equipment: "HCU",
+    equipId: "equipment-b",
+    tag: "Maintenance",
+    metrics: { value1: "78%", value2: "0.020%" },
+  },
+  {
+    id: "dash-pump-1",
+    equipment: "Pump ND.1X02",
+    equipId: "equipment-c",
+    tag: "Pump Performance",
+    metrics: { value1: "99%", value2: "0.001%" },
   },
 ]
 
@@ -123,16 +164,16 @@ export const moduleLibrary = [
 ]
 
 export const dataStatusItems = [
-  { asset: "Equipment a", files: 10, loadStatus: "10/10", lastUpdate: "11/04/2026", error: "0/10" },
-  { asset: "Equipment b", files: 7, loadStatus: "7/7", lastUpdate: "11/04/2026", error: "0/7" },
-  { asset: "Equipment c", files: 6, loadStatus: "5/6", lastUpdate: "09/04/2026", error: "0/5" },
+  { asset: "Coke Drum", files: 10, loadStatus: "10/10", lastUpdate: "11/04/2026", error: "0/10" },
+  { asset: "HCU", files: 7, loadStatus: "7/7", lastUpdate: "11/04/2026", error: "0/7" },
+  { asset: "Pump ND.1X02", files: 6, loadStatus: "5/6", lastUpdate: "09/04/2026", error: "0/5" },
   { asset: "Pipe a", files: 3, loadStatus: "3/3", lastUpdate: "10/04/2026", error: "1/3" },
 ]
 
 export const syncJobs = [
-  { asset: "Equipment a", description: "fix pressure", state: "Success", startTime: "05/04/2026", elapsed: "4m 52s", user: "Ben - process en", tokens: 0 },
-  { asset: "Equipment b", description: "what-if scenario", state: "Success", startTime: "28/03/2026", elapsed: "3m 50s", user: "Alex - process en", tokens: 0 },
-  { asset: "Equipment c", description: "virus scan", state: "Success", startTime: "09/03/2026", elapsed: "2s", user: "Alex - process en", tokens: 0 },
+  { asset: "Coke Drum", description: "fix pressure", state: "Success", startTime: "05/04/2026", elapsed: "4m 52s", user: "Ben - process en", tokens: 0 },
+  { asset: "HCU", description: "what-if scenario", state: "Success", startTime: "28/03/2026", elapsed: "3m 50s", user: "Alex - process en", tokens: 0 },
+  { asset: "Pump ND.1X02", description: "virus scan", state: "Success", startTime: "09/03/2026", elapsed: "2s", user: "Alex - process en", tokens: 0 },
   { asset: "Pipe a", description: "fea solve", state: "Failed", startTime: "10/01/2026", elapsed: "58m 41s", user: "Simon - integrit...", tokens: 192 },
 ]
 

@@ -1,22 +1,25 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, plantDocuments, equipmentKPIs, monitoringItems, dashboardCards } from "@/lib/data"
+import { sites, equipmentKPIs, dashboardCards } from "@/lib/data"
 import {
   Maximize2,
   Minimize2,
-  Search,
-  ExternalLink,
   GripVertical,
-  MoreVertical,
+  Trash2,
   Plus,
-  Trash2
 } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { ModuleLibrary } from "@/components/module-library"
 import { Equipment3DViewer } from "@/components/equipment-3d"
 import { cn } from "@/lib/utils"
-import { useState, useId } from "react"
+import { useState, useCallback } from "react"
+import ReactGridLayout, { Layout } from "react-grid-layout"
+
+// CSS for react-grid-layout (must be imported here for Next.js)
+import "react-grid-layout/css/styles.css"
+import "react-resizable/css/styles.css"
+
 // Recharts imports
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -26,64 +29,173 @@ import {
 // FEATURE 6B — Chart Anomaly Markers
 import { AIKPIBadgeWrapper, AILineChartMarkers, AIBarChartThreshold } from "@/components/ai/feature6-ai-insight-overlay"
 
-// DnD Kit imports
-import {
-  DndContext,
-  closestCenter,
-  useSensor,
-  useSensors,
-  PointerSensor,
-  KeyboardSensor,
-  DragOverlay,
-} from "@dnd-kit/core"
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-  useSortable
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-
 /* ═══════════════════════════════════════════════════════════════════════════
    TYPES & DEFAULT LAYOUTS
    ═══════════════════════════════════════════════════════════════════════════ */
 type WidgetData = {
   id: string;
   viewType: string;
-  maximized: boolean;
-  title?: string; // Optional custom title override
+  title?: string;
 }
 
-const DEFAULT_LAYOUTS: Record<string, WidgetData[]> = {
+type GridWidget = WidgetData & { layout: Layout }
+
+// Generate a default grid layout for a tab's widgets
+// Col layout: 12 columns. Each unit = 80px rowHeight
+function buildDefaultGrid(widgets: WidgetData[]): GridWidget[] {
+  const result: GridWidget[] = []
+  let colCursor = 0
+  let rowCursor = 0
+
+  for (const w of widgets) {
+    let cols = 4    // default chart width
+    let rows = 4    // default chart height
+
+    if (w.viewType.startsWith("kpi-")) {
+      cols = 3
+      rows = 2
+    } else if (w.viewType === "equipment-3d") {
+      cols = 6
+      rows = 5
+    } else if (w.viewType === "demo-summary" || w.viewType === "proc-stream") {
+      cols = 12
+      rows = 3
+    } else if (w.viewType === "crack-flaws" || w.viewType === "fatigue-rem") {
+      cols = 6
+      rows = 3
+    }
+
+    // Wrap if it overflows the 12-col grid
+    if (colCursor + cols > 12) {
+      colCursor = 0
+      rowCursor += rows // approximate — overflow will be handled by rgl
+    }
+
+    result.push({
+      ...w,
+      layout: { i: w.id, x: colCursor, y: rowCursor, w: cols, h: rows, minW: 2, minH: 2 }
+    })
+
+    colCursor += cols
+    if (colCursor >= 12) {
+      colCursor = 0
+      rowCursor += rows
+    }
+  }
+  return result
+}
+
+const DEFAULT_WIDGET_SETS: Record<string, WidgetData[]> = {
   "Demo Engineer Team's Dashboard": [
-    { id: 'w-demo-1', viewType: "demo-pie", maximized: false },
-    { id: 'w-demo-2', viewType: "demo-bar", maximized: false },
-    { id: 'w-demo-3', viewType: "demo-summary", maximized: true },
+    { id: 'w-demo-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-demo-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-demo-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-demo-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-demo-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-demo-1', viewType: "demo-pie", title: "Process Distribution" },
+    { id: 'w-demo-2', viewType: "demo-bar", title: "Performance Bar" },
+    { id: 'w-demo-3', viewType: "demo-summary", title: "Summary KPIs" },
   ],
   "Monitoring": [
-    { id: 'w-mon-1', viewType: "mon-sensor-1", maximized: true },
-    { id: 'w-mon-2', viewType: "mon-sensor-2", maximized: false },
-    { id: 'w-mon-3', viewType: "mon-temp", maximized: false },
+    { id: 'w-mon-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-mon-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-mon-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-mon-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-mon-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-mon-1', viewType: "mon-sensor-1", title: "Sensor Channel 1" },
+    { id: 'w-mon-2', viewType: "mon-sensor-2", title: "Sensor Channel 2" },
+    { id: 'w-mon-3', viewType: "mon-temp", title: "Temperature" },
   ],
   "Process": [
-    { id: 'w-pro-1', viewType: "proc-composed", maximized: true },
-    { id: 'w-pro-2', viewType: "proc-stream", maximized: true },
+    { id: 'w-pro-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-pro-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-pro-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-pro-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-pro-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-pro-1', viewType: "proc-composed", title: "Process Overview" },
+    { id: 'w-pro-2', viewType: "proc-stream", title: "Process Stream" },
   ],
   "Fatigue": [
-    { id: 'w-fat-1', viewType: "fatigue-trend", maximized: true },
-    { id: 'w-fat-2', viewType: "fatigue-cycle", maximized: false },
-    { id: 'w-fat-3', viewType: "fatigue-rem", maximized: false },
+    { id: 'w-fat-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-fat-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-fat-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-fat-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-fat-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-fat-1', viewType: "fatigue-trend", title: "Fatigue Trend" },
+    { id: 'w-fat-2', viewType: "fatigue-cycle", title: "Cycle Count" },
+    { id: 'w-fat-3', viewType: "fatigue-rem", title: "Remaining Life" },
   ],
   "Bulging": [
-    { id: 'w-bul-1', viewType: "bulge-bar", maximized: false },
-    { id: 'w-bul-2', viewType: "bulge-scatter", maximized: false },
+    { id: 'w-bul-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-bul-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-bul-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-bul-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-bul-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-bul-1', viewType: "bulge-bar", title: "Bulge Profile" },
+    { id: 'w-bul-2', viewType: "bulge-scatter", title: "Thickness Map" },
   ],
   "Cracking": [
-    { id: 'w-cra-1', viewType: "crack-line", maximized: true },
-    { id: 'w-cra-2', viewType: "crack-flaws", maximized: true },
-  ]
-};
+    { id: 'w-cra-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-cra-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-cra-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-cra-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-cra-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-cra-1', viewType: "crack-line", title: "Crack Growth" },
+    { id: 'w-cra-2', viewType: "crack-flaws", title: "Flaw Regions" },
+  ],
+  "Overview": [
+    { id: 'w-hcu-over-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-hcu-over-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-hcu-over-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-hcu-over-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-hcu-over-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-hcu-1', viewType: "demo-summary", title: "Summary" },
+    { id: 'w-hcu-2', viewType: "demo-pie", title: "Distribution" },
+    { id: 'w-hcu-3', viewType: "proc-stream", title: "Process Stream" },
+  ],
+  "Reactor Health": [
+    { id: 'w-hcu-rea-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-hcu-rea-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-hcu-rea-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-hcu-rea-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-hcu-rea-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-hcu-4', viewType: "mon-temp", title: "Temperature" },
+    { id: 'w-hcu-5', viewType: "crack-flaws", title: "Flaw Regions" },
+  ],
+  "Process Control": [
+    { id: 'w-hcu-proc-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-hcu-proc-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-hcu-proc-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-hcu-proc-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-hcu-proc-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-hcu-6', viewType: "proc-composed", title: "Process Control" },
+    { id: 'w-hcu-7', viewType: "bulge-scatter", title: "Thickness Map" },
+  ],
+  "Maintenance": [
+    { id: 'w-hcu-main-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-hcu-main-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-hcu-main-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-hcu-main-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-hcu-main-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-hcu-8', viewType: "fatigue-rem", title: "Remaining Life" },
+    { id: 'w-hcu-9', viewType: "fatigue-cycle", title: "Cycle Count" },
+  ],
+  "Pump Performance": [
+    { id: 'w-pump-kpi-1', viewType: 'kpi-dmg', title: "Damage KPI" },
+    { id: 'w-pump-kpi-2', viewType: 'kpi-relife', title: "Re-Life KPI" },
+    { id: 'w-pump-kpi-3', viewType: 'kpi-date', title: "Install Date" },
+    { id: 'w-pump-kpi-4', viewType: 'kpi-id', title: "Equipment ID" },
+    { id: 'w-pump-3d-1', viewType: 'equipment-3d', title: "3D Viewer" },
+    { id: 'w-pump-1', viewType: "demo-bar", title: "Performance" },
+    { id: 'w-pump-2', viewType: "mon-sensor-1", title: "Vibration" },
+    { id: 'w-pump-3', viewType: "demo-summary", title: "Summary" },
+  ],
+}
+
+// Pre-build default grid layouts from widget sets
+const DEFAULT_GRIDS: Record<string, GridWidget[]> = Object.fromEntries(
+  Object.entries(DEFAULT_WIDGET_SETS).map(([tab, widgets]) => [tab, buildDefaultGrid(widgets)])
+)
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN DASHBOARD EXPORT
@@ -99,26 +211,26 @@ export function EquipmentDashboard() {
     setDashboardExpanded,
   } = useAppStore()
 
-  // Layout State
-  const [layouts, setLayouts] = useState<Record<string, WidgetData[]>>(DEFAULT_LAYOUTS);
-  const [activeDragWidget, setActiveDragWidget] = useState<WidgetData | null>(null);
+  // Grid widget + layout state
+  const [grids, setGrids] = useState<Record<string, GridWidget[]>>(DEFAULT_GRIDS)
+  // Container width for RGL (measured via ResizeObserver or default)
+  const [gridWidth, setGridWidth] = useState(900)
+
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width
+      if (width) setGridWidth(width)
+    })
+    observer.observe(node)
+    // Initial measurement
+    setGridWidth(node.getBoundingClientRect().width)
+    return () => observer.disconnect()
+  }, [])
 
   const site = sites.find((s) => s.id === currentPath.site)
   const plant = site?.plants.find((p) => p.id === currentPath.plant)
   const equipment = plant?.equipment.find((e) => e.id === currentPath.equipment)
-
-  const dndId = useId()
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5, // minimum drag distance before triggering
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
 
   if (!site || !plant || !equipment) return null
 
@@ -130,335 +242,247 @@ export function EquipmentDashboard() {
     setCurrentPath({ ...currentPath, tab })
   }
 
-  const currentWidgets = layouts[activeTab] || [];
+  // Current tab's grid widgets
+  const currentGrid: GridWidget[] = grids[activeTab] || buildDefaultGrid(DEFAULT_WIDGET_SETS[activeTab] || [])
 
-  // DnD Handlers
-  const handleDragStart = (event: any) => {
-    const { active } = event;
-    const widget = currentWidgets.find(w => w.id === active.id);
-    if (widget) setActiveDragWidget(widget);
-  }
+  // Layout objects only (for ReactGridLayout)
+  const currentLayouts: Layout[] = currentGrid.map(gw => gw.layout)
 
-  const handleDragEnd = (event: any) => {
-    setActiveDragWidget(null);
-    const { active, over } = event;
-
-    if (!over) return;
-
-    if (active.data.current?.isLibraryItem) {
-      // Adding a new widget from the library
-      const module = active.data.current.module;
-      const newWidgetId = `w-new-${Date.now()}`;
-      
-      // Map arbitrary viewType
-      let viewType = "generic";
-      if (module.name.toLowerCase().includes("sensor")) viewType = "mon-sensor-2";
-      if (module.name.toLowerCase().includes("vibration")) viewType = "crack-line";
-      if (module.name.toLowerCase().includes("map")) viewType = "bulge-scatter";
-      
-      setLayouts(prev => {
-        const tabLayout = prev[activeTab] ? [...prev[activeTab]] : [];
-        const overIndex = tabLayout.findIndex(w => w.id === over.id);
-        const insertionIndex = overIndex >= 0 ? overIndex : tabLayout.length;
-        
-        tabLayout.splice(insertionIndex, 0, {
-          id: newWidgetId,
-          viewType,
-          maximized: false,
-          title: module.name
-        });
-        
-        return { ...prev, [activeTab]: tabLayout };
-      });
-      return;
-    }
-
-    if (active.id !== over.id) {
-      setLayouts(prev => {
-        const tabLayout = prev[activeTab] ? [...prev[activeTab]] : [];
-        const oldIndex = tabLayout.findIndex(w => w.id === active.id);
-        const newIndex = tabLayout.findIndex(w => w.id === over.id);
-        return { ...prev, [activeTab]: arrayMove(tabLayout, oldIndex, newIndex) };
-      });
-    }
-  }
-
-  // Widget Actions
-  const toggleMaximize = (widgetId: string) => {
-    setLayouts(prev => {
-      const tabLayout = prev[activeTab].map(w =>
-        w.id === widgetId ? { ...w, maximized: !w.maximized } : w
-      );
-      return { ...prev, [activeTab]: tabLayout };
-    });
+  // On layout change (drag or resize)
+  const handleLayoutChange = (newLayout: Layout[]) => {
+    setGrids(prev => {
+      const tabGrid = prev[activeTab] ? [...prev[activeTab]] : []
+      const updated = tabGrid.map(gw => {
+        const found = newLayout.find(l => l.i === gw.id)
+        return found ? { ...gw, layout: found } : gw
+      })
+      return { ...prev, [activeTab]: updated }
+    })
   }
 
   const removeWidget = (widgetId: string) => {
-    setLayouts(prev => {
-      const tabLayout = prev[activeTab].filter(w => w.id !== widgetId);
-      return { ...prev, [activeTab]: tabLayout };
-    });
+    setGrids(prev => ({
+      ...prev,
+      [activeTab]: (prev[activeTab] || []).filter(gw => gw.id !== widgetId)
+    }))
+  }
+
+  const addWidget = (module: { name: string }) => {
+    const id = `w-new-${Date.now()}`
+    let viewType = "generic"
+    if (module.name.toLowerCase().includes("sensor")) viewType = "mon-sensor-2"
+    if (module.name.toLowerCase().includes("vibration")) viewType = "crack-line"
+    if (module.name.toLowerCase().includes("map")) viewType = "bulge-scatter"
+
+    const newWidget: GridWidget = {
+      id,
+      viewType,
+      title: module.name,
+      layout: { i: id, x: 0, y: Infinity, w: 4, h: 4, minW: 2, minH: 2 }
+    }
+    setGrids(prev => ({
+      ...prev,
+      [activeTab]: [...(prev[activeTab] || []), newWidget]
+    }))
   }
 
   return (
-    <DndContext
-      id={dndId}
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex-1 flex min-w-0 overflow-hidden">
-        {/* Main Content */}
-        <div className={cn("flex-1 min-w-0 p-6 overflow-y-auto flex flex-col relative", showModules && "pr-0")}>
-          {/* Header with controls */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
-              {equipment.name} {activeTab} Dashboard
-            </span>
-            <div className="flex items-center gap-2">
-              {isEditMode ? (
-                <>
-                  <button
-                    onClick={() => setViewMode(showModules ? "edit" : "modules")}
-                    className="px-4 py-2 bg-secondary border border-border rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors"
-                  >
-                    Add Widgets +
-                  </button>
-                  <button
-                    onClick={() => setViewMode("view")}
-                    className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg text-sm font-medium hover:bg-rose-200 transition-colors"
-                  >
-                    Exit Editing
-                  </button>
-                </>
-              ) : (
+    <div className="flex-1 flex min-w-0 overflow-hidden">
+      {/* Main Content */}
+      <div className={cn("flex-1 min-w-0 p-6 overflow-y-auto flex flex-col relative", showModules && "pr-0")}>
+        {/* Header with controls */}
+        <div className="flex items-center justify-between mb-4">
+          <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
+            {equipment.name} — {activeTab}
+          </span>
+          <div className="flex items-center gap-2">
+            {isEditMode ? (
+              <>
                 <button
-                  onClick={() => setViewMode("edit")}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                  onClick={() => setViewMode(showModules ? "edit" : "modules")}
+                  className="px-4 py-2 bg-secondary border border-border rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors"
                 >
-                  Edit Dashboard
+                  Add Widgets +
                 </button>
-              )}
+                <button
+                  onClick={() => setViewMode("view")}
+                  className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg text-sm font-medium hover:bg-rose-200 transition-colors"
+                >
+                  Exit Editing
+                </button>
+              </>
+            ) : (
               <button
-                onClick={() => setDashboardExpanded(!dashboardExpanded)}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                aria-label={dashboardExpanded ? "Collapse dashboard" : "Expand dashboard"}
+                onClick={() => setViewMode("edit")}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
               >
-                {dashboardExpanded
-                  ? <Minimize2 className="w-4 h-4 text-muted-foreground" />
-                  : <Maximize2 className="w-4 h-4 text-muted-foreground" />
-                }
+                Edit Dashboard
+              </button>
+            )}
+            <button
+              onClick={() => setDashboardExpanded(!dashboardExpanded)}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              aria-label={dashboardExpanded ? "Collapse dashboard" : "Expand dashboard"}
+            >
+              {dashboardExpanded
+                ? <Minimize2 className="w-4 h-4 text-muted-foreground" />
+                : <Maximize2 className="w-4 h-4 text-muted-foreground" />
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* Main Dashboard Grid Card */}
+        <div className={cn(
+          "bg-card rounded-xl border border-border shadow-sm overflow-hidden flex-1 flex flex-col",
+          dashboardExpanded ? "mb-0" : "mb-6"
+        )}>
+          <div className="flex flex-1 min-h-0">
+            {/* Grid Area */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden" ref={containerRef}>
+              {isEditMode && (
+                <div className="flex items-center gap-2 px-4 pt-3 pb-1 text-xs text-muted-foreground bg-primary/5 border-b border-border">
+                  <GripVertical className="w-3 h-3" />
+                  <span>Drag widgets to reposition — drag corners to resize</span>
+                </div>
+              )}
+              <div className="p-2">
+                <ReactGridLayout
+                  className="layout"
+                  layout={currentLayouts}
+                  cols={12}
+                  rowHeight={80}
+                  width={Math.max(gridWidth - 16, 200)}
+                  isDraggable={isEditMode}
+                  isResizable={isEditMode}
+                  draggableHandle=".widget-drag-handle"
+                  onLayoutChange={handleLayoutChange}
+                  compactType="vertical"
+                  margin={[10, 10]}
+                  containerPadding={[4, 4]}
+                >
+                  {currentGrid.map(gw => (
+                    <div key={gw.id} className={cn(
+                      "bg-secondary/30 rounded-xl border border-border/60 flex flex-col overflow-hidden transition-shadow",
+                      isEditMode && "border-border shadow-md ring-1 ring-primary/10 hover:ring-primary/30"
+                    )}>
+                      {/* Widget header bar */}
+                      <div className={cn(
+                        "flex items-center justify-between px-3 py-1.5 flex-shrink-0 bg-background/50 border-b border-border/40",
+                        !isEditMode && "py-1"
+                      )}>
+                        {/* Drag handle + title */}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {isEditMode && (
+                            <div className="widget-drag-handle cursor-grab active:cursor-grabbing flex-shrink-0">
+                              <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                            {gw.title || "Widget"}
+                          </span>
+                        </div>
+                        {/* Remove button shown in edit mode */}
+                        {isEditMode && (
+                          <button
+                            onClick={() => removeWidget(gw.id)}
+                            className="flex-shrink-0 p-0.5 rounded hover:bg-rose-100 text-rose-400 hover:text-rose-600 transition-colors"
+                            title="Remove widget"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      {/* Widget content */}
+                      <div className="flex-1 min-h-0 p-2 overflow-hidden">
+                        <WidgetViewResolver viewType={gw.viewType} equipmentId={equipment.id} />
+                      </div>
+                    </div>
+                  ))}
+                </ReactGridLayout>
+              </div>
+            </div>
+
+            {/* Module Library panel */}
+            {showModules && (
+              <div className="w-72 flex-shrink-0 border-l border-border overflow-y-auto">
+                <ModuleLibrary onAddModule={addWidget} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Regular bottom tab strip — hidden when expanded */}
+        {!dashboardExpanded && (
+          <div className="flex gap-3 overflow-x-auto pb-2 overflow-y-hidden">
+            {dashboardCards.filter(c => c.equipId === equipment.id).map((card, idx) => (
+              <button
+                key={card.id}
+                onClick={() => handleTabChange(card.tag)}
+                className={cn(
+                  "text-left transition-all rounded-xl border-2 border-transparent flex-shrink-0",
+                  activeTab === card.tag && "border-primary shadow-md"
+                )}
+              >
+                <DashboardCard card={card} cardIndex={idx} />
+              </button>
+            ))}
+            <button className="flex-shrink-0 w-16 h-[min(100%,130px)] my-auto border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
+              <Plus className="w-6 h-6 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
+        {/* Slide-up expanded panel */}
+        {dashboardExpanded && (
+          <div className="absolute left-6 right-6 bottom-0 translate-y-[calc(100%-12px)] hover:translate-y-0 transition-transform duration-300 z-50 bg-background border border-border shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-xl px-6 py-4 flex flex-col">
+            <div className="absolute -top-3 left-0 right-0 h-4 cursor-pointer flex items-center justify-center">
+              <div className="w-16 h-1.5 rounded-full bg-border/80" />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {equipment.tabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => handleTabChange(tab)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                      activeTab === tab
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setDashboardExpanded(false)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground text-xs"
+              >
+                Collapse ↓
               </button>
             </div>
-          </div>
 
-          {/* Main Dashboard Card */}
-          <div className={cn(
-            "bg-card rounded-xl border border-border shadow-sm overflow-hidden flex-1 flex flex-col",
-            dashboardExpanded ? "mb-0" : "mb-6"
-          )}>
-            <div className="flex flex-1 min-h-0">
-              {/* KPI Pills Row */}
-              <div className="flex-1 min-w-0 flex flex-col min-h-0">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 border-b border-border flex-shrink-0">
-                  <AIKPIBadgeWrapper kpiKey="dmg">
-                    <KPIPill label="DMG" value={equipmentKPIs.dmg} isEdit={isEditMode} />
-                  </AIKPIBadgeWrapper>
-                  <AIKPIBadgeWrapper kpiKey="reLife">
-                    <KPIPill label="Re-Life" value={equipmentKPIs.reLife} isEdit={isEditMode} />
-                  </AIKPIBadgeWrapper>
-                  <AIKPIBadgeWrapper kpiKey="date">
-                    <KPIPill value={equipmentKPIs.date} isEdit={isEditMode} />
-                  </AIKPIBadgeWrapper>
-                  <AIKPIBadgeWrapper kpiKey="id">
-                    <KPIPill label="ID" value={equipmentKPIs.id} isEdit={isEditMode} />
-                  </AIKPIBadgeWrapper>
-                </div>
-
-                <div className="flex flex-1 min-h-0 overflow-hidden">
-                  {/* Main widgets area */}
-                  <div className="flex-1 p-4 overflow-y-auto">
-                    <SortableContext items={currentWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-                      <div className="grid grid-cols-1 xl:grid-cols-2 auto-rows-[250px] gap-4 w-full">
-                        {currentWidgets.map(widget => (
-                          <SortableWidget
-                            key={widget.id}
-                            widget={widget}
-                            isEdit={isEditMode}
-                            onMaximize={() => toggleMaximize(widget.id)}
-                            onRemove={() => removeWidget(widget.id)}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3D Model Panel — hidden when expanded or modules open */}
-              {!showModules && !dashboardExpanded && (
-                <div className={cn(
-                  "w-1/4 min-w-[200px] max-w-[320px] flex-shrink-0 border-l border-border relative",
-                  isEditMode && "relative"
-                )}>
-                  {isEditMode && (
-                    <div className="absolute top-2 left-2 right-2 flex justify-between z-10">
-                      <GripVertical className="w-4 h-4 text-muted-foreground" />
-                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  )}
-                  <Equipment3DViewer />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Regular bottom items — hidden when expanded */}
-          {!dashboardExpanded && (
-            <div className="flex gap-4 overflow-x-auto pb-2 overflow-y-hidden">
-              {dashboardCards.map((card, idx) => (
+            <div className="flex gap-3 mt-4 overflow-x-auto pb-2">
+              {dashboardCards.filter(c => c.equipId === equipment.id).map((card, idx) => (
                 <button
                   key={card.id}
                   onClick={() => handleTabChange(card.tag)}
                   className={cn(
-                    "text-left transition-all rounded-xl border-2 border-transparent",
+                    "text-left transition-all rounded-xl border-2 border-transparent flex-shrink-0",
                     activeTab === card.tag && "border-primary shadow-md"
                   )}
                 >
                   <DashboardCard card={card} cardIndex={idx} />
                 </button>
               ))}
-              <button className="flex-shrink-0 w-16 h-[min(100%,130px)] my-auto border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                <Plus className="w-6 h-6 text-muted-foreground" />
-              </button>
             </div>
-          )}
-
-          {/* Slide-up bottom panel — shown when expanded */}
-          {dashboardExpanded && (
-            <div className="absolute left-6 right-6 bottom-0 translate-y-[calc(100%-12px)] hover:translate-y-0 transition-transform duration-300 z-50 bg-background border border-border shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-xl px-6 py-4 flex flex-col">
-              <div className="absolute -top-3 left-0 right-0 h-4 cursor-pointer flex items-center justify-center">
-                <div className="w-16 h-1.5 rounded-full bg-border/80" />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {equipment.tabs.map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => handleTabChange(tab)}
-                      className={cn(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors",
-                        activeTab === tab
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                      )}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                  <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-                    <Plus className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setWhatIfModalOpen(true)}
-                  disabled={isEditMode}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isEditMode
-                      ? "bg-muted text-muted-foreground cursor-not-allowed"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90"
-                  )}
-                >
-                  Run What-If Scenarios
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Panel — Equipment Info or Module Library */}
-        {showModules ? (
-          <div className={cn(
-            "h-full flex-shrink-0 transition-all",
-            dashboardExpanded ? "absolute right-0 top-0 bottom-0 z-50 shadow-2xl" : ""
-          )}>
-            <ModuleLibrary onClose={() => setViewMode("edit")} />
           </div>
-        ) : (
-          !dashboardExpanded && (
-            <div className="w-72 flex-shrink-0 bg-card border-l border-border p-4 overflow-y-auto">
-              <h3 className="font-semibold text-foreground mb-4">Equipment Information</h3>
-              <div className="space-y-2 mb-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-3 bg-muted rounded" style={{ width: `${50 + i * 10}%` }} />
-                ))}
-              </div>
-              <hr className="border-border my-4" />
-              <div className="space-y-2 mb-4">
-                {[1, 2].map((i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-                    <div className="flex-1 flex gap-2">
-                      <div className="h-3 bg-muted rounded flex-1" />
-                      <div className="h-3 bg-muted rounded flex-1" />
-                      <div className="h-3 bg-muted rounded flex-1" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium text-foreground">Equipment Document</h4>
-                <button className="p-1.5 hover:bg-secondary rounded transition-colors">
-                  <Search className="w-4 h-4 text-muted-foreground" />
-                </button>
-              </div>
-
-              <div className="space-y-2 mb-6">
-                {plantDocuments.map((doc, i) => (
-                  <button
-                    key={i}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-secondary/50 hover:bg-secondary rounded-lg text-sm text-foreground transition-colors"
-                  >
-                    <span className="truncate">{doc.name}</span>
-                    <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-2" />
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-6">
-                <h4 className="font-medium text-foreground mb-3">What-If Scenarios</h4>
-                <button
-                  onClick={() => setWhatIfModalOpen(true)}
-                  disabled={isEditMode}
-                  className={cn(
-                    "w-full py-3 rounded-lg text-sm font-medium transition-colors",
-                    isEditMode
-                      ? "bg-muted text-muted-foreground cursor-not-allowed"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90"
-                  )}
-                >
-                  Run What-If Scenarios
-                </button>
-              </div>
-            </div>
-          )
         )}
       </div>
-
-      <DragOverlay>
-        {activeDragWidget ? (
-          <div className="bg-background border border-primary shadow-xl rounded-lg p-4 opacity-80 scale-105">
-            <div className="text-sm font-semibold">{activeDragWidget.title || activeDragWidget.viewType}</div>
-          </div>
-        ) : null}
-      </DragOverlay>
-
-    </DndContext>
+    </div>
   )
 }
 
@@ -466,105 +490,11 @@ export function EquipmentDashboard() {
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function KPIPill({ label, value, isEdit }: { label?: string; value: string; isEdit?: boolean }) {
+function KPIPill({ label, value }: { label?: string; value: string }) {
   return (
-    <div className={cn(
-      "relative p-4 bg-secondary/30 border border-border/50 rounded-xl flex flex-col justify-center items-center w-full min-h-[80px]",
-      isEdit && "pl-8 pr-8"
-    )}>
-      {isEdit && (
-        <div className="absolute left-2 top-1/2 -translate-y-1/2">
-          <GripVertical className="w-4 h-4 text-muted-foreground" />
-        </div>
-      )}
-      {label && <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</span>}
+    <div className="relative flex flex-col justify-center items-center w-full h-full">
+      {label && <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</span>}
       <span className="text-2xl font-bold text-foreground">{value}</span>
-      {isEdit && (
-        <div className="absolute right-2 top-1/2 -translate-y-1/2">
-          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function SortableWidget({ 
-  widget, 
-  isEdit, 
-  onMaximize, 
-  onRemove 
-}: { 
-  widget: WidgetData; 
-  isEdit: boolean; 
-  onMaximize: () => void; 
-  onRemove: () => void 
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: widget.id })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : "auto",
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "bg-secondary/30 rounded-lg p-3 relative flex flex-col h-full border border-transparent transition-all",
-        widget.maximized && "xl:col-span-2",
-        isEdit && "border-border shadow-sm hover:border-primary/50"
-      )}
-    >
-      {isEdit && (
-        <>
-          {/* Drag Handle */}
-          <div 
-            {...attributes} 
-            {...listeners} 
-            className="absolute top-2 left-2 cursor-grab active:cursor-grabbing p-1 bg-background/80 rounded z-20 hover:bg-muted"
-          >
-            <GripVertical className="w-4 h-4 text-muted-foreground" />
-          </div>
-          {/* Options */}
-          <div className="absolute top-2 right-2 flex gap-1 z-20">
-             <button 
-                onClick={onMaximize} 
-                className="p-1 bg-background/80 rounded hover:bg-muted text-muted-foreground"
-                title={widget.maximized ? "Shrink" : "Maximize"}
-              >
-               {widget.maximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-             </button>
-             <button 
-                onClick={onRemove} 
-                className="p-1 bg-background/80 rounded hover:bg-rose-100 text-rose-500"
-                title="Remove widget"
-              >
-               <Trash2 className="w-4 h-4" />
-             </button>
-          </div>
-        </>
-      )}
-
-      <h5 className={cn(
-        "text-xs font-medium text-muted-foreground mb-2 flex-shrink-0",
-        isEdit && "ml-8" // clear drag handle
-      )}>
-        {widget.title || "Dashboard Widget"}
-      </h5>
-      
-      <div className="flex-1 min-h-0 flex flex-col justify-center relative pointer-events-auto">
-         {/* Pass down mapping for Recharts */}
-         <WidgetViewResolver viewType={widget.viewType} />
-      </div>
     </div>
   )
 }
@@ -597,8 +527,34 @@ const pieData = [
   { name: 'Process D', value: 200 },
 ];
 
-function WidgetViewResolver({ viewType }: { viewType: string }) {
+function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equipmentId?: string }) {
   switch (viewType) {
+    case "kpi-dmg":
+      return (
+        <AIKPIBadgeWrapper kpiKey="dmg">
+          <KPIPill label="DMG" value={equipmentKPIs.dmg} />
+        </AIKPIBadgeWrapper>
+      );
+    case "kpi-relife":
+      return (
+        <AIKPIBadgeWrapper kpiKey="reLife">
+          <KPIPill label="Re-Life" value={equipmentKPIs.reLife} />
+        </AIKPIBadgeWrapper>
+      );
+    case "kpi-date":
+      return (
+        <AIKPIBadgeWrapper kpiKey="date">
+          <KPIPill value={equipmentKPIs.date} />
+        </AIKPIBadgeWrapper>
+      );
+    case "kpi-id":
+      return (
+        <AIKPIBadgeWrapper kpiKey="id">
+          <KPIPill label="ID" value={equipmentKPIs.id} />
+        </AIKPIBadgeWrapper>
+      );
+    case "equipment-3d":
+      return <Equipment3DViewer equipmentId={equipmentId} />;
     case "demo-pie":
       return (
         <ResponsiveContainer width="100%" height="100%">
@@ -617,7 +573,7 @@ function WidgetViewResolver({ viewType }: { viewType: string }) {
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis fontSize={11} tickLine={false} axisLine={false} />
-            <RechartsTooltip cursor={{fill: 'var(--color-secondary)'}} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
+            <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
             <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -728,7 +684,7 @@ function WidgetViewResolver({ viewType }: { viewType: string }) {
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
               <XAxis dataKey="name" hide />
               <YAxis hide />
-              <RechartsTooltip cursor={{fill: 'var(--color-secondary)'}} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
+              <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
               <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -749,7 +705,7 @@ function WidgetViewResolver({ viewType }: { viewType: string }) {
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} horizontal={false} />
             <XAxis type="number" fontSize={11} />
             <YAxis dataKey="x" type="category" fontSize={11} tickLine={false} axisLine={false} />
-            <RechartsTooltip cursor={{fill: 'var(--color-secondary)'}} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
+            <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
             <Bar dataKey="y" fill="#f59e0b" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -781,11 +737,11 @@ function WidgetViewResolver({ viewType }: { viewType: string }) {
       );
     case "crack-flaws":
       return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 h-full items-center">
+        <div className="grid grid-cols-2 gap-2 h-full items-center p-1">
            {[1,2,3,4].map(n => (
-             <div key={n} className="bg-secondary/50 p-4 rounded-lg flex flex-col justify-center items-center">
-                <span className="text-2xl mb-1">🔍</span>
-                <span className="text-sm font-medium">Flaw Region {n}</span>
+             <div key={n} className="bg-secondary/50 p-3 rounded-lg flex flex-col justify-center items-center">
+                <span className="text-xl mb-1">🔍</span>
+                <span className="text-xs font-medium">Flaw {n}</span>
                 <span className="text-xs text-rose-500">{(Math.random() * 5).toFixed(2)} mm</span>
              </div>
            ))}
@@ -795,8 +751,8 @@ function WidgetViewResolver({ viewType }: { viewType: string }) {
     default:
       return (
         <div className="flex flex-col items-center justify-center h-full opacity-50">
-           <BarChart className="w-12 h-12 mb-2 text-muted-foreground" />
-           <span className="text-sm text-muted-foreground">New Module</span>
+           <span className="text-3xl mb-2">📊</span>
+           <span className="text-sm text-muted-foreground">New Widget</span>
         </div>
       );
   }

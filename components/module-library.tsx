@@ -5,7 +5,7 @@ import { moduleLibrary } from "@/lib/data"
 import { 
   X, 
   Search, 
-  GripVertical,
+  Plus,
   BarChart3,
   Table,
   LineChart,
@@ -13,12 +13,8 @@ import {
   List,
   BarChart,
   Grid3X3,
-  ChevronDown
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-// dnd-kit import
-import { useDraggable } from "@dnd-kit/core"
 
 const iconMap: Record<string, React.ReactNode> = {
   "bar-chart": <BarChart3 className="w-4 h-4" />,
@@ -33,40 +29,11 @@ const iconMap: Record<string, React.ReactNode> = {
 const categories = ["Asset Efficiency", "Asset Information", "Event Visualization", "Other"]
 
 interface ModuleLibraryProps {
-  onClose: () => void
+  onClose?: () => void
+  onAddModule?: (module: { name: string; icon: string }) => void
 }
 
-function LibraryDraggableItem({ module }: { module: any }) {
-  const { attributes, listeners, setNodeRef } = useDraggable({
-    id: `library-item-${module.id}`,
-    data: { isLibraryItem: true, module },
-  })
-
-  return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors cursor-grab active:cursor-grabbing"
-    >
-      <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-      <div className="flex items-center gap-2 flex-1">
-        <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center pointer-events-none">
-          {iconMap[module.icon] || <BarChart3 className="w-4 h-4" />}
-        </div>
-        <span className="text-sm font-medium text-foreground pointer-events-none">{module.name}</span>
-      </div>
-      <div className="flex items-center gap-1 pointer-events-none">
-        <button className="px-2 py-1 text-xs text-muted-foreground hover:bg-muted rounded flex items-center gap-1">
-          Options
-          <ChevronDown className="w-3 h-3" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-export function ModuleLibrary({ onClose }: ModuleLibraryProps) {
+export function ModuleLibrary({ onClose, onAddModule }: ModuleLibraryProps) {
   const [activeCategory, setActiveCategory] = useState("Asset Efficiency")
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -77,17 +44,18 @@ export function ModuleLibrary({ onClose }: ModuleLibraryProps) {
   })
 
   return (
-    <div className="w-80 bg-card border-l border-border flex flex-col h-full">
+    <div className="w-full bg-card border-l border-border flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-secondary rounded transition-colors"
-        >
-          <X className="w-5 h-5 text-muted-foreground" />
-        </button>
         <h3 className="font-semibold text-foreground">Add Widgets</h3>
-        <div className="w-6" />
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-secondary rounded transition-colors"
+          >
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -122,10 +90,20 @@ export function ModuleLibrary({ onClose }: ModuleLibraryProps) {
         ))}
       </div>
 
-      {/* Widget List */}
+      {/* Widget List — click to add */}
       <div className="flex-1 overflow-y-auto p-2">
         {filteredModules.map((module) => (
-          <LibraryDraggableItem key={module.id} module={module} />
+          <button
+            key={module.id}
+            onClick={() => onAddModule?.(module)}
+            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left group"
+          >
+            <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10">
+              {iconMap[module.icon] || <BarChart3 className="w-4 h-4" />}
+            </div>
+            <span className="text-sm font-medium text-foreground flex-1">{module.name}</span>
+            <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+          </button>
         ))}
       </div>
     </div>

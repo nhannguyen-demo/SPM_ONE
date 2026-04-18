@@ -9,6 +9,7 @@ interface DashboardCardProps {
   card: {
     id: string
     equipment: string
+    equipId?: string
     tag: string
     metrics: { value1: string; value2: string } | null
   }

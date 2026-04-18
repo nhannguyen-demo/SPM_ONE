@@ -226,8 +226,12 @@ function PortfolioPanel({
   }
 
   const handleEquipmentClick = (siteId: string, plantId: string, equipmentId: string) => {
-    // Set 'Demo Engineer Team's Dashboard' (or empty string mapped later) as the first default tab
-    setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: "Demo Engineer Team's Dashboard" })
+    const site = sites.find(s => s.id === siteId)
+    const plant = site?.plants.find(p => p.id === plantId)
+    const equipment = plant?.equipment.find(e => e.id === equipmentId)
+    const firstTab = equipment?.tabs?.[0] || "Overview"
+    
+    setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: firstTab })
     setCurrentView("equipment")
     setViewMode("view")
     if (!expandedEquipment.includes(equipmentId)) toggleEquipmentExpanded(equipmentId)
