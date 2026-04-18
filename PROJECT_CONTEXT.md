@@ -1,16 +1,17 @@
 # Project Context
 
 ## What is this project?
-SPM ONE is an industrial asset performance management (APM) web application prototype. It provides Integrity Engineers with a hierarchical view of their asset portfolio — from site level down to individual equipment — including real-time KPI dashboards, P&ID diagrams, a What-If scenario modeller, and an AI-assisted insight layer. The app is built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, and shadcn/ui.
+SPM ONE is an industrial asset performance management (APM) web application prototype. It provides Integrity Engineers with a hierarchical view of their asset portfolio — from site level down to individual equipment — including real-time interactive KPI dashboards built with Recharts, a Drag-and-Drop widget customization system, P&ID diagrams, a What-If scenario modeller, and an AI-assisted insight layer. The app is built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, and shadcn/ui.
 
 ## Where are we in the project, what have we recently done?
-Mid-development — UI prototype phase. The core navigation shell (sidebar, header, view routing) is complete. Four main views are done: Site Overview, Plant Overview, Equipment Dashboard (multi-tab), and Data & Sync. A collapsible sidebar (with tooltips when collapsed) has been implemented. What-If Scenario modal (config + results) is working and is now also accessible from the sidebar navigation under each Equipment node. Ten AI feature components have been scaffolded (Feature 1–10), with Feature 1 (floating AI Spark Button) and Feature 6 (AI Insight Overlay) wired into global state. The project is currently all frontend prototype — no backend, no auth, no real data.
+Mid-deployment — Dashboards & Navigation Overhaul. The UI prototype has transitioned from static mockups to a dynamic, interactive environment. A major navigation redesign implemented a two-layer "Gmail-pattern" system: a persistent Module Rail and a contextual Panel. The Equipment Dashboard was restructured into 6 dedicated, data-driven dashboards (Demo Engineer Team, Monitoring, Process, Fatigue, Bulging, Cracking), all featuring interactive Recharts widgets with hover tooltips and AI Insight overlays. A functional Drag & Drop (DnD) editing system was implemented using `@dnd-kit`, allowing users to move, scale, and remove widgets in real-time. Navigation at Site and Plant levels was also fixed to support deep-linking to specific equipment dashboard tabs.
 
 ## Tech Stack
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript 5.7
 - **Styling:** Tailwind CSS v4, shadcn/ui (Radix UI primitives), `tw-animate-css`
 - **State:** Zustand 5
 - **Charts:** Recharts 2.15
+- **Interactivity:** `@dnd-kit` (core, sortable, utilities) for Drag & Drop
 - **Icons:** Lucide React
 - **Forms:** React Hook Form + Zod
 - **Package manager:** pnpm
@@ -31,7 +32,7 @@ spm-one/
 │   ├── dashboard-card.tsx   ← Reusable dashboard thumbnail card
 │   ├── equipment-3d.tsx     ← 3D Digital Twin viewer placeholder
 │   ├── mini-charts.tsx      ← Sparkline/pie/bar chart components
-│   ├── module-library.tsx   ← Widget library slide-in panel (Edit mode)
+│   ├── module-library.tsx   ← "Widget Library" slide-in panel (for Drag & Drop in Edit mode)
 │   ├── theme-provider.tsx   ← next-themes wrapper
 │   ├── ai/                  ← AI feature components (feature1 through feature10)
 │   ├── modals/
@@ -75,6 +76,11 @@ pnpm dev
 - [x] AI components scaffolded (Feature 1–10)
 - [x] Feature 1 — Global Floating AI Spark Button (wired to global state)
 - [x] Feature 6 — AI Insight Overlay (wired to global state)
+- [x] Two-layer navigation system (Module Rail + Contextual Panel)
+- [x] Interactive Recharts widgets for all Equipment dashboards
+- [x] Drag & Drop (DnD) functional widget grid (move, scale, remove)
+- [x] Widget Library dropout with drag-to-dashboard support
+- [x] Fixed Site/Plant level dashboard tab navigation
 - [ ] Features 2–5, 7–10 — not yet wired up / functional
 - [ ] Real data integration (replace mock data in `lib/data.ts`)
 - [ ] Authentication / user management
@@ -92,6 +98,8 @@ pnpm dev
 - **pnpm only** — do not use npm or yarn to install packages.
 - **What-If modal is global** — it is mounted once in `page.tsx` and toggled via `setWhatIfModalOpen` from the store. Do not mount it inside child components.
 - **AI components follow a Feature-N naming convention** — files in `components/ai/` are named `featureN-*.tsx`. Keep this pattern for any new AI features.
+- **Two-layer Navigation** — Persistent left Rail + Contextual slide-out Panel. All module switching happens via the Rail.
+- **Interactive Dashboard Grid** — All Equipment dashboards use `DndContext` and `SortableContext` for widget arrangement.
 - **`public/images/`** — `site-map.jpg` (site aerial view) and `pid-diagram.jpg` (P&ID diagram) are expected here but not committed. Users drop them in manually.
 
 ## People & Roles
