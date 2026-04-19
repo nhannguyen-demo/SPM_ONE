@@ -56,6 +56,21 @@ export const plantDocuments = [
   { name: "Ben's secrets", type: "link" },
 ]
 
+/**
+ * Hero thumbnails for dashboard tab cards, keyed by equipment id.
+ * Add your files under public/images/thumbnails/ using these filenames (or edit paths below).
+ */
+export const equipmentDashboardThumbnails: Record<string, string> = {
+  "equipment-a": "/images/thumbnails/coke-drum.jpg",
+  "equipment-b": "/images/thumbnails/hcu.png",
+  "equipment-c": "/images/thumbnails/pump.jpg",
+}
+
+export function getEquipmentDashboardThumbnail(equipId: string | undefined): string | undefined {
+  if (!equipId) return undefined
+  return equipmentDashboardThumbnails[equipId]
+}
+
 export const dashboardCards = [
   {
     id: "dash-1",

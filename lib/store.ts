@@ -37,9 +37,9 @@ interface AppState {
   // Whether the contextual panel is open
   isPanelOpen: boolean
   togglePanel: () => void
-  // Search query for filtering the asset tree in the Portfolio panel
-  assetSearchQuery: string
-  setAssetSearchQuery: (query: string) => void
+  /** Search text for the active nav panel (Assets, Dashboard, Tools, …) */
+  navPanelSearch: Record<ActiveModule, string>
+  setNavPanelSearch: (module: ActiveModule, query: string) => void
   // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
@@ -108,8 +108,17 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveModule: (module) => set({ activeModule: module, isPanelOpen: true }),
   isPanelOpen: true,
   togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
-  assetSearchQuery: '',
-  setAssetSearchQuery: (query) => set({ assetSearchQuery: query }),
+  navPanelSearch: {
+    portfolio: "",
+    workspace: "",
+    insights: "",
+    comms: "",
+    settings: "",
+  },
+  setNavPanelSearch: (module, query) =>
+    set((state) => ({
+      navPanelSearch: { ...state.navPanelSearch, [module]: query },
+    })),
   // ─────────────────────────────────────────────────────────────────────────
   
   // Current view

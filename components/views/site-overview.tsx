@@ -1,7 +1,7 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, siteDocuments, dashboardCards } from "@/lib/data"
+import { sites, siteDocuments, dashboardCards, getEquipmentDashboardThumbnail } from "@/lib/data"
 import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink, ChevronRight } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniLineChart, MiniPieChart, MiniBarChart } from "@/components/mini-charts"
@@ -182,13 +182,18 @@ export function SiteOverview() {
                     isExpanded={expandedEquipStack === equipId}
                     autoExpand={Object.keys(groupedCards).length === 1}
                     onExpand={() => setExpandedEquipStack(equipId)}
+                    onCollapse={() => setExpandedEquipStack(null)}
                     onCardClick={handleDashboardClick}
                   />
                 ))
               ) : (
                 filteredCards.map((card, idx) => (
                   <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer flex-shrink-0">
-                    <DashboardCard card={card} cardIndex={idx} />
+                    <DashboardCard
+                      card={card}
+                      cardIndex={idx}
+                      thumbnailSrc={getEquipmentDashboardThumbnail(card.equipId)}
+                    />
                   </div>
                 ))
               )}
@@ -244,6 +249,7 @@ export function SiteOverview() {
                   cards={group.cards}
                   isExpanded={expandedEquipStack === equipId}
                   onExpand={() => setExpandedEquipStack(equipId)}
+                  onCollapse={() => setExpandedEquipStack(null)}
                   onCardClick={handleDashboardClick}
                 />
               ))}

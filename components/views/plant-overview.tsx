@@ -1,7 +1,7 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, plantDocuments, dashboardCards } from "@/lib/data"
+import { sites, plantDocuments, dashboardCards, getEquipmentDashboardThumbnail } from "@/lib/data"
 import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniPieChart, MiniBarChart } from "@/components/mini-charts"
@@ -181,13 +181,18 @@ export function PlantOverview() {
                     isExpanded={expandedEquipStack === equipId}
                     autoExpand={Object.keys(groupedCards).length === 1}
                     onExpand={() => setExpandedEquipStack(equipId)}
+                    onCollapse={() => setExpandedEquipStack(null)}
                     onCardClick={handleDashboardClick}
                   />
                 ))
               ) : (
                 filteredCards.map((card, idx) => (
                   <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer flex-shrink-0">
-                    <DashboardCard card={card} cardIndex={idx} />
+                    <DashboardCard
+                      card={card}
+                      cardIndex={idx}
+                      thumbnailSrc={getEquipmentDashboardThumbnail(card.equipId)}
+                    />
                   </div>
                 ))
               )}
@@ -241,13 +246,18 @@ export function PlantOverview() {
                     cards={group.cards}
                     isExpanded={expandedEquipStack === equipId}
                     onExpand={() => setExpandedEquipStack(equipId)}
+                    onCollapse={() => setExpandedEquipStack(null)}
                     onCardClick={handleDashboardClick}
                   />
                 ))
               ) : (
                 filteredCards.map((card, idx) => (
                   <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer flex-shrink-0">
-                    <DashboardCard card={card} cardIndex={idx} />
+                    <DashboardCard
+                      card={card}
+                      cardIndex={idx}
+                      thumbnailSrc={getEquipmentDashboardThumbnail(card.equipId)}
+                    />
                   </div>
                 ))
               )}

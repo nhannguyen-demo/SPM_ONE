@@ -1,7 +1,7 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, equipmentKPIs, dashboardCards, plantDocuments } from "@/lib/data"
+import { sites, equipmentKPIs, dashboardCards, plantDocuments, getEquipmentDashboardThumbnail } from "@/lib/data"
 import {
   Maximize2,
   Minimize2,
@@ -251,6 +251,7 @@ export function EquipmentDashboard() {
 
   if (!site || !plant || !equipment) return null
 
+  const tabThumbnailSrc = getEquipmentDashboardThumbnail(equipment.id)
   const activeTab = currentPath.tab || "Demo Engineer Team's Dashboard"
   const isEditMode = viewMode === "edit" || viewMode === "modules"
 
@@ -491,7 +492,7 @@ export function EquipmentDashboard() {
                   activeTab === card.tag && "border-primary shadow-md"
                 )}
               >
-                <DashboardCard card={card} cardIndex={idx} />
+                <DashboardCard card={card} cardIndex={idx} thumbnailSrc={tabThumbnailSrc} />
               </button>
             ))}
             <button className="flex-shrink-0 w-16 h-[min(100%,130px)] my-auto border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
@@ -542,7 +543,7 @@ export function EquipmentDashboard() {
                     activeTab === card.tag && "border-primary shadow-md"
                   )}
                 >
-                  <DashboardCard card={card} cardIndex={idx} />
+                  <DashboardCard card={card} cardIndex={idx} thumbnailSrc={tabThumbnailSrc} />
                 </button>
               ))}
             </div>
