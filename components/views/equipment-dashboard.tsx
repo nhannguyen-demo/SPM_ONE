@@ -12,11 +12,11 @@ import {
   Search,
 } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
-import { ModuleLibrary } from "@/components/module-library"
+import { ModuleLibrary, SPM_WIDGET_DRAG_TYPE, type LibraryModule } from "@/components/module-library"
 import { Equipment3DViewer } from "@/components/equipment-3d"
 import { cn } from "@/lib/utils"
-import { useState, useCallback } from "react"
-import { Responsive as ResponsiveGridLayout, Layout } from "react-grid-layout"
+import { useState, useCallback, useRef, type DragEvent } from "react"
+import { Responsive as ResponsiveGridLayout, Layout, LayoutItem } from "react-grid-layout/legacy"
 
 // CSS for react-grid-layout (must be imported here for Next.js)
 import "react-grid-layout/css/styles.css"
@@ -40,7 +40,20 @@ type WidgetData = {
   title?: string;
 }
 
-type GridWidget = WidgetData & { layout: Layout }
+type GridWidget = WidgetData & { layout: LayoutItem }
+
+/** Maps widget library entries to dashboard view types and default grid size (cols × rows). */
+const LIBRARY_MODULE_SPECS: Record<string, { viewType: string; w: number; h: number }> = {
+  "column-chart": { viewType: "demo-bar", w: 4, h: 4 },
+  "data-grid": { viewType: "data-grid", w: 6, h: 5 },
+  "line-chart": { viewType: "mon-sensor-1", w: 4, h: 4 },
+  "pie-chart": { viewType: "demo-pie", w: 4, h: 4 },
+  "status-board": { viewType: "crack-flaws", w: 4, h: 4 },
+  "summary-chart": { viewType: "demo-summary", w: 12, h: 3 },
+  "tree-map": { viewType: "bulge-scatter", w: 6, h: 4 },
+}
+
+const RGL_DROP_PLACEHOLDER_ID = "__spm-dropping__"
 
 // Generate a default grid layout for a tab's widgets
 // Col layout: 12 columns. Each unit = 80px rowHeight
@@ -75,7 +88,7 @@ function buildDefaultGrid(widgets: WidgetData[]): GridWidget[] {
 
     result.push({
       ...w,
-      layout: { i: w.id, x: colCursor, y: rowCursor, w: cols, h: rows, minW: 2, minH: 2 }
+      layout: { i: w.id, x: colCursor, y: rowCursor, w: cols, h: rows, minW: 2, minH: 2 } satisfies LayoutItem
     })
 
     colCursor += cols
@@ -217,6 +230,8 @@ export function EquipmentDashboard() {
   const [grids, setGrids] = useState<Record<string, GridWidget[]>>(DEFAULT_GRIDS)
   // Container width for RGL (measured via ResizeObserver or default)
   const [gridWidth, setGridWidth] = useState(900)
+  /** Active library module during HTML5 drag (for drop preview size). */
+  const dragModuleRef = useRef<LibraryModule | null>(null)
 
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     if (!node) return
@@ -238,7 +253,6 @@ export function EquipmentDashboard() {
 
   const activeTab = currentPath.tab || "Demo Engineer Team's Dashboard"
   const isEditMode = viewMode === "edit" || viewMode === "modules"
-  const showModules = viewMode === "modules"
 
   const handleTabChange = (tab: string) => {
     setCurrentPath({ ...currentPath, tab })
@@ -248,14 +262,13 @@ export function EquipmentDashboard() {
   const currentGrid: GridWidget[] = grids[activeTab] || buildDefaultGrid(DEFAULT_WIDGET_SETS[activeTab] || [])
 
   // Layout objects only (for ReactGridLayout)
-  const currentLayouts: Layout[] = currentGrid.map(gw => gw.layout)
+  const currentLayouts: Layout = currentGrid.map((gw) => gw.layout)
 
-  // On layout change (drag or resize)
-  const handleLayoutChange = (newLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    setGrids(prev => {
+  const handleLayoutChange = (newLayout: Layout) => {
+    setGrids((prev) => {
       const tabGrid = prev[activeTab] ? [...prev[activeTab]] : []
-      const updated = tabGrid.map(gw => {
-        const found = newLayout.find(l => l.i === gw.id)
+      const updated = tabGrid.map((gw) => {
+        const found = newLayout.find((l) => l.i === gw.id)
         return found ? { ...gw, layout: found } : gw
       })
       return { ...prev, [activeTab]: updated }
@@ -263,35 +276,92 @@ export function EquipmentDashboard() {
   }
 
   const removeWidget = (widgetId: string) => {
-    setGrids(prev => ({
+    setGrids((prev) => ({
       ...prev,
-      [activeTab]: (prev[activeTab] || []).filter(gw => gw.id !== widgetId)
+      [activeTab]: (prev[activeTab] || []).filter((gw) => gw.id !== widgetId),
     }))
   }
 
-  const addWidget = (module: { name: string }) => {
-    const id = `w-new-${Date.now()}`
-    let viewType = "generic"
-    if (module.name.toLowerCase().includes("sensor")) viewType = "mon-sensor-2"
-    if (module.name.toLowerCase().includes("vibration")) viewType = "crack-line"
-    if (module.name.toLowerCase().includes("map")) viewType = "bulge-scatter"
+  const addWidgetFromLibrary = useCallback(
+    (module: LibraryModule) => {
+      const spec = LIBRARY_MODULE_SPECS[module.id] ?? { viewType: "generic", w: 4, h: 4 }
+      const id = `w-new-${Date.now()}`
+      const newWidget: GridWidget = {
+        id,
+        viewType: spec.viewType,
+        title: module.name,
+        layout: {
+          i: id,
+          x: 0,
+          y: Infinity,
+          w: spec.w,
+          h: spec.h,
+          minW: 2,
+          minH: 2,
+        },
+      }
+      setGrids((prev) => ({
+        ...prev,
+        [activeTab]: [...(prev[activeTab] || []), newWidget],
+      }))
+    },
+    [activeTab]
+  )
 
-    const newWidget: GridWidget = {
-      id,
-      viewType,
-      title: module.name,
-      layout: { i: id, x: 0, y: Infinity, w: 4, h: 4, minW: 2, minH: 2 }
-    }
-    setGrids(prev => ({
-      ...prev,
-      [activeTab]: [...(prev[activeTab] || []), newWidget]
-    }))
-  }
+  const handleDropDragOver = useCallback((_e: DragEvent) => {
+    const id = dragModuleRef.current?.id
+    if (!id) return false
+    const spec = LIBRARY_MODULE_SPECS[id]
+    if (!spec) return { w: 4, h: 4 }
+    return { w: spec.w, h: spec.h }
+  }, [])
+
+  const handleDropFromOutside = useCallback(
+    (_layout: Layout, item: LayoutItem | undefined, e: Event) => {
+      if (!item) return
+      const de = e as unknown as DragEvent
+      let module: LibraryModule | null = null
+      try {
+        const raw = de.dataTransfer?.getData(SPM_WIDGET_DRAG_TYPE)
+        if (raw) module = JSON.parse(raw) as LibraryModule
+      } catch {
+        module = null
+      }
+      if (!module?.id && dragModuleRef.current) module = dragModuleRef.current
+      dragModuleRef.current = null
+      if (!module?.id) return
+
+      const spec = LIBRARY_MODULE_SPECS[module.id] ?? { viewType: "generic", w: 4, h: 4 }
+      const id = `w-new-${Date.now()}`
+      const newLayoutItem: LayoutItem = {
+        i: id,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+        minW: 2,
+        minH: 2,
+      }
+      setGrids((prev) => ({
+        ...prev,
+        [activeTab]: [
+          ...(prev[activeTab] || []),
+          {
+            id,
+            viewType: spec.viewType,
+            title: module.name,
+            layout: newLayoutItem,
+          },
+        ],
+      }))
+    },
+    [activeTab]
+  )
 
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
       {/* Main Content */}
-      <div className={cn("flex-1 min-w-0 p-6 overflow-y-auto flex flex-col relative", showModules && "pr-0")}>
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto flex flex-col relative">
         {/* Header with controls */}
         <div className="flex items-center justify-between mb-4">
           <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
@@ -299,20 +369,12 @@ export function EquipmentDashboard() {
           </span>
           <div className="flex items-center gap-2">
             {isEditMode ? (
-              <>
-                <button
-                  onClick={() => setViewMode(showModules ? "edit" : "modules")}
-                  className="px-4 py-2 bg-secondary border border-border rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors"
-                >
-                  Add Widgets +
-                </button>
-                <button
-                  onClick={() => setViewMode("view")}
-                  className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg text-sm font-medium hover:bg-rose-200 transition-colors"
-                >
-                  Exit Editing
-                </button>
-              </>
+              <button
+                onClick={() => setViewMode("view")}
+                className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg text-sm font-medium hover:bg-rose-200 transition-colors"
+              >
+                Exit Editing
+              </button>
             ) : (
               <button
                 onClick={() => setViewMode("edit")}
@@ -339,79 +401,81 @@ export function EquipmentDashboard() {
           "bg-card rounded-xl border border-border shadow-sm overflow-hidden flex-1 flex flex-col",
           dashboardExpanded ? "mb-0" : "mb-6"
         )}>
-          <div className="flex flex-1 min-h-0">
-            {/* Grid Area */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden" ref={containerRef}>
-              {isEditMode && (
-                <div className="flex items-center gap-2 px-4 pt-3 pb-1 text-xs text-muted-foreground bg-primary/5 border-b border-border">
-                  <GripVertical className="w-3 h-3" />
-                  <span>Drag widgets to reposition — drag corners to resize</span>
-                </div>
-              )}
-              <div className="p-2">
-                <ResponsiveGridLayout
-                  className="layout"
-                  layouts={{ lg: currentLayouts, md: currentLayouts, sm: currentLayouts }}
-                  breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-                  cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-                  rowHeight={80}
-                  width={Math.max(gridWidth - 16, 200)}
-                  isDraggable={isEditMode}
-                  isResizable={isEditMode}
-                  draggableHandle=".widget-drag-handle"
-                  onLayoutChange={handleLayoutChange}
-                  compactType="vertical"
-                  margin={[10, 10]}
-                  containerPadding={[4, 4]}
-                >
-                  {currentGrid.map(gw => (
-                    <div key={gw.id} className={cn(
-                      "bg-secondary/30 rounded-xl border border-border/60 flex flex-col overflow-hidden transition-shadow",
-                      isEditMode && "border-border shadow-md ring-1 ring-primary/10 hover:ring-primary/30"
-                    )}>
-                      {/* Widget header bar */}
-                      <div className={cn(
-                        "flex items-center justify-between px-3 py-1.5 flex-shrink-0 bg-background/50 border-b border-border/40",
-                        !isEditMode && "py-1"
-                      )}>
-                        {/* Drag handle + title */}
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {isEditMode && (
-                            <div className="widget-drag-handle cursor-grab active:cursor-grabbing flex-shrink-0">
-                              <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
-                            </div>
-                          )}
-                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
-                            {gw.title || "Widget"}
-                          </span>
-                        </div>
-                        {/* Remove button shown in edit mode */}
-                        {isEditMode && (
-                          <button
-                            onClick={() => removeWidget(gw.id)}
-                            className="flex-shrink-0 p-0.5 rounded hover:bg-rose-100 text-rose-400 hover:text-rose-600 transition-colors"
-                            title="Remove widget"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                      {/* Widget content */}
-                      <div className="flex-1 min-h-0 p-2 overflow-hidden">
-                        <WidgetViewResolver viewType={gw.viewType} equipmentId={equipment.id} />
-                      </div>
-                    </div>
-                  ))}
-                </ResponsiveGridLayout>
-              </div>
-            </div>
-
-            {/* Module Library panel */}
-            {showModules && (
-              <div className="w-72 flex-shrink-0 border-l border-border overflow-y-auto">
-                <ModuleLibrary onAddModule={addWidget} />
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden" ref={containerRef}>
+            {isEditMode && (
+              <div className="flex items-center gap-2 px-4 pt-3 pb-1 text-xs text-muted-foreground bg-primary/5 border-b border-border">
+                <GripVertical className="w-3 h-3" />
+                <span>Drag widgets to reposition — drag corners to resize</span>
               </div>
             )}
+            <div className="p-2">
+              <ResponsiveGridLayout
+                className="layout"
+                layouts={{ lg: currentLayouts, md: currentLayouts, sm: currentLayouts }}
+                breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+                cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+                rowHeight={80}
+                width={Math.max(gridWidth - 16, 200)}
+                isDraggable={isEditMode}
+                isResizable={isEditMode}
+                isDroppable={isEditMode}
+                droppingItem={{
+                  i: RGL_DROP_PLACEHOLDER_ID,
+                  x: 0,
+                  y: 0,
+                  w: 4,
+                  h: 4,
+                  minW: 2,
+                  minH: 2,
+                }}
+                draggableHandle=".widget-drag-handle"
+                onLayoutChange={handleLayoutChange}
+                onDrop={handleDropFromOutside}
+                onDropDragOver={handleDropDragOver}
+                compactType="vertical"
+                margin={[10, 10]}
+                containerPadding={[4, 4]}
+              >
+                {currentGrid.map(gw => (
+                  <div key={gw.id} className={cn(
+                    "bg-secondary/30 rounded-xl border border-border/60 flex flex-col overflow-hidden transition-shadow",
+                    isEditMode && "border-border shadow-md ring-1 ring-primary/10 hover:ring-primary/30"
+                  )}>
+                    {/* Widget header bar */}
+                    <div className={cn(
+                      "flex items-center justify-between px-3 py-1.5 flex-shrink-0 bg-background/50 border-b border-border/40",
+                      !isEditMode && "py-1"
+                    )}>
+                      {/* Drag handle + title */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {isEditMode && (
+                          <div className="widget-drag-handle cursor-grab active:cursor-grabbing flex-shrink-0">
+                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                          {gw.title || "Widget"}
+                        </span>
+                      </div>
+                      {/* Remove button shown in edit mode */}
+                      {isEditMode && (
+                        <button
+                          onClick={() => removeWidget(gw.id)}
+                          className="flex-shrink-0 p-0.5 rounded hover:bg-rose-100 text-rose-400 hover:text-rose-600 transition-colors"
+                          title="Remove widget"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {/* Widget content */}
+                    <div className="flex-1 min-h-0 p-2 overflow-hidden">
+                      <WidgetViewResolver viewType={gw.viewType} equipmentId={equipment.id} />
+                    </div>
+                  </div>
+                ))}
+              </ResponsiveGridLayout>
+            </div>
           </div>
         </div>
 
@@ -489,9 +553,17 @@ export function EquipmentDashboard() {
       {/* Right Panel Slot - Shared between Library and Info */}
       {!dashboardExpanded && (
         <div className="w-72 flex-shrink-0 bg-card border-l border-border flex flex-col overflow-hidden">
-          {showModules ? (
-            <div className="flex-1 overflow-y-auto">
-              <ModuleLibrary onAddModule={addWidget} />
+          {isEditMode ? (
+            <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
+              <ModuleLibrary
+                onAddModule={addWidgetFromLibrary}
+                onWidgetDragStart={(m) => {
+                  dragModuleRef.current = m
+                }}
+                onWidgetDragEnd={() => {
+                  dragModuleRef.current = null
+                }}
+              />
             </div>
           ) : (
             <div className="flex-1 p-4 overflow-y-auto">
@@ -632,6 +704,43 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
             <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
           </PieChart>
         </ResponsiveContainer>
+      );
+    case "data-grid":
+      return (
+        <div className="h-full overflow-auto text-[11px]">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="text-left p-1.5 font-medium">Tag</th>
+                <th className="text-right p-1.5 font-medium">Value</th>
+                <th className="text-right p-1.5 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { tag: "T_in", value: "385 °C", status: "OK" },
+                { tag: "P_shell", value: "2.1 bar", status: "OK" },
+                { tag: "ΔP", value: "0.4 bar", status: "Warn" },
+                { tag: "Flow", value: "120 t/h", status: "OK" },
+              ].map((row) => (
+                <tr key={row.tag} className="border-b border-border/60">
+                  <td className="p-1.5 font-mono text-foreground">{row.tag}</td>
+                  <td className="p-1.5 text-right tabular-nums">{row.value}</td>
+                  <td className="p-1.5 text-right">
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                        row.status === "OK" ? "bg-emerald-500/15 text-emerald-700" : "bg-amber-500/15 text-amber-800"
+                      )}
+                    >
+                      {row.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
     case "demo-bar":
       return (

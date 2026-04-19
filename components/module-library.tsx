@@ -28,12 +28,28 @@ const iconMap: Record<string, React.ReactNode> = {
 
 const categories = ["Asset Efficiency", "Asset Information", "Event Visualization", "Other"]
 
-interface ModuleLibraryProps {
-  onClose?: () => void
-  onAddModule?: (module: { name: string; icon: string }) => void
+/** MIME type for HTML5 drag payload (read on drop in equipment-dashboard). */
+export const SPM_WIDGET_DRAG_TYPE = "application/x-spm-widget"
+
+export interface LibraryModule {
+  id: string
+  name: string
+  icon: string
 }
 
-export function ModuleLibrary({ onClose, onAddModule }: ModuleLibraryProps) {
+interface ModuleLibraryProps {
+  onClose?: () => void
+  onAddModule?: (module: LibraryModule) => void
+  onWidgetDragStart?: (module: LibraryModule) => void
+  onWidgetDragEnd?: () => void
+}
+
+export function ModuleLibrary({
+  onClose,
+  onAddModule,
+  onWidgetDragStart,
+  onWidgetDragEnd,
+}: ModuleLibraryProps) {
   const [activeCategory, setActiveCategory] = useState("Asset Efficiency")
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -44,7 +60,7 @@ export function ModuleLibrary({ onClose, onAddModule }: ModuleLibraryProps) {
   })
 
   return (
-    <div className="w-full bg-card border-l border-border flex flex-col h-full">
+    <div className="w-full bg-card flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h3 className="font-semibold text-foreground">Add Widgets</h3>
@@ -90,20 +106,43 @@ export function ModuleLibrary({ onClose, onAddModule }: ModuleLibraryProps) {
         ))}
       </div>
 
-      {/* Widget List — click to add */}
-      <div className="flex-1 overflow-y-auto p-2">
+      {/* Widget list — drag to dashboard or click to add at end */}
+      <div className="flex-1 overflow-y-auto p-2 min-h-0">
+        <p className="text-[10px] text-muted-foreground px-2 pb-2">
+          Drag onto the grid or click to add.
+        </p>
         {filteredModules.map((module) => (
-          <button
+          <div
             key={module.id}
+            role="button"
+            tabIndex={0}
+            draggable
+            onDragStart={(e) => {
+              const payload: LibraryModule = {
+                id: module.id,
+                name: module.name,
+                icon: module.icon,
+              }
+              e.dataTransfer.setData(SPM_WIDGET_DRAG_TYPE, JSON.stringify(payload))
+              e.dataTransfer.effectAllowed = "copy"
+              onWidgetDragStart?.(payload)
+            }}
+            onDragEnd={() => onWidgetDragEnd?.()}
             onClick={() => onAddModule?.(module)}
-            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left group"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onAddModule?.(module)
+              }
+            }}
+            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left group cursor-grab active:cursor-grabbing select-none"
           >
-            <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10">
+            <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 pointer-events-none">
               {iconMap[module.icon] || <BarChart3 className="w-4 h-4" />}
             </div>
-            <span className="text-sm font-medium text-foreground flex-1">{module.name}</span>
-            <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-          </button>
+            <span className="text-sm font-medium text-foreground flex-1 pointer-events-none">{module.name}</span>
+            <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 pointer-events-none" />
+          </div>
         ))}
       </div>
     </div>
