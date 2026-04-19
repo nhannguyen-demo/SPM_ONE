@@ -4,14 +4,14 @@
 SPM ONE is an industrial asset performance management (APM) web application prototype. It provides Integrity Engineers with a hierarchical view of their asset portfolio — from site level down to individual equipment — including real-time interactive KPI dashboards built with Recharts, a Drag-and-Drop widget customization system, P&ID diagrams, a What-If scenario modeller, and an AI-assisted insight layer. The app is built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, and shadcn/ui.
 
 ## Where are we in the project, what have we recently done?
-Mid-deployment — Dashboards & Navigation Overhaul. The UI prototype has transitioned from static mockups to a dynamic, interactive environment. A major navigation redesign implemented a two-layer "Gmail-pattern" system: a persistent Module Rail and a contextual Panel. The Equipment Dashboard was migrated from `@dnd-kit` to `react-grid-layout`, enabling a sophisticated, professional 12-column grid with free-form drag-and-drop and corner resizing (iPhone-like arrangement). A new "Dashboard Tab Stack" UI was implemented for Site/Plant views, featuring grouped tabs with hover "fan" effects and click-to-expand motion. The 3D Digital Twin viewer now renders context-aware models (Coke Drum, HCU, Pump) based on the active asset. Navigation at Site and Plant levels was also fixed to support deep-linking to specific equipment dashboard tabs with functional global filtering.
+Mid-deployment — Dashboards & Navigation Overhaul. The UI prototype has transitioned from static mockups to a dynamic, interactive environment. A major overhaul replaced the old `@dnd-kit` system with `react-grid-layout`, enabling a sophisticated "iPhone-like" dashboard ecosystem where widgets can be freely dragged, rearranged, and resized (with corner handles) on a responsive 12-column grid. Asset hierarchy was refined with real equipment names (Coke Drum, HCU, Pump ND.1X02) and custom context-aware 3D SVG models. Additionally, a premium "Dashboard Tab Stack" UI was implemented for Site/Plant overview pages, featuring fan-spread hover effects and click-to-expand grouping for thousands of asset dashboards. Global filtering logic now allows searching and filtering dashboards by specific equipment types across the entire portfolio.
 
 ## Tech Stack
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript 5.7
 - **Styling:** Tailwind CSS v4, shadcn/ui (Radix UI primitives), `tw-animate-css`
 - **State:** Zustand 5
 - **Charts:** Recharts 2.15
-- **Interactivity:** `react-grid-layout` for advanced Drag & Drop (resizing, free-form positioning)
+- **Interactivity:** `react-grid-layout` for free-form draggable & resizable widget grid
 - **Icons:** Lucide React
 - **Forms:** React Hook Form + Zod
 - **Package manager:** pnpm
@@ -38,12 +38,11 @@ spm-one/
 │   ├── modals/
 │   │   └── what-if-scenario.tsx   ← What-If config + results modals
 │   ├── views/
-│   │   ├── site-overview.tsx      ← Screen 1 — Site level (uses Tab Stacks)
-│   │   ├── plant-overview.tsx     ← Screen 2 — Plant level (uses Tab Stacks)
-│   │   ├── equipment-dashboard.tsx← Screens 3–6 — RGL-powered grid
+│   │   ├── site-overview.tsx      ← Screen 1 — Site level (now with Tab Stacks)
+│   │   ├── plant-overview.tsx     ← Screen 2 — Plant level (now with Tab Stacks)
+│   │   ├── equipment-dashboard.tsx← Screens 3–6 — Equipment tabs (now with Grid Layout)
 │   │   └── data-sync.tsx          ← Screen 9 — Data & Sync
-│   └── ui/                        ← shadcn/ui base components
-│       └── dashboard-tab-stack.tsx ← Grouped tab UI with fan-spread animation
+│   └── ui/                        ← shadcn/ui base components + DashboardTabStack
 ├── lib/
 │   ├── store.ts             ← Zustand global state (navigation, view mode, modals, AI flags)
 │   ├── data.ts              ← All mock/static data (sites, plants, equipment, KPIs)
@@ -79,13 +78,11 @@ pnpm dev
 - [x] Feature 6 — AI Insight Overlay (wired to global state)
 - [x] Two-layer navigation system (Module Rail + Contextual Panel)
 - [x] Interactive Recharts widgets for all Equipment dashboards
-- [x] Migration to `react-grid-layout` for professional dashboard editing
-- [x] Resizable widgets (corner-pull) and free-form arrangement
-- [x] Dashboard Tab Stack UI (hover fan-spread, click expand)
-- [x] Context-aware 3D SVG models (Coke Drum, HCU, Pump)
-- [x] Global functional filtering on Site/Plant overview panels
-- [x] Widget Library dropout with click-to-add support
-- [x] Fixed Site/Plant level dashboard tab navigation
+- [x] Dashboard Tab Stack grouping UI (high-fidelity hover-spread/click-expand)
+- [x] Functional asset-based filtering in Overview screens
+- [x] Free-form draggable and resizable grid overhaul (using react-grid-layout)
+- [x] Context-aware 3D mock models (Coke Drum, HCU, Pump)
+- [x] Sidebar dynamic routing (automatically jumps to equipment's first available tab)
 - [ ] Features 2–5, 7–10 — not yet wired up / functional
 - [ ] Real data integration (replace mock data in `lib/data.ts`)
 - [ ] Authentication / user management
@@ -104,8 +101,9 @@ pnpm dev
 - **What-If modal is global** — it is mounted once in `page.tsx` and toggled via `setWhatIfModalOpen` from the store. Do not mount it inside child components.
 - **AI components follow a Feature-N naming convention** — files in `components/ai/` are named `featureN-*.tsx`. Keep this pattern for any new AI features.
 - **Two-layer Navigation** — Persistent left Rail + Contextual slide-out Panel. All module switching happens via the Rail.
-- **Interactive Dashboard Grid** — Powered by `react-grid-layout`. Supports 12-column responsive layouts, free-form positioning, and corner resizing.
-- **Dashboard Tab Stacks** — Categorizes dashboards by equipment. Features "top-tip" counter badges and auto-expansion logic when filters reduce the set to a single group.
+- **Advanced Dashboard Grid** — Equipment dashboards use `react-grid-layout` for free-form positioning and corner-based resizing.
+- **Tab Stacking Logic** — Dashboards are grouped by equipment in higher-level overviews. Stacks auto-expand if only one group remains after filtering.
+- **Asset Specificity** — Generic equipment IDs are mapped to specific industrial assets with unique 3D SVG visualizations.
 - **`public/images/`** — `site-map.jpg` (site aerial view) and `pid-diagram.jpg` (P&ID diagram) are expected here but not committed. Users drop them in manually.
 
 ## People & Roles
