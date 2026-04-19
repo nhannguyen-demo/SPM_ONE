@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useAppStore } from "@/lib/store"
-import { whatIfResults } from "@/lib/data"
+import { useAppStore, type WhatIfRunSession } from "@/lib/store"
+import { whatIfResults, whatIfScenarios } from "@/lib/data"
 import { X, Info, ChevronDown, Check, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 // FEATURE 8 — What-If AI Summary Card
@@ -13,11 +13,40 @@ import { AIOptimizationCard } from "@/components/ai/feature9-optimization-rec"
 import { AIShareDropdown } from "@/components/ai/feature10-generate-report"
 
 export function WhatIfScenarioModal() {
-  const { whatIfModalOpen, setWhatIfModalOpen, setWhatIfResultOpen } = useAppStore()
+  const {
+    whatIfModalOpen,
+    setWhatIfModalOpen,
+    setWhatIfResultOpen,
+    addWhatifRunSession,
+    updateWhatifRunSession,
+    currentPath,
+  } = useAppStore()
   
   if (!whatIfModalOpen) return null
 
   const handleRunScenario = () => {
+    // Find which scenario this equipment maps to
+    const scenario = whatIfScenarios.find((s) => s.equipmentId === currentPath.equipment)
+    if (scenario) {
+      const id = `wir-dash-${Date.now()}`
+      const session: WhatIfRunSession = {
+        id,
+        scenarioId: scenario.id,
+        equipmentId: scenario.equipmentId,
+        equipmentName: scenario.equipmentName,
+        runName: `${scenario.equipmentName} — Dashboard Run ${new Date().toLocaleDateString()}`,
+        startedAt: new Date().toISOString(),
+        duration: `${Math.floor(Math.random() * 3 + 2)}m ${Math.floor(Math.random() * 59)}s`,
+        status: "success",
+        user: "Nhan N.",
+        selectedDashboards: [currentPath.tab ?? scenario.availableDashboards[0]],
+        results: whatIfResults.map((r) => ({ checked: r.checked, col1: r.col1, col2: r.col2, col3: r.col3 })),
+        progressStep: 5,
+        params: Object.fromEntries(Object.entries(scenario.defaultParams).map(([k, v]) => [k, v.value])),
+        source: "dashboard",
+      }
+      addWhatifRunSession(session)
+    }
     setWhatIfModalOpen(false)
     setWhatIfResultOpen(true)
   }
@@ -152,18 +181,28 @@ export function WhatIfScenarioModal() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: 8 }).map((_, i) => (
+                  {[
+                    { p: "Inlet Pressure", v: "150.5", u: "barg" },
+                    { p: "Inlet Temp", v: "450.2", u: "°C" },
+                    { p: "Mass Flow", v: "12.4", u: "kg/s" },
+                    { p: "Molecular Wt", v: "28.05", u: "g/mol" },
+                    { p: "Cp/Cv", v: "1.32", u: "-" },
+                    { p: "Z Factor", v: "0.98", u: "-" },
+                    { p: "Pipe Diameter", v: "250", u: "mm" },
+                    { p: "Wall Thickness", v: "12.5", u: "mm" },
+                  ].map((param, i) => (
                     <tr key={i} className="border-t border-border">
-                      <td className="px-3 py-2 text-muted-foreground">NaN</td>
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{param.p}</td>
                       <td className="px-3 py-2">
                         <div className="relative">
-                          <select className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs appearance-none">
-                            <option>NaN</option>
-                          </select>
-                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                          <input 
+                            type="text" 
+                            defaultValue={param.v}
+                            className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                          />
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">NaN</td>
+                      <td className="px-3 py-2 text-muted-foreground">{param.u}</td>
                     </tr>
                   ))}
                 </tbody>

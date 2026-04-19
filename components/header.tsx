@@ -1,16 +1,11 @@
 "use client"
 
 import { Bell, Settings } from "lucide-react"
-// FEATURE 2 — AI-Powered Search Bar Autocomplete
-import { AISearchAutocomplete } from "@/components/ai/feature2-search-autocomplete"
 
 export function Header() {
   return (
     <header className="h-14 bg-card border-b border-border flex items-center justify-between px-6">
-      {/* Search Bar — FEATURE 2: wrapped with AI autocomplete */}
-      <div className="flex-1 max-w-xl">
-        <AISearchAutocomplete />
-      </div>
+      <div className="flex-1 min-w-0" aria-hidden="true" />
 
       {/* Right Actions */}
       <div className="flex items-center gap-2">

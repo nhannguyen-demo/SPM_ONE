@@ -11,18 +11,18 @@ export const sites = [
         equipment: [
           {
             id: "equipment-a",
-            name: "Equipment a",
+            name: "Coke Drum",
             tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
           },
           {
             id: "equipment-b",
-            name: "Equipment b",
-            tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
+            name: "HCU",
+            tabs: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
           },
           {
             id: "equipment-c",
-            name: "Equipment c",
-            tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
+            name: "Pump ND.1X02",
+            tabs: ["Pump Performance"],
           },
         ],
       },
@@ -56,43 +56,99 @@ export const plantDocuments = [
   { name: "Ben's secrets", type: "link" },
 ]
 
+/**
+ * Hero thumbnails for dashboard tab cards, keyed by equipment id.
+ * Add your files under public/images/thumbnails/ using these filenames (or edit paths below).
+ */
+export const equipmentDashboardThumbnails: Record<string, string> = {
+  "equipment-a": "/images/thumbnails/coke-drum.jpg",
+  "equipment-b": "/images/thumbnails/hcu.png",
+  "equipment-c": "/images/thumbnails/pump.jpg",
+}
+
+export function getEquipmentDashboardThumbnail(equipId: string | undefined): string | undefined {
+  if (!equipId) return undefined
+  return equipmentDashboardThumbnails[equipId]
+}
+
 export const dashboardCards = [
   {
     id: "dash-1",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Demo Engineer Team's Dashboard",
     metrics: { value1: "80%", value2: "0.005%" },
   },
   {
     id: "dash-2",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Monitoring",
     metrics: { value1: "95%", value2: "0.002%" },
   },
   {
     id: "dash-3",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Process",
     metrics: { value1: "92%", value2: "0.001%" },
   },
   {
     id: "dash-4",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Fatigue",
     // Keep 90% and 0.001% as it originally was on #process to not break expectations
     metrics: { value1: "90%", value2: "0.001%" },
   },
   {
     id: "dash-5",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Bulging",
     metrics: { value1: "201%", value2: "0.04%" },
   },
   {
     id: "dash-6",
-    equipment: "Equipment: a",
+    equipment: "Coke Drum",
+    equipId: "equipment-a",
     tag: "Cracking",
     metrics: { value1: "76%", value2: "0.01%" },
+  },
+  {
+    id: "dash-hcu-1",
+    equipment: "HCU",
+    equipId: "equipment-b",
+    tag: "Overview",
+    metrics: { value1: "95%", value2: "0.003%" },
+  },
+  {
+    id: "dash-hcu-2",
+    equipment: "HCU",
+    equipId: "equipment-b",
+    tag: "Reactor Health",
+    metrics: { value1: "88%", value2: "0.010%" },
+  },
+  {
+    id: "dash-hcu-3",
+    equipment: "HCU",
+    equipId: "equipment-b",
+    tag: "Process Control",
+    metrics: { value1: "92%", value2: "0.005%" },
+  },
+  {
+    id: "dash-hcu-4",
+    equipment: "HCU",
+    equipId: "equipment-b",
+    tag: "Maintenance",
+    metrics: { value1: "78%", value2: "0.020%" },
+  },
+  {
+    id: "dash-pump-1",
+    equipment: "Pump ND.1X02",
+    equipId: "equipment-c",
+    tag: "Pump Performance",
+    metrics: { value1: "99%", value2: "0.001%" },
   },
 ]
 
@@ -123,16 +179,16 @@ export const moduleLibrary = [
 ]
 
 export const dataStatusItems = [
-  { asset: "Equipment a", files: 10, loadStatus: "10/10", lastUpdate: "11/04/2026", error: "0/10" },
-  { asset: "Equipment b", files: 7, loadStatus: "7/7", lastUpdate: "11/04/2026", error: "0/7" },
-  { asset: "Equipment c", files: 6, loadStatus: "5/6", lastUpdate: "09/04/2026", error: "0/5" },
+  { asset: "Coke Drum", files: 10, loadStatus: "10/10", lastUpdate: "11/04/2026", error: "0/10" },
+  { asset: "HCU", files: 7, loadStatus: "7/7", lastUpdate: "11/04/2026", error: "0/7" },
+  { asset: "Pump ND.1X02", files: 6, loadStatus: "5/6", lastUpdate: "09/04/2026", error: "0/5" },
   { asset: "Pipe a", files: 3, loadStatus: "3/3", lastUpdate: "10/04/2026", error: "1/3" },
 ]
 
 export const syncJobs = [
-  { asset: "Equipment a", description: "fix pressure", state: "Success", startTime: "05/04/2026", elapsed: "4m 52s", user: "Ben - process en", tokens: 0 },
-  { asset: "Equipment b", description: "what-if scenario", state: "Success", startTime: "28/03/2026", elapsed: "3m 50s", user: "Alex - process en", tokens: 0 },
-  { asset: "Equipment c", description: "virus scan", state: "Success", startTime: "09/03/2026", elapsed: "2s", user: "Alex - process en", tokens: 0 },
+  { asset: "Coke Drum", description: "fix pressure", state: "Success", startTime: "05/04/2026", elapsed: "4m 52s", user: "Ben - process en", tokens: 0 },
+  { asset: "HCU", description: "what-if scenario", state: "Success", startTime: "28/03/2026", elapsed: "3m 50s", user: "Alex - process en", tokens: 0 },
+  { asset: "Pump ND.1X02", description: "virus scan", state: "Success", startTime: "09/03/2026", elapsed: "2s", user: "Alex - process en", tokens: 0 },
   { asset: "Pipe a", description: "fea solve", state: "Failed", startTime: "10/01/2026", elapsed: "58m 41s", user: "Simon - integrit...", tokens: 192 },
 ]
 
@@ -146,3 +202,348 @@ export const whatIfResults = [
   { checked: true, col1: "Parameter 7", col2: "95.1", col3: "Pass" },
   { checked: true, col1: "Parameter 8", col2: "110.7", col3: "Pass" },
 ]
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   HOME PAGE MOCK DATA
+───────────────────────────────────────────────────────────────────────────── */
+
+export type ChangeLogType = "dashboard" | "operation"
+
+export interface ChangeLogEntry {
+  id: string
+  timestamp: string
+  user: string
+  action: string
+  location: string
+  type: ChangeLogType
+}
+
+export const changeLogEntries: ChangeLogEntry[] = [
+  {
+    id: "cl-1",
+    timestamp: "2026-04-19 19:42",
+    user: "Nhan N.",
+    action: "Added Fatigue Trend widget to Coke Drum — Fatigue dashboard",
+    location: "Site X › Plant 1 › Coke Drum › Fatigue",
+    type: "dashboard",
+  },
+  {
+    id: "cl-2",
+    timestamp: "2026-04-19 17:10",
+    user: "Ben T.",
+    action: "Updated operating pressure set-point from 2.1 bar to 2.3 bar",
+    location: "Site X › Plant 1 › Coke Drum",
+    type: "operation",
+  },
+  {
+    id: "cl-3",
+    timestamp: "2026-04-19 14:55",
+    user: "Alex P.",
+    action: "Ran What-If Scenario: 'Fix Pressure' on HCU",
+    location: "Site X › Plant 1 › HCU",
+    type: "operation",
+  },
+  {
+    id: "cl-4",
+    timestamp: "2026-04-18 22:30",
+    user: "Nhan N.",
+    action: "Rearranged widgets on HCU — Reactor Health dashboard",
+    location: "Site X › Plant 1 › HCU › Reactor Health",
+    type: "dashboard",
+  },
+  {
+    id: "cl-5",
+    timestamp: "2026-04-18 16:15",
+    user: "Simon K.",
+    action: "Uploaded new P&ID diagram for Plant 1",
+    location: "Site X › Plant 1",
+    type: "operation",
+  },
+  {
+    id: "cl-6",
+    timestamp: "2026-04-17 09:05",
+    user: "Ben T.",
+    action: "Removed Summary KPIs widget from Monitoring dashboard",
+    location: "Site X › Plant 1 › Coke Drum › Monitoring",
+    type: "dashboard",
+  },
+  {
+    id: "cl-7",
+    timestamp: "2026-04-16 11:00",
+    user: "Alex P.",
+    action: "Flagged high ΔP reading on Pump ND.1X02 for review",
+    location: "Site X › Plant 1 › Pump ND.1X02",
+    type: "operation",
+  },
+  {
+    id: "cl-8",
+    timestamp: "2026-04-15 08:45",
+    user: "Nhan N.",
+    action: "Pinned Cracking dashboard to favourites",
+    location: "Site X › Plant 1 › Coke Drum › Cracking",
+    type: "dashboard",
+  },
+]
+
+export type DocumentCategory = "Uploaded" | "Shared"
+export type DocumentFileType = "pdf" | "docx" | "xlsx" | "link"
+
+export interface UserDocument {
+  id: string
+  name: string
+  fileType: DocumentFileType
+  category: DocumentCategory
+  siteId?: string
+  plantId?: string
+  equipmentId?: string
+  size: string
+  date: string
+  sharedBy?: string
+}
+
+export const userDocuments: UserDocument[] = [
+  {
+    id: "doc-1",
+    name: "Coke Drum Fatigue Assessment 2026.pdf",
+    fileType: "pdf",
+    category: "Uploaded",
+    siteId: "site-x",
+    plantId: "plant-1",
+    equipmentId: "equipment-a",
+    size: "4.2 MB",
+    date: "2026-04-10",
+  },
+  {
+    id: "doc-2",
+    name: "HCU Reactor Maintenance Procedure.docx",
+    fileType: "docx",
+    category: "Uploaded",
+    siteId: "site-x",
+    plantId: "plant-1",
+    equipmentId: "equipment-b",
+    size: "1.8 MB",
+    date: "2026-04-08",
+  },
+  {
+    id: "doc-3",
+    name: "Plant 1 — Q1 2026 Inspection Report.xlsx",
+    fileType: "xlsx",
+    category: "Shared",
+    siteId: "site-x",
+    plantId: "plant-1",
+    size: "890 KB",
+    date: "2026-04-05",
+    sharedBy: "Simon K.",
+  },
+  {
+    id: "doc-4",
+    name: "Pump ND.1X02 Vibration Logs Mar-26.xlsx",
+    fileType: "xlsx",
+    category: "Uploaded",
+    siteId: "site-x",
+    plantId: "plant-1",
+    equipmentId: "equipment-c",
+    size: "220 KB",
+    date: "2026-04-01",
+  },
+  {
+    id: "doc-5",
+    name: "Global Safety Standards Rev. 12.pdf",
+    fileType: "pdf",
+    category: "Shared",
+    siteId: "site-x",
+    size: "12.4 MB",
+    date: "2026-03-28",
+    sharedBy: "Alex P.",
+  },
+  {
+    id: "doc-6",
+    name: "Coker Maintenance 101.docx",
+    fileType: "docx",
+    category: "Shared",
+    siteId: "site-x",
+    plantId: "plant-1",
+    size: "560 KB",
+    date: "2026-03-20",
+    sharedBy: "Ben T.",
+  },
+  {
+    id: "doc-7",
+    name: "Site X Asset Register 2026.xlsx",
+    fileType: "xlsx",
+    category: "Uploaded",
+    siteId: "site-x",
+    size: "3.1 MB",
+    date: "2026-03-15",
+  },
+  {
+    id: "doc-8",
+    name: "HCU Process Control SOP.pdf",
+    fileType: "pdf",
+    category: "Shared",
+    siteId: "site-x",
+    plantId: "plant-1",
+    equipmentId: "equipment-b",
+    size: "2.7 MB",
+    date: "2026-03-10",
+    sharedBy: "Nhan N.",
+  },
+]
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   WHAT-IF SCENARIOS
+───────────────────────────────────────────────────────────────────────────── */
+
+export interface WhatIfScenarioDefinition {
+  id: string
+  equipmentId: string
+  equipmentName: string
+  name: string
+  description: string
+  details: string
+  availableDashboards: string[]
+  defaultParams: Record<string, { value: string; unit: string }>
+  plant: string
+  site: string
+}
+
+export const whatIfScenarios: WhatIfScenarioDefinition[] = [
+  {
+    id: "scenario-coke-drum",
+    equipmentId: "equipment-a",
+    equipmentName: "Coke Drum",
+    name: "Coke Drum — Future Operating Scenario",
+    description: "Models a future operating cycle where inlet temperature and pressure profiles are varied to assess impact on fatigue accumulation, bulging probability, and remaining asset life.",
+    details: "Upload a CSV file containing projected temperature and pressure time-series data for the next scheduled operating period. The tool computes updated Damage (DMG%), Remaining Life, and generates scenario-specific equivalents of the Fatigue, Bulging, and Cracking dashboards so engineers can compare future state against current actuals.",
+    availableDashboards: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
+    defaultParams: {
+      "Inlet Pressure":    { value: "150.5", unit: "barg" },
+      "Inlet Temp":        { value: "450.2", unit: "°C" },
+      "Mass Flow":         { value: "12.4",  unit: "kg/s" },
+      "Molecular Wt":      { value: "28.05", unit: "g/mol" },
+      "Cp/Cv":             { value: "1.32",  unit: "-" },
+      "Z Factor":          { value: "0.98",  unit: "-" },
+      "Pipe Diameter":     { value: "250",   unit: "mm" },
+      "Wall Thickness":    { value: "12.5",  unit: "mm" },
+    },
+    plant: "Plant 1",
+    site: "Site X",
+  },
+  {
+    id: "scenario-hcu",
+    equipmentId: "equipment-b",
+    equipmentName: "HCU",
+    name: "HCU — Reactor Load Variation Scenario",
+    description: "Simulates the effect of varying hydrogen partial pressure and feed rate on reactor health indicators, catalyst deactivation rates, and predicted maintenance intervals.",
+    details: "Upload a CSV containing projected feed compositions, reactor inlet conditions, and recycle gas compositions for a specified future period. The tool produces scenario-adapted Reactor Health, Process Control, and Maintenance dashboards for direct comparison with current live data.",
+    availableDashboards: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
+    defaultParams: {
+      "H₂ Partial Pressure": { value: "38.2",  unit: "bar" },
+      "Feed Rate":            { value: "95.0",  unit: "t/h" },
+      "Reactor Inlet T":      { value: "372.0", unit: "°C" },
+      "LHSV":                 { value: "1.25",  unit: "h⁻¹" },
+      "H₂/HC Ratio":          { value: "650",   unit: "Nm³/m³" },
+      "Pressure Drop ΔP":     { value: "1.8",   unit: "bar" },
+      "Catalyst Age":         { value: "18",    unit: "months" },
+    },
+    plant: "Plant 1",
+    site: "Site X",
+  },
+]
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MOCK WHAT-IF RUN HISTORY  (pre-populated so tool is not empty on first load)
+───────────────────────────────────────────────────────────────────────────── */
+
+export const mockWhatifRunSessions = [
+  {
+    id: "wir-001",
+    scenarioId: "scenario-coke-drum",
+    equipmentId: "equipment-a",
+    equipmentName: "Coke Drum",
+    runName: "Q2 Extended Cycle Projection",
+    startedAt: "2026-04-18T14:22:00Z",
+    duration: "4m 52s",
+    status: "success" as const,
+    user: "Ben T.",
+    selectedDashboards: ["Fatigue", "Bulging"],
+    results: [
+      { checked: true, col1: "DMG Accumulation",   col2: "218.4%", col3: "Warning" },
+      { checked: true, col1: "Remaining Life",      col2: "36.2 yrs", col3: "Pass" },
+      { checked: true, col1: "Fatigue Index",       col2: "0.74",   col3: "Pass" },
+      { checked: true, col1: "Bulge Probability",   col2: "12.3%",  col3: "Pass" },
+      { checked: true, col1: "Crack Growth Rate",   col2: "0.018 mm/cycle", col3: "Pass" },
+      { checked: true, col1: "Peak Temperature",    col2: "492.1°C", col3: "Warning" },
+      { checked: true, col1: "Pressure Ratio",      col2: "0.96",   col3: "Pass" },
+      { checked: true, col1: "Cycle Count Delta",   col2: "+14",    col3: "Pass" },
+    ],
+    progressStep: 5,
+    params: { "Inlet Pressure": "155.0", "Inlet Temp": "462.5", "Mass Flow": "13.1", "Molecular Wt": "28.05", "Cp/Cv": "1.32", "Z Factor": "0.97", "Pipe Diameter": "250", "Wall Thickness": "12.5" },
+    source: "tool" as const,
+  },
+  {
+    id: "wir-002",
+    scenarioId: "scenario-coke-drum",
+    equipmentId: "equipment-a",
+    equipmentName: "Coke Drum",
+    runName: "Reduced Pressure Test Run",
+    startedAt: "2026-04-03T09:10:00Z",
+    duration: "3m 28s",
+    status: "success" as const,
+    user: "Nhan N.",
+    selectedDashboards: ["Process", "Cracking"],
+    results: [
+      { checked: true, col1: "DMG Accumulation",   col2: "195.2%", col3: "Pass" },
+      { checked: true, col1: "Remaining Life",      col2: "41.0 yrs", col3: "Pass" },
+      { checked: true, col1: "Fatigue Index",       col2: "0.61",   col3: "Pass" },
+      { checked: true, col1: "Bulge Probability",   col2: "8.9%",   col3: "Pass" },
+      { checked: true, col1: "Crack Growth Rate",   col2: "0.012 mm/cycle", col3: "Pass" },
+      { checked: true, col1: "Peak Temperature",    col2: "441.0°C", col3: "Pass" },
+      { checked: true, col1: "Pressure Ratio",      col2: "0.91",   col3: "Pass" },
+      { checked: true, col1: "Cycle Count Delta",   col2: "+8",     col3: "Pass" },
+    ],
+    progressStep: 5,
+    params: { "Inlet Pressure": "140.0", "Inlet Temp": "438.0", "Mass Flow": "11.8", "Molecular Wt": "28.05", "Cp/Cv": "1.32", "Z Factor": "0.99", "Pipe Diameter": "250", "Wall Thickness": "12.5" },
+    source: "dashboard" as const,
+  },
+  {
+    id: "wir-003",
+    scenarioId: "scenario-hcu",
+    equipmentId: "equipment-b",
+    equipmentName: "HCU",
+    runName: "High Feed Rate Stress Test",
+    startedAt: "2026-04-15T11:05:00Z",
+    duration: "5m 14s",
+    status: "success" as const,
+    user: "Alex P.",
+    selectedDashboards: ["Reactor Health", "Maintenance"],
+    results: [
+      { checked: true, col1: "Catalyst Activity",   col2: "74.2%",  col3: "Warning" },
+      { checked: true, col1: "Reactor ΔT",           col2: "28.5°C", col3: "Pass" },
+      { checked: true, col1: "H₂ Consumption",      col2: "102.4 Nm³/h", col3: "Pass" },
+      { checked: true, col1: "Run Length Est.",      col2: "8.2 months", col3: "Pass" },
+      { checked: true, col1: "Pressure Drop",        col2: "2.4 bar", col3: "Warning" },
+      { checked: true, col1: "Coke Deposition",      col2: "0.08%/hr", col3: "Pass" },
+    ],
+    progressStep: 5,
+    params: { "H₂ Partial Pressure": "40.0", "Feed Rate": "108.0", "Reactor Inlet T": "378.0", "LHSV": "1.45", "H₂/HC Ratio": "680", "Pressure Drop ΔP": "2.1", "Catalyst Age": "18" },
+    source: "tool" as const,
+  },
+  {
+    id: "wir-004",
+    scenarioId: "scenario-hcu",
+    equipmentId: "equipment-b",
+    equipmentName: "HCU",
+    runName: "Nominal Q2 Projection",
+    startedAt: "2026-03-28T08:30:00Z",
+    duration: "4m 02s",
+    status: "failed" as const,
+    user: "Simon K.",
+    selectedDashboards: ["Overview"],
+    results: [],
+    progressStep: 2,
+    params: { "H₂ Partial Pressure": "38.2", "Feed Rate": "95.0", "Reactor Inlet T": "372.0", "LHSV": "1.25", "H₂/HC Ratio": "650", "Pressure Drop ΔP": "1.8", "Catalyst Age": "20" },
+    source: "dashboard" as const,
+  },
+]
+

@@ -124,6 +124,61 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   REACT-GRID-LAYOUT — polish resize handle to match design system
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Hide placeholder ghost color and use our border */
+.react-grid-placeholder {
+  background: hsl(var(--primary) / 0.08) !important;
+  border: 2px dashed hsl(var(--primary) / 0.4) !important;
+  border-radius: 12px !important;
+  opacity: 1 !important;
+}
+
+/* Resize handle — a subtle corner grip */
+.react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+  background: none !important;
+}
+
+.react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid hsl(var(--primary) / 0.5);
+  border-bottom: 2px solid hsl(var(--primary) / 0.5);
+  border-radius: 1px;
+  transition: opacity 0.2s;
+  opacity: 0;
+}
+
+/* Show handle only on hovered/editing widgets */
+.react-grid-item:hover .react-resizable-handle::after,
+.react-grid-item.resizing .react-resizable-handle::after {
+  opacity: 1;
+}
+
+/* Dragging widget shadow */
+.react-grid-item.react-draggable-dragging {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
+  z-index: 100 !important;
+  opacity: 0.95;
+  border-radius: 12px;
+}
+
+.react-grid-item.resizing {
+  opacity: 0.9;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    AI FEATURE ANIMATIONS — shared keyframes for all 10 AI feature components
    Removing any AI feature: its keyframe usage is isolated to that component.
    ───────────────────────────────────────────────────────────────────────── */

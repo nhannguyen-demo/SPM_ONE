@@ -16,15 +16,13 @@ import {
   FileText,
   MessageSquare,
   Bell,
-  Hash,
-  Lightbulb,
   LayoutDashboard,
   BarChart3,
   Settings,
   Search,
   X,
   PanelLeftClose,
-  PanelLeftOpen,
+  Home,
 } from "lucide-react"
 import {
   Tooltip,
@@ -32,6 +30,44 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+
+function PanelSearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (q: string) => void
+  placeholder: string
+}) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-muted pointer-events-none" />
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          "w-full pl-7 pr-7 py-1.5 rounded-md text-xs",
+          "bg-sidebar-hover text-sidebar-foreground placeholder:text-sidebar-muted",
+          "border border-white/10 focus:outline-none focus:border-sidebar-active",
+          "transition-colors duration-150"
+        )}
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Clear search"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-sidebar-muted hover:text-sidebar-foreground"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      ) : null}
+    </div>
+  )
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MODULE RAIL CONFIG
@@ -41,20 +77,36 @@ const MODULES: {
   icon: React.ReactNode
   label: string
 }[] = [
-  { key: "portfolio",  icon: <Building2 className="w-5 h-5" />,      label: "Portfolio"  },
-  { key: "workspace",  icon: <LayoutDashboard className="w-5 h-5" />, label: "Workspace"  },
-  { key: "insights",   icon: <BarChart3 className="w-5 h-5" />,       label: "Insights"   },
+  { key: "home",      icon: <Home className="w-5 h-5" />,           label: "Home"       },
+  { key: "portfolio",  icon: <Building2 className="w-5 h-5" />,      label: "Assets"  },
+  { key: "workspace",  icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard"  },
+  { key: "insights",   icon: <BarChart3 className="w-5 h-5" />,       label: "Tools"   },
   { key: "comms",      icon: <MessageSquare className="w-5 h-5" />,   label: "Comms"      },
   { key: "settings",   icon: <Settings className="w-5 h-5" />,        label: "Settings"   },
 ]
+
+const NAV_SEARCH_PLACEHOLDERS: Record<ActiveModule, string> = {
+  home: "Search home…",
+  portfolio: "Search assets…",
+  workspace: "Search dashboards…",
+  insights: "Search tools…",
+  comms: "Search messages…",
+  settings: "Search settings…",
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MODULE RAIL — narrow 56px strip always visible on the far left
    ═══════════════════════════════════════════════════════════════════════════ */
 function ModuleRail() {
-  const { activeModule, setActiveModule, isPanelOpen, togglePanel } = useAppStore()
+  const { activeModule, setActiveModule, isPanelOpen, togglePanel, setCurrentView } = useAppStore()
 
   const handleModuleClick = (key: ActiveModule) => {
+    if (key === "home") {
+      // Home always navigates directly, never opens panel
+      setActiveModule(key)
+      setCurrentView("home")
+      return
+    }
     if (key === activeModule && isPanelOpen) {
       // Same icon clicked again → collapse panel
       togglePanel()
@@ -134,17 +186,20 @@ function ContextualPanel() {
     activeModule,
     isPanelOpen,
     togglePanel,
-    assetSearchQuery,
-    setAssetSearchQuery,
+    navPanelSearch,
+    setNavPanelSearch,
   } = useAppStore()
 
   const MODULE_LABELS: Record<ActiveModule, string> = {
-    portfolio: "Portfolio",
-    workspace: "Workspace",
-    insights:  "Insights",
+    home:      "Home",
+    portfolio: "Assets",
+    workspace: "Dashboard",
+    insights:  "Tools",
     comms:     "Comms",
     settings:  "Settings",
   }
+
+  const searchQuery = navPanelSearch[activeModule]
 
   return (
     <div
@@ -174,14 +229,43 @@ function ContextualPanel() {
         </button>
       </div>
 
+      {/* Per-module search (same pattern as former Assets search) */}
+      <div className="px-2 pt-2 pb-2 border-b border-white/10 flex-shrink-0">
+        <PanelSearchInput
+          value={searchQuery}
+          onChange={(q) => setNavPanelSearch(activeModule, q)}
+          placeholder={NAV_SEARCH_PLACEHOLDERS[activeModule]}
+        />
+      </div>
+
       {/* Panel body — scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
-        {activeModule === "portfolio"  && <PortfolioPanel searchQuery={assetSearchQuery} onSearchChange={setAssetSearchQuery} />}
-        {activeModule === "workspace"  && <WorkspacePanel />}
-        {activeModule === "insights"   && <InsightsPanel />}
-        {activeModule === "comms"      && <CommsPanel />}
-        {activeModule === "settings"   && <SettingsPanel />}
+        {activeModule === "home"      && <HomePanel />}
+        {activeModule === "portfolio"  && <PortfolioPanel searchQuery={searchQuery} />}
+        {activeModule === "workspace"  && <WorkspacePanel searchQuery={searchQuery} />}
+        {activeModule === "insights"   && <InsightsPanel searchQuery={searchQuery} />}
+        {activeModule === "comms"      && <CommsPanel searchQuery={searchQuery} />}
+        {activeModule === "settings"   && <SettingsPanel searchQuery={searchQuery} />}
       </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOME PANEL — shown when Home module is active (panel is closed; this is a
+   fallback in case the panel is somehow open)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function HomePanel() {
+  const { setCurrentView, setViewMode } = useAppStore()
+  return (
+    <div className="px-3 py-2">
+      <button
+        onClick={() => { setCurrentView("home"); setViewMode("view") }}
+        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm bg-sidebar-active text-white"
+      >
+        <Home className="w-4 h-4 flex-shrink-0" />
+        <span>Home</span>
+      </button>
     </div>
   )
 }
@@ -189,13 +273,7 @@ function ContextualPanel() {
 /* ═══════════════════════════════════════════════════════════════════════════
    PORTFOLIO PANEL — hierarchical asset tree with search
    ═══════════════════════════════════════════════════════════════════════════ */
-function PortfolioPanel({
-  searchQuery,
-  onSearchChange,
-}: {
-  searchQuery: string
-  onSearchChange: (q: string) => void
-}) {
+function PortfolioPanel({ searchQuery }: { searchQuery: string }) {
   const {
     currentPath,
     setCurrentPath,
@@ -226,8 +304,12 @@ function PortfolioPanel({
   }
 
   const handleEquipmentClick = (siteId: string, plantId: string, equipmentId: string) => {
-    // Set 'Demo Engineer Team's Dashboard' (or empty string mapped later) as the first default tab
-    setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: "Demo Engineer Team's Dashboard" })
+    const site = sites.find(s => s.id === siteId)
+    const plant = site?.plants.find(p => p.id === plantId)
+    const equipment = plant?.equipment.find(e => e.id === equipmentId)
+    const firstTab = equipment?.tabs?.[0] || "Overview"
+    
+    setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: firstTab })
     setCurrentView("equipment")
     setViewMode("view")
     if (!expandedEquipment.includes(equipmentId)) toggleEquipmentExpanded(equipmentId)
@@ -270,33 +352,6 @@ function PortfolioPanel({
 
   return (
     <div className="px-2">
-      {/* Search input */}
-      <div className="relative mb-3">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-muted pointer-events-none" />
-        <input
-          id="asset-search-input"
-          type="text"
-          placeholder="Search assets…"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className={cn(
-            "w-full pl-7 pr-7 py-1.5 rounded-md text-xs",
-            "bg-sidebar-hover text-sidebar-foreground placeholder:text-sidebar-muted",
-            "border border-white/10 focus:outline-none focus:border-sidebar-active",
-            "transition-colors duration-150"
-          )}
-        />
-        {searchQuery && (
-          <button
-            onClick={() => onSearchChange("")}
-            aria-label="Clear search"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-sidebar-muted hover:text-sidebar-foreground"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        )}
-      </div>
-
       {/* Asset tree */}
       {filteredSites.length === 0 ? (
         <p className="text-xs text-sidebar-muted px-1 py-2">No assets match.</p>
@@ -309,10 +364,10 @@ function PortfolioPanel({
             <div key={site.id}>
               {/* Site row */}
               <div className="relative group/site">
-                <button
+                <div
                   onClick={() => handleSiteClick(site.id)}
                   className={cn(
-                    "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                    "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
                     isSiteActive
                       ? "bg-sidebar-active text-white"
                       : "hover:bg-sidebar-hover text-sidebar-foreground"
@@ -333,7 +388,7 @@ function PortfolioPanel({
                   </button>
                   <Building2 className="w-4 h-4 flex-shrink-0" />
                   <span className="truncate">{site.name}</span>
-                </button>
+                </div>
               </div>
 
               {/* Plants */}
@@ -345,10 +400,10 @@ function PortfolioPanel({
 
                     return (
                       <div key={plant.id}>
-                        <button
+                        <div
                           onClick={() => handlePlantClick(site.id, plant.id)}
                           className={cn(
-                            "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                            "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
                             isPlantActive
                               ? "bg-sidebar-active text-white"
                               : "hover:bg-sidebar-hover text-sidebar-foreground"
@@ -373,7 +428,7 @@ function PortfolioPanel({
                           )}
                           <Factory className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate">{plant.name}</span>
-                        </button>
+                        </div>
 
                         {/* Equipment */}
                         {isPlantExpanded && plant.equipment.length > 0 && (
@@ -418,15 +473,30 @@ function PortfolioPanel({
 /* ═══════════════════════════════════════════════════════════════════════════
    WORKSPACE PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
-function WorkspacePanel() {
+function navMatches(label: string, q: string) {
+  const s = q.trim().toLowerCase()
+  if (!s) return true
+  return label.toLowerCase().includes(s)
+}
+
+function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
+  const q = searchQuery
+  const items = [
+    { key: "fav", label: "Favorite", icon: <Star className="w-4 h-4 flex-shrink-0" />, trailing: <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" /> },
+    { key: "share", label: "Share with me", icon: <FolderOpen className="w-4 h-4 flex-shrink-0" />, trailing: <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" /> },
+  ].filter((row) => navMatches(row.label, q))
+
   return (
     <div className="px-2 flex flex-col gap-0.5">
-      <PanelNavItem icon={<Star className="w-4 h-4 flex-shrink-0" />} label="Favorite">
-        <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" />
-      </PanelNavItem>
-      <PanelNavItem icon={<FolderOpen className="w-4 h-4 flex-shrink-0" />} label="Share with me">
-        <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" />
-      </PanelNavItem>
+      {items.length === 0 ? (
+        <p className="text-xs text-sidebar-muted px-1 py-2">No items match.</p>
+      ) : (
+        items.map((row) => (
+          <PanelNavItem key={row.key} icon={row.icon} label={row.label}>
+            {row.trailing}
+          </PanelNavItem>
+        ))
+      )}
     </div>
   )
 }
@@ -434,26 +504,58 @@ function WorkspacePanel() {
 /* ═══════════════════════════════════════════════════════════════════════════
    INSIGHTS PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
-function InsightsPanel() {
-  const { currentView, setCurrentView, setViewMode } = useAppStore()
+function InsightsPanel({ searchQuery }: { searchQuery: string }) {
+  const { currentView, setCurrentView, setViewMode, setWhatifSelectedScenarioId } = useAppStore()
+  const q = searchQuery
 
   const handleDataSyncClick = () => {
     setCurrentView("data-sync")
     setViewMode("view")
   }
 
+  const handleWhatIfClick = () => {
+    setWhatifSelectedScenarioId("scenario-coke-drum")
+    setCurrentView("whatif-tool")
+    setViewMode("view")
+  }
+
+  const rows = [
+    {
+      key: "sync",
+      label: "Data & Sync",
+      icon: <Database className="w-4 h-4 flex-shrink-0" />,
+      onClick: handleDataSyncClick,
+      active: currentView === "data-sync",
+    },
+    {
+      key: "shift",
+      label: "Shift Log",
+      icon: <FileText className="w-4 h-4 flex-shrink-0" />,
+    },
+    {
+      key: "whatif",
+      label: "What-If Scenarios",
+      icon: <BarChart3 className="w-4 h-4 flex-shrink-0" />,
+      onClick: handleWhatIfClick,
+      active: currentView === "whatif-tool",
+    },
+  ].filter((row) => navMatches(row.label, q))
+
   return (
     <div className="px-2 flex flex-col gap-0.5">
-      <PanelNavItem
-        icon={<Database className="w-4 h-4 flex-shrink-0" />}
-        label="Data &amp; Sync"
-        onClick={handleDataSyncClick}
-        active={currentView === "data-sync"}
-      />
-      <PanelNavItem
-        icon={<FileText className="w-4 h-4 flex-shrink-0" />}
-        label="Shift Log"
-      />
+      {rows.length === 0 ? (
+        <p className="text-xs text-sidebar-muted px-1 py-2">No items match.</p>
+      ) : (
+        rows.map((row) => (
+          <PanelNavItem
+            key={row.key}
+            icon={row.icon}
+            label={row.label}
+            onClick={row.onClick}
+            active={row.active}
+          />
+        ))
+      )}
     </div>
   )
 }
@@ -461,11 +563,20 @@ function InsightsPanel() {
 /* ═══════════════════════════════════════════════════════════════════════════
    COMMS PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
-function CommsPanel() {
+function CommsPanel({ searchQuery }: { searchQuery: string }) {
+  const q = searchQuery
+  const items = [
+    { key: "chat", label: "Chat", icon: <MessageSquare className="w-4 h-4 flex-shrink-0" /> },
+    { key: "alerts", label: "Alerts", icon: <Bell className="w-4 h-4 flex-shrink-0" /> },
+  ].filter((row) => navMatches(row.label, q))
+
   return (
     <div className="px-2 flex flex-col gap-0.5">
-      <PanelNavItem icon={<MessageSquare className="w-4 h-4 flex-shrink-0" />} label="Chat" />
-      <PanelNavItem icon={<Bell className="w-4 h-4 flex-shrink-0" />} label="Alerts" />
+      {items.length === 0 ? (
+        <p className="text-xs text-sidebar-muted px-1 py-2">No items match.</p>
+      ) : (
+        items.map((row) => <PanelNavItem key={row.key} icon={row.icon} label={row.label} />)
+      )}
     </div>
   )
 }
@@ -473,12 +584,21 @@ function CommsPanel() {
 /* ═══════════════════════════════════════════════════════════════════════════
    SETTINGS PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
-function SettingsPanel() {
+function SettingsPanel({ searchQuery }: { searchQuery: string }) {
+  const q = searchQuery
+  const items = [
+    { key: "gen", label: "General", icon: <Settings className="w-4 h-4 flex-shrink-0" /> },
+    { key: "int", label: "Integrations", icon: <Database className="w-4 h-4 flex-shrink-0" /> },
+    { key: "notif", label: "Notifications", icon: <Bell className="w-4 h-4 flex-shrink-0" /> },
+  ].filter((row) => navMatches(row.label, q))
+
   return (
     <div className="px-2 flex flex-col gap-0.5">
-      <PanelNavItem icon={<Settings className="w-4 h-4 flex-shrink-0" />} label="General" />
-      <PanelNavItem icon={<Database className="w-4 h-4 flex-shrink-0" />} label="Integrations" />
-      <PanelNavItem icon={<Bell className="w-4 h-4 flex-shrink-0" />} label="Notifications" />
+      {items.length === 0 ? (
+        <p className="text-xs text-sidebar-muted px-1 py-2">No items match.</p>
+      ) : (
+        items.map((row) => <PanelNavItem key={row.key} icon={row.icon} label={row.label} />)
+      )}
     </div>
   )
 }
@@ -506,11 +626,7 @@ function PanelNavItem({ icon, label, onClick, active, children }: PanelNavItemPr
       )}
     >
       {icon}
-      {/* dangerouslySetInnerHTML used to support &amp; in label strings */}
-      <span
-        className="truncate text-left"
-        dangerouslySetInnerHTML={{ __html: label }}
-      />
+      <span className="truncate text-left">{label}</span>
       {children}
     </button>
   )

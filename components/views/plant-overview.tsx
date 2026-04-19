@@ -1,7 +1,7 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, plantDocuments, dashboardCards } from "@/lib/data"
+import { sites, plantDocuments, dashboardCards, getEquipmentDashboardThumbnail } from "@/lib/data"
 import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniPieChart, MiniBarChart } from "@/components/mini-charts"
@@ -10,13 +10,18 @@ import { cn } from "@/lib/utils"
 import { AIHealthSummaryCard } from "@/components/ai/feature3-health-summary"
 // FEATURE 5 — P&ID Anomaly Overlay
 import { PIDAnomalyOverlay } from "@/components/ai/feature5-pid-anomaly"
+import { useState } from "react"
+import { DashboardTabStack } from "@/components/ui/dashboard-tab-stack"
 
 export function PlantOverview() {
-  const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded, expandedEquipment } = useAppStore()
+  const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded, expandedEquipment, addRecentDashboard } = useAppStore()
+  const [selectedFilter, setSelectedFilter] = useState("All")
+  const [expandedEquipStack, setExpandedEquipStack] = useState<string | null>(null)
 
   const handleDashboardClick = (card: any) => {
     // Map "Equipment: a" -> "equipment-a" safely
-    const equipId = card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
+    const equipId = card.equipId || card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
+    addRecentDashboard(card.id)
     setCurrentPath({
       ...currentPath,
       equipment: equipId,
@@ -43,6 +48,16 @@ export function PlantOverview() {
     setCurrentView("equipment")
     toggleEquipmentExpanded(equipmentId)
   }
+
+  // grouping cards
+  const plantCards = dashboardCards.filter(c => plant.equipment.some(eq => eq.id === c.equipId))
+  const filteredCards = selectedFilter === "All" ? plantCards : plantCards.filter(c => c.equipment === selectedFilter)
+  
+  const groupedCards = filteredCards.reduce((acc, card) => {
+    if (!acc[card.equipId]) acc[card.equipId] = { equipmentName: card.equipment, cards: [] }
+    acc[card.equipId].cards.push(card)
+    return acc
+  }, {} as Record<string, { equipmentName: string, cards: any[] }>)
 
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
@@ -131,10 +146,18 @@ export function PlantOverview() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Dashboards of {plant.name}</h2>
               <div className="flex items-center gap-2">
-                <select className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm">
-                  <option>Equipment a</option>
-                  <option>Equipment b</option>
-                  <option>Equipment c</option>
+                <select 
+                  className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm"
+                  value={selectedFilter}
+                  onChange={(e) => {
+                    setSelectedFilter(e.target.value)
+                    setExpandedEquipStack(null)
+                  }}
+                >
+                  <option value="All">All Equipments</option>
+                  {plant.equipment.map(eq => (
+                    <option key={eq.id} value={eq.name}>{eq.name}</option>
+                  ))}
                 </select>
                 <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
                   <Plus className="w-4 h-4 text-muted-foreground" />
@@ -148,13 +171,32 @@ export function PlantOverview() {
               </div>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {dashboardCards.slice(0, 2).map((card, idx) => (
-                <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer">
-                  {/* FEATURE 4: pass cardIndex for AI insight strip selection */}
-                  <DashboardCard card={card} cardIndex={idx} />
-                </div>
-              ))}
+            <div className="flex gap-4 overflow-x-auto pb-10 pt-6">
+              {selectedFilter === "All" ? (
+                Object.entries(groupedCards).map(([equipId, group]) => (
+                  <DashboardTabStack
+                    key={equipId}
+                    equipId={equipId}
+                    equipmentName={group.equipmentName}
+                    cards={group.cards}
+                    isExpanded={expandedEquipStack === equipId}
+                    autoExpand={Object.keys(groupedCards).length === 1}
+                    onExpand={() => setExpandedEquipStack(equipId)}
+                    onCollapse={() => setExpandedEquipStack(null)}
+                    onCardClick={handleDashboardClick}
+                  />
+                ))
+              ) : (
+                filteredCards.map((card, idx) => (
+                  <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer flex-shrink-0">
+                    <DashboardCard
+                      card={card}
+                      cardIndex={idx}
+                      thumbnailSrc={getEquipmentDashboardThumbnail(card.equipId)}
+                    />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -170,10 +212,18 @@ export function PlantOverview() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Dashboards of {plant.name}</h2>
               <div className="flex items-center gap-2">
-                <select className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm">
-                  <option>Equipment a</option>
-                  <option>Equipment b</option>
-                  <option>Equipment c</option>
+                <select 
+                  className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm"
+                  value={selectedFilter}
+                  onChange={(e) => {
+                    setSelectedFilter(e.target.value)
+                    setExpandedEquipStack(null)
+                  }}
+                >
+                  <option value="All">All Equipments</option>
+                  {plant.equipment.map(eq => (
+                    <option key={eq.id} value={eq.name}>{eq.name}</option>
+                  ))}
                 </select>
                 <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
                   <Plus className="w-4 h-4 text-muted-foreground" />
@@ -187,12 +237,31 @@ export function PlantOverview() {
               </div>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {dashboardCards.slice(0, 2).map((card, idx) => (
-                <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer">
-                  <DashboardCard card={card} cardIndex={idx} />
-                </div>
-              ))}
+            <div className="flex gap-4 overflow-x-auto pb-6 pt-2">
+              {selectedFilter === "All" ? (
+                Object.entries(groupedCards).map(([equipId, group]) => (
+                  <DashboardTabStack
+                    key={equipId}
+                    equipId={equipId}
+                    equipmentName={group.equipmentName}
+                    cards={group.cards}
+                    isExpanded={expandedEquipStack === equipId}
+                    onExpand={() => setExpandedEquipStack(equipId)}
+                    onCollapse={() => setExpandedEquipStack(null)}
+                    onCardClick={handleDashboardClick}
+                  />
+                ))
+              ) : (
+                filteredCards.map((card, idx) => (
+                  <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer flex-shrink-0">
+                    <DashboardCard
+                      card={card}
+                      cardIndex={idx}
+                      thumbnailSrc={getEquipmentDashboardThumbnail(card.equipId)}
+                    />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -207,8 +276,8 @@ export function PlantOverview() {
         <AIHealthSummaryCard level="plant" />
         <h3 className="font-semibold text-foreground mb-4">Plant Information</h3>
         <div className="space-y-2 mb-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-3 bg-muted rounded" style={{ width: `${50 + Math.random() * 40}%` }} />
+          {[75, 60, 85, 45, 70].map((width, i) => (
+            <div key={i} className="h-3 bg-muted rounded" style={{ width: `${width}%` }} />
           ))}
         </div>
         <hr className="border-border my-4" />
