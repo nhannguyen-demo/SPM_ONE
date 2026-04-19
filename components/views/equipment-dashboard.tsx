@@ -1,20 +1,22 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, equipmentKPIs, dashboardCards } from "@/lib/data"
+import { sites, equipmentKPIs, dashboardCards, plantDocuments } from "@/lib/data"
 import {
   Maximize2,
   Minimize2,
   GripVertical,
   Trash2,
   Plus,
+  ExternalLink,
+  Search,
 } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { ModuleLibrary } from "@/components/module-library"
 import { Equipment3DViewer } from "@/components/equipment-3d"
 import { cn } from "@/lib/utils"
 import { useState, useCallback } from "react"
-import ReactGridLayout, { Layout } from "react-grid-layout"
+import { Responsive as ResponsiveGridLayout, Layout } from "react-grid-layout"
 
 // CSS for react-grid-layout (must be imported here for Next.js)
 import "react-grid-layout/css/styles.css"
@@ -249,7 +251,7 @@ export function EquipmentDashboard() {
   const currentLayouts: Layout[] = currentGrid.map(gw => gw.layout)
 
   // On layout change (drag or resize)
-  const handleLayoutChange = (newLayout: Layout[]) => {
+  const handleLayoutChange = (newLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     setGrids(prev => {
       const tabGrid = prev[activeTab] ? [...prev[activeTab]] : []
       const updated = tabGrid.map(gw => {
@@ -347,10 +349,11 @@ export function EquipmentDashboard() {
                 </div>
               )}
               <div className="p-2">
-                <ReactGridLayout
+                <ResponsiveGridLayout
                   className="layout"
-                  layout={currentLayouts}
-                  cols={12}
+                  layouts={{ lg: currentLayouts, md: currentLayouts, sm: currentLayouts }}
+                  breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+                  cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
                   rowHeight={80}
                   width={Math.max(gridWidth - 16, 200)}
                   isDraggable={isEditMode}
@@ -399,7 +402,7 @@ export function EquipmentDashboard() {
                       </div>
                     </div>
                   ))}
-                </ReactGridLayout>
+                </ResponsiveGridLayout>
               </div>
             </div>
 
@@ -482,6 +485,70 @@ export function EquipmentDashboard() {
           </div>
         )}
       </div>
+
+      {/* Right Panel Slot - Shared between Library and Info */}
+      {!dashboardExpanded && (
+        <div className="w-72 flex-shrink-0 bg-card border-l border-border flex flex-col overflow-hidden">
+          {showModules ? (
+            <div className="flex-1 overflow-y-auto">
+              <ModuleLibrary onAddModule={addWidget} />
+            </div>
+          ) : (
+            <div className="flex-1 p-4 overflow-y-auto">
+              <h3 className="font-semibold text-foreground mb-4">Equipment Information</h3>
+              <div className="space-y-2 mb-4">
+                 <div className="h-3 bg-muted rounded w-3/4" />
+                 <div className="h-3 bg-muted rounded w-1/2" />
+                 <div className="h-3 bg-muted rounded w-5/6" />
+                 <div className="h-3 bg-muted rounded w-2/3" />
+              </div>
+              <hr className="border-border my-4" />
+              
+              <div className="space-y-3 mb-6">
+                {[1, 2].map(i => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground mr-1" />
+                    <div className="flex-1 grid grid-cols-3 gap-2">
+                      <div className="h-3 bg-muted rounded" />
+                      <div className="h-3 bg-muted rounded" />
+                      <div className="h-3 bg-muted rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-foreground">Equipment Document</h4>
+                <button className="p-1.5 hover:bg-secondary rounded transition-colors">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              <div className="space-y-2 mb-6">
+                {plantDocuments.map((doc, i) => (
+                  <button
+                    key={i}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-secondary/50 hover:bg-secondary rounded-lg text-sm text-foreground transition-colors group"
+                  >
+                    <span className="truncate group-hover:text-primary transition-colors">{doc.name}</span>
+                    <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-2 group-hover:text-primary transition-colors" />
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-8 pb-12"> {/* Added padding to avoid AI Spark overlap */}
+                <h4 className="font-medium text-foreground mb-3">What-If Scenarios</h4>
+                <button
+                   onClick={() => setWhatIfModalOpen(true)}
+                   className="w-full py-4 px-4 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-all shadow-[0_4px_14px_rgba(0,0,0,0.1)] active:scale-[0.98]"
+                >
+                  Run What-If Scenarios
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -586,10 +653,10 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
             { label: 'Uptime', val: '99.9%' },
             { label: 'Quality', val: '98.5%' }
           ].map(k => (
-             <div key={k.label} className="text-center">
-               <div className="text-sm text-muted-foreground">{k.label}</div>
-               <div className="text-3xl font-bold text-foreground">{k.val}</div>
-             </div>
+            <div key={k.label} className="text-center">
+              <div className="text-sm text-muted-foreground">{k.label}</div>
+              <div className="text-3xl font-bold text-foreground">{k.val}</div>
+            </div>
           ))}
         </div>
       );
@@ -601,7 +668,7 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis fontSize={11} tickLine={false} axisLine={false} />
             <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
-            <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+            <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
           </LineChart>
         </ResponsiveContainer>
       );
@@ -621,11 +688,11 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
       return (
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={mockProcessData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-             <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-             <XAxis dataKey="time" fontSize={11} />
-             <YAxis fontSize={11} />
-             <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
-             <Area type="monotone" dataKey="pressure" fill="#ef4444" fillOpacity={0.2} stroke="#ef4444" />
+            <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+            <XAxis dataKey="time" fontSize={11} />
+            <YAxis fontSize={11} />
+            <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
+            <Area type="monotone" dataKey="pressure" fill="#ef4444" fillOpacity={0.2} stroke="#ef4444" />
           </ComposedChart>
         </ResponsiveContainer>
       );
@@ -638,22 +705,22 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
             <YAxis yAxisId="left" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis yAxisId="right" orientation="right" fontSize={11} tickLine={false} axisLine={false} />
             <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
-            <Legend wrapperStyle={{fontSize: '11px', paddingTop: '10px'}} />
+            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
             <Bar yAxisId="left" dataKey="throughput" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
-            <Line yAxisId="right" type="monotone" dataKey="pressure" stroke="#3b82f6" strokeWidth={3} dot={{r: 4}} />
+            <Line yAxisId="right" type="monotone" dataKey="pressure" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} />
           </ComposedChart>
         </ResponsiveContainer>
       );
     case "proc-stream":
       return (
         <div className="flex gap-4 overflow-x-auto h-full items-center">
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} className="min-w-[150px] p-4 bg-background rounded-lg border border-border shrink-0">
-                <div className="text-xs text-muted-foreground mb-1">Process Point {i}</div>
-                <div className="text-xl font-bold">{(Math.random() * 100).toFixed(1)}</div>
-              </div>
-            ))}
-         </div>
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="min-w-[150px] p-4 bg-background rounded-lg border border-border shrink-0">
+              <div className="text-xs text-muted-foreground mb-1">Process Point {i}</div>
+              <div className="text-xl font-bold">{(45.5 + (i * 7.2) % 30).toFixed(1)}</div>
+            </div>
+          ))}
+        </div>
       );
     case "fatigue-trend":
       return (
@@ -662,8 +729,8 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
             <AreaChart data={mockLineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
@@ -694,9 +761,9 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
     case "fatigue-rem":
       return (
         <div className="flex flex-col items-center justify-center h-full">
-            <div className="text-4xl font-black text-rose-500 mb-2">12,405</div>
-            <div className="text-sm text-muted-foreground w-3/4 text-center">Cycles remaining until critical threshold reached</div>
-         </div>
+          <div className="text-4xl font-black text-rose-500 mb-2">12,405</div>
+          <div className="text-sm text-muted-foreground w-3/4 text-center">Cycles remaining until critical threshold reached</div>
+        </div>
       );
     case "bulge-bar":
       return (
@@ -738,21 +805,21 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
     case "crack-flaws":
       return (
         <div className="grid grid-cols-2 gap-2 h-full items-center p-1">
-           {[1,2,3,4].map(n => (
-             <div key={n} className="bg-secondary/50 p-3 rounded-lg flex flex-col justify-center items-center">
-                <span className="text-xl mb-1">🔍</span>
-                <span className="text-xs font-medium">Flaw {n}</span>
-                <span className="text-xs text-rose-500">{(Math.random() * 5).toFixed(2)} mm</span>
-             </div>
-           ))}
+          {[1, 2, 3, 4].map(n => (
+            <div key={n} className="bg-secondary/50 p-3 rounded-lg flex flex-col justify-center items-center">
+              <span className="text-xl mb-1">🔍</span>
+              <span className="text-xs font-medium">Flaw {n}</span>
+              <span className="text-xs text-rose-500">{(Math.random() * 5).toFixed(2)} mm</span>
+            </div>
+          ))}
         </div>
       );
     case "generic":
     default:
       return (
         <div className="flex flex-col items-center justify-center h-full opacity-50">
-           <span className="text-3xl mb-2">📊</span>
-           <span className="text-sm text-muted-foreground">New Widget</span>
+          <span className="text-3xl mb-2">📊</span>
+          <span className="text-sm text-muted-foreground">New Widget</span>
         </div>
       );
   }

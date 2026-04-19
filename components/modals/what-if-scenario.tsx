@@ -152,18 +152,28 @@ export function WhatIfScenarioModal() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: 8 }).map((_, i) => (
+                  {[
+                    { p: "Inlet Pressure", v: "150.5", u: "barg" },
+                    { p: "Inlet Temp", v: "450.2", u: "°C" },
+                    { p: "Mass Flow", v: "12.4", u: "kg/s" },
+                    { p: "Molecular Wt", v: "28.05", u: "g/mol" },
+                    { p: "Cp/Cv", v: "1.32", u: "-" },
+                    { p: "Z Factor", v: "0.98", u: "-" },
+                    { p: "Pipe Diameter", v: "250", u: "mm" },
+                    { p: "Wall Thickness", v: "12.5", u: "mm" },
+                  ].map((param, i) => (
                     <tr key={i} className="border-t border-border">
-                      <td className="px-3 py-2 text-muted-foreground">NaN</td>
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{param.p}</td>
                       <td className="px-3 py-2">
                         <div className="relative">
-                          <select className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs appearance-none">
-                            <option>NaN</option>
-                          </select>
-                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                          <input 
+                            type="text" 
+                            defaultValue={param.v}
+                            className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                          />
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">NaN</td>
+                      <td className="px-3 py-2 text-muted-foreground">{param.u}</td>
                     </tr>
                   ))}
                 </tbody>

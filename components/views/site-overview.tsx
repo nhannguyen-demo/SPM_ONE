@@ -172,18 +172,26 @@ export function SiteOverview() {
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-10 pt-6">
-              {Object.entries(groupedCards).map(([equipId, group]) => (
-                <DashboardTabStack
-                  key={equipId}
-                  equipId={equipId}
-                  equipmentName={group.equipmentName}
-                  cards={group.cards}
-                  isExpanded={expandedEquipStack === equipId}
-                  autoExpand={Object.keys(groupedCards).length === 1}
-                  onExpand={() => setExpandedEquipStack(equipId)}
-                  onCardClick={handleDashboardClick}
-                />
-              ))}
+              {selectedFilter === "All" ? (
+                Object.entries(groupedCards).map(([equipId, group]) => (
+                  <DashboardTabStack
+                    key={equipId}
+                    equipId={equipId}
+                    equipmentName={group.equipmentName}
+                    cards={group.cards}
+                    isExpanded={expandedEquipStack === equipId}
+                    autoExpand={Object.keys(groupedCards).length === 1}
+                    onExpand={() => setExpandedEquipStack(equipId)}
+                    onCardClick={handleDashboardClick}
+                  />
+                ))
+              ) : (
+                filteredCards.map((card, idx) => (
+                  <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer flex-shrink-0">
+                    <DashboardCard card={card} cardIndex={idx} />
+                  </div>
+                ))
+              )}
               <button className="flex-shrink-0 w-48 h-36 border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors mt-5">
                 <ChevronRight className="w-6 h-6 text-muted-foreground" />
               </button>
@@ -253,8 +261,8 @@ export function SiteOverview() {
         <AIHealthSummaryCard level="site" />
         <h3 className="font-semibold text-foreground mb-4">Site Information</h3>
         <div className="space-y-2 mb-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-3 bg-muted rounded" style={{ width: `${60 + Math.random() * 30}%` }} />
+          {[75, 60, 85, 45].map((width, i) => (
+            <div key={i} className="h-3 bg-muted rounded" style={{ width: `${width}%` }} />
           ))}
         </div>
         <hr className="border-border my-4" />

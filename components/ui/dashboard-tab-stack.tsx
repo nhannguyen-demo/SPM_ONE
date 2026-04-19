@@ -64,17 +64,17 @@ export function DashboardTabStack({
 
       {/* Badge - floated above the top edge */}
       <div
-        className="absolute -top-3 right-2 z-20 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg transition-all duration-300 group-hover:scale-105"
+        className="absolute -top-5 right-1 z-20 bg-primary text-primary-foreground text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow-lg transition-all duration-300 group-hover:scale-110"
       >
-        {cards.length} tabs
+        {cards.length} TABS
       </div>
 
       {/* Shadow cards behind — stacked offset going right+down */}
       {Array.from({ length: stackDepth }).map((_, i) => {
         const depth = stackDepth - i // 2,1
-        const offsetX = isHovered ? depth * 10 : depth * 5
-        const offsetY = isHovered ? depth * -6 : depth * -3
-        const scale = 1 - depth * 0.03
+        const offsetX = isHovered ? depth * 8 : depth * 4
+        const offsetY = isHovered ? depth * -4 : depth * -2
+        const scale = 1 - depth * 0.02
         return (
           <div
             key={i}
@@ -82,7 +82,7 @@ export function DashboardTabStack({
             style={{
               transform: `translate(${offsetX}px, ${offsetY}px) scale(${scale})`,
               zIndex: i + 1,
-              opacity: 0.85 - i * 0.15,
+              opacity: 0.8 - i * 0.2,
             }}
           />
         )
@@ -94,7 +94,7 @@ export function DashboardTabStack({
       </div>
 
       {/* Expand hint */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[10px] text-primary font-semibold bg-primary/10 px-2 py-0.5 rounded-full z-20 whitespace-nowrap">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[10px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full z-20 whitespace-nowrap backdrop-blur-sm">
         Click to expand ↔
       </div>
     </div>

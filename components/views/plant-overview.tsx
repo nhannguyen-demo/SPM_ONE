@@ -171,18 +171,26 @@ export function PlantOverview() {
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-10 pt-6">
-              {Object.entries(groupedCards).map(([equipId, group]) => (
-                <DashboardTabStack
-                  key={equipId}
-                  equipId={equipId}
-                  equipmentName={group.equipmentName}
-                  cards={group.cards}
-                  isExpanded={expandedEquipStack === equipId}
-                  autoExpand={Object.keys(groupedCards).length === 1}
-                  onExpand={() => setExpandedEquipStack(equipId)}
-                  onCardClick={handleDashboardClick}
-                />
-              ))}
+              {selectedFilter === "All" ? (
+                Object.entries(groupedCards).map(([equipId, group]) => (
+                  <DashboardTabStack
+                    key={equipId}
+                    equipId={equipId}
+                    equipmentName={group.equipmentName}
+                    cards={group.cards}
+                    isExpanded={expandedEquipStack === equipId}
+                    autoExpand={Object.keys(groupedCards).length === 1}
+                    onExpand={() => setExpandedEquipStack(equipId)}
+                    onCardClick={handleDashboardClick}
+                  />
+                ))
+              ) : (
+                filteredCards.map((card, idx) => (
+                  <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer flex-shrink-0">
+                    <DashboardCard card={card} cardIndex={idx} />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -224,17 +232,25 @@ export function PlantOverview() {
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-6 pt-2">
-              {Object.entries(groupedCards).map(([equipId, group]) => (
-                <DashboardTabStack
-                  key={equipId}
-                  equipId={equipId}
-                  equipmentName={group.equipmentName}
-                  cards={group.cards}
-                  isExpanded={expandedEquipStack === equipId}
-                  onExpand={() => setExpandedEquipStack(equipId)}
-                  onCardClick={handleDashboardClick}
-                />
-              ))}
+              {selectedFilter === "All" ? (
+                Object.entries(groupedCards).map(([equipId, group]) => (
+                  <DashboardTabStack
+                    key={equipId}
+                    equipId={equipId}
+                    equipmentName={group.equipmentName}
+                    cards={group.cards}
+                    isExpanded={expandedEquipStack === equipId}
+                    onExpand={() => setExpandedEquipStack(equipId)}
+                    onCardClick={handleDashboardClick}
+                  />
+                ))
+              ) : (
+                filteredCards.map((card, idx) => (
+                  <div key={card.id} onClick={() => handleDashboardClick(card)} className="cursor-pointer flex-shrink-0">
+                    <DashboardCard card={card} cardIndex={idx} />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -249,8 +265,8 @@ export function PlantOverview() {
         <AIHealthSummaryCard level="plant" />
         <h3 className="font-semibold text-foreground mb-4">Plant Information</h3>
         <div className="space-y-2 mb-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-3 bg-muted rounded" style={{ width: `${50 + Math.random() * 40}%` }} />
+          {[75, 60, 85, 45, 70].map((width, i) => (
+            <div key={i} className="h-3 bg-muted rounded" style={{ width: `${width}%` }} />
           ))}
         </div>
         <hr className="border-border my-4" />

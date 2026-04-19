@@ -313,10 +313,10 @@ function PortfolioPanel({
             <div key={site.id}>
               {/* Site row */}
               <div className="relative group/site">
-                <button
+                <div
                   onClick={() => handleSiteClick(site.id)}
                   className={cn(
-                    "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                    "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
                     isSiteActive
                       ? "bg-sidebar-active text-white"
                       : "hover:bg-sidebar-hover text-sidebar-foreground"
@@ -337,7 +337,7 @@ function PortfolioPanel({
                   </button>
                   <Building2 className="w-4 h-4 flex-shrink-0" />
                   <span className="truncate">{site.name}</span>
-                </button>
+                </div>
               </div>
 
               {/* Plants */}
@@ -349,10 +349,10 @@ function PortfolioPanel({
 
                     return (
                       <div key={plant.id}>
-                        <button
+                        <div
                           onClick={() => handlePlantClick(site.id, plant.id)}
                           className={cn(
-                            "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                            "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
                             isPlantActive
                               ? "bg-sidebar-active text-white"
                               : "hover:bg-sidebar-hover text-sidebar-foreground"
@@ -377,7 +377,7 @@ function PortfolioPanel({
                           )}
                           <Factory className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate">{plant.name}</span>
-                        </button>
+                        </div>
 
                         {/* Equipment */}
                         {isPlantExpanded && plant.equipment.length > 0 && (
