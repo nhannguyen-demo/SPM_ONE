@@ -202,3 +202,190 @@ export const whatIfResults = [
   { checked: true, col1: "Parameter 7", col2: "95.1", col3: "Pass" },
   { checked: true, col1: "Parameter 8", col2: "110.7", col3: "Pass" },
 ]
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   HOME PAGE MOCK DATA
+───────────────────────────────────────────────────────────────────────────── */
+
+export type ChangeLogType = "dashboard" | "operation"
+
+export interface ChangeLogEntry {
+  id: string
+  timestamp: string
+  user: string
+  action: string
+  location: string
+  type: ChangeLogType
+}
+
+export const changeLogEntries: ChangeLogEntry[] = [
+  {
+    id: "cl-1",
+    timestamp: "2026-04-19 19:42",
+    user: "Nhan N.",
+    action: "Added Fatigue Trend widget to Coke Drum — Fatigue dashboard",
+    location: "Site X › Plant 1 › Coke Drum › Fatigue",
+    type: "dashboard",
+  },
+  {
+    id: "cl-2",
+    timestamp: "2026-04-19 17:10",
+    user: "Ben T.",
+    action: "Updated operating pressure set-point from 2.1 bar to 2.3 bar",
+    location: "Site X › Plant 1 › Coke Drum",
+    type: "operation",
+  },
+  {
+    id: "cl-3",
+    timestamp: "2026-04-19 14:55",
+    user: "Alex P.",
+    action: "Ran What-If Scenario: 'Fix Pressure' on HCU",
+    location: "Site X › Plant 1 › HCU",
+    type: "operation",
+  },
+  {
+    id: "cl-4",
+    timestamp: "2026-04-18 22:30",
+    user: "Nhan N.",
+    action: "Rearranged widgets on HCU — Reactor Health dashboard",
+    location: "Site X › Plant 1 › HCU › Reactor Health",
+    type: "dashboard",
+  },
+  {
+    id: "cl-5",
+    timestamp: "2026-04-18 16:15",
+    user: "Simon K.",
+    action: "Uploaded new P&ID diagram for Plant 1",
+    location: "Site X › Plant 1",
+    type: "operation",
+  },
+  {
+    id: "cl-6",
+    timestamp: "2026-04-17 09:05",
+    user: "Ben T.",
+    action: "Removed Summary KPIs widget from Monitoring dashboard",
+    location: "Site X › Plant 1 › Coke Drum › Monitoring",
+    type: "dashboard",
+  },
+  {
+    id: "cl-7",
+    timestamp: "2026-04-16 11:00",
+    user: "Alex P.",
+    action: "Flagged high ΔP reading on Pump ND.1X02 for review",
+    location: "Site X › Plant 1 › Pump ND.1X02",
+    type: "operation",
+  },
+  {
+    id: "cl-8",
+    timestamp: "2026-04-15 08:45",
+    user: "Nhan N.",
+    action: "Pinned Cracking dashboard to favourites",
+    location: "Site X › Plant 1 › Coke Drum › Cracking",
+    type: "dashboard",
+  },
+]
+
+export type DocumentCategory = "Uploaded" | "Shared"
+export type DocumentFileType = "pdf" | "docx" | "xlsx" | "link"
+
+export interface UserDocument {
+  id: string
+  name: string
+  fileType: DocumentFileType
+  category: DocumentCategory
+  siteId?: string
+  plantId?: string
+  equipmentId?: string
+  size: string
+  date: string
+  sharedBy?: string
+}
+
+export const userDocuments: UserDocument[] = [
+  {
+    id: "doc-1",
+    name: "Coke Drum Fatigue Assessment 2026.pdf",
+    fileType: "pdf",
+    category: "Uploaded",
+    siteId: "site-x",
+    plantId: "plant-1",
+    equipmentId: "equipment-a",
+    size: "4.2 MB",
+    date: "2026-04-10",
+  },
+  {
+    id: "doc-2",
+    name: "HCU Reactor Maintenance Procedure.docx",
+    fileType: "docx",
+    category: "Uploaded",
+    siteId: "site-x",
+    plantId: "plant-1",
+    equipmentId: "equipment-b",
+    size: "1.8 MB",
+    date: "2026-04-08",
+  },
+  {
+    id: "doc-3",
+    name: "Plant 1 — Q1 2026 Inspection Report.xlsx",
+    fileType: "xlsx",
+    category: "Shared",
+    siteId: "site-x",
+    plantId: "plant-1",
+    size: "890 KB",
+    date: "2026-04-05",
+    sharedBy: "Simon K.",
+  },
+  {
+    id: "doc-4",
+    name: "Pump ND.1X02 Vibration Logs Mar-26.xlsx",
+    fileType: "xlsx",
+    category: "Uploaded",
+    siteId: "site-x",
+    plantId: "plant-1",
+    equipmentId: "equipment-c",
+    size: "220 KB",
+    date: "2026-04-01",
+  },
+  {
+    id: "doc-5",
+    name: "Global Safety Standards Rev. 12.pdf",
+    fileType: "pdf",
+    category: "Shared",
+    siteId: "site-x",
+    size: "12.4 MB",
+    date: "2026-03-28",
+    sharedBy: "Alex P.",
+  },
+  {
+    id: "doc-6",
+    name: "Coker Maintenance 101.docx",
+    fileType: "docx",
+    category: "Shared",
+    siteId: "site-x",
+    plantId: "plant-1",
+    size: "560 KB",
+    date: "2026-03-20",
+    sharedBy: "Ben T.",
+  },
+  {
+    id: "doc-7",
+    name: "Site X Asset Register 2026.xlsx",
+    fileType: "xlsx",
+    category: "Uploaded",
+    siteId: "site-x",
+    size: "3.1 MB",
+    date: "2026-03-15",
+  },
+  {
+    id: "doc-8",
+    name: "HCU Process Control SOP.pdf",
+    fileType: "pdf",
+    category: "Shared",
+    siteId: "site-x",
+    plantId: "plant-1",
+    equipmentId: "equipment-b",
+    size: "2.7 MB",
+    date: "2026-03-10",
+    sharedBy: "Nhan N.",
+  },
+]

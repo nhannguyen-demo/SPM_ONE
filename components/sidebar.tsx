@@ -22,6 +22,7 @@ import {
   Search,
   X,
   PanelLeftClose,
+  Home,
 } from "lucide-react"
 import {
   Tooltip,
@@ -76,6 +77,7 @@ const MODULES: {
   icon: React.ReactNode
   label: string
 }[] = [
+  { key: "home",      icon: <Home className="w-5 h-5" />,           label: "Home"       },
   { key: "portfolio",  icon: <Building2 className="w-5 h-5" />,      label: "Assets"  },
   { key: "workspace",  icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard"  },
   { key: "insights",   icon: <BarChart3 className="w-5 h-5" />,       label: "Tools"   },
@@ -84,6 +86,7 @@ const MODULES: {
 ]
 
 const NAV_SEARCH_PLACEHOLDERS: Record<ActiveModule, string> = {
+  home: "Search home…",
   portfolio: "Search assets…",
   workspace: "Search dashboards…",
   insights: "Search tools…",
@@ -95,9 +98,15 @@ const NAV_SEARCH_PLACEHOLDERS: Record<ActiveModule, string> = {
    MODULE RAIL — narrow 56px strip always visible on the far left
    ═══════════════════════════════════════════════════════════════════════════ */
 function ModuleRail() {
-  const { activeModule, setActiveModule, isPanelOpen, togglePanel } = useAppStore()
+  const { activeModule, setActiveModule, isPanelOpen, togglePanel, setCurrentView } = useAppStore()
 
   const handleModuleClick = (key: ActiveModule) => {
+    if (key === "home") {
+      // Home always navigates directly, never opens panel
+      setActiveModule(key)
+      setCurrentView("home")
+      return
+    }
     if (key === activeModule && isPanelOpen) {
       // Same icon clicked again → collapse panel
       togglePanel()
@@ -182,6 +191,7 @@ function ContextualPanel() {
   } = useAppStore()
 
   const MODULE_LABELS: Record<ActiveModule, string> = {
+    home:      "Home",
     portfolio: "Assets",
     workspace: "Dashboard",
     insights:  "Tools",
@@ -230,12 +240,32 @@ function ContextualPanel() {
 
       {/* Panel body — scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
+        {activeModule === "home"      && <HomePanel />}
         {activeModule === "portfolio"  && <PortfolioPanel searchQuery={searchQuery} />}
         {activeModule === "workspace"  && <WorkspacePanel searchQuery={searchQuery} />}
         {activeModule === "insights"   && <InsightsPanel searchQuery={searchQuery} />}
         {activeModule === "comms"      && <CommsPanel searchQuery={searchQuery} />}
         {activeModule === "settings"   && <SettingsPanel searchQuery={searchQuery} />}
       </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOME PANEL — shown when Home module is active (panel is closed; this is a
+   fallback in case the panel is somehow open)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function HomePanel() {
+  const { setCurrentView, setViewMode } = useAppStore()
+  return (
+    <div className="px-3 py-2">
+      <button
+        onClick={() => { setCurrentView("home"); setViewMode("view") }}
+        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm bg-sidebar-active text-white"
+      >
+        <Home className="w-4 h-4 flex-shrink-0" />
+        <span>Home</span>
+      </button>
     </div>
   )
 }

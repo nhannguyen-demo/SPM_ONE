@@ -4,7 +4,7 @@
 SPM ONE is an industrial asset performance management (APM) web application prototype. It provides Integrity Engineers with a hierarchical view of their asset portfolio — from site level down to individual equipment — including real-time interactive KPI dashboards built with Recharts, a Drag-and-Drop widget customization system, P&ID diagrams, a What-If scenario modeller, and an AI-assisted insight layer. The app is built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, and shadcn/ui.
 
 ## Where are we in the project, what have we recently done?
-Mid-deployment — Dashboards & Navigation Overhaul. The UI has transitioned to a highly responsive, "iPhone-like" free-form workspace. The Equipment Dashboard was migrated from `@dnd-kit` to `react-grid-layout` to support dynamic resizing and truly free-form widget arrangement across different screen sizes. Visual hierarchy was refined for "Tab Stacks" on site/plant levels, including conditional rendering that displays individual dashboard cards when specific asset filters are active. Major stability work resolved blocking dependency errors (`react-resizable`), hydration mismatches (deterministic skeleton widths), and semantic HTML issues (nested buttons in sidebar). The What-If scenario modeller was also polished with realistic mock data and improved modal integration.
+Mid-deployment — Home Page & Dashboard Intelligence. A new top-level **Home** page is now the default landing view. It contains 6 live modules: (1) Global search with real-time autofill across all assets/dashboards, (2) AI Summary mockup with safe-vetted notices and suggested actions, (3) Recent Dashboards with LRU tracking (max 6), (4) Favourite Dashboards with per-tab bookmarking from the Equipment Dashboard, (5) Change Log table for dashboard and operational changes, and (6) Your Documents library with category/asset filtering. The Equipment Dashboard gained a `<Bookmark>` icon button that toggles favourites. All navigation handlers (site, plant, equipment) now call `addRecentDashboard` to keep the LRU list accurate. The Module Rail gained a "Home" entry as the first item; clicking it navigates directly without opening the contextual panel.
 
 ## Tech Stack
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript 5.7
@@ -39,6 +39,7 @@ spm-one/
 │   ├── modals/
 │   │   └── what-if-scenario.tsx   ← What-If config + results modals
 │   ├── views/
+│   │   ├── home-view.tsx          ← Screen 0 — Home (default landing: search, AI, recents, favourites, changelog, docs)
 │   │   ├── site-overview.tsx      ← Screen 1 — Site level
 │   │   ├── plant-overview.tsx     ← Screen 2 — Plant level
 │   │   ├── equipment-dashboard.tsx← Screens 3–6 — Equipment tabs
@@ -50,6 +51,7 @@ spm-one/
 │   └── utils.ts             ← cn() helper
 └── public/
     └── images/              ← Drop site-map.jpg and pid-diagram.jpg here
+        └── thumbnails/      ← Dashboard card thumbnails
 ```
 
 ## How to run locally
@@ -89,6 +91,17 @@ pnpm dev
 - [x] Dynamic Sidebar slot in Dashboard (alternates between Library and Info)
 - [x] Fixed NaN values in What-If Modal parameter inputs
 - [x] Resolved react-resizable build errors
+- [x] Search input implemented in navigation panels (module rail & contextual panel)
+- [x] Dashboard cards enhanced with image thumbnail support
+- [x] Conditional filtering implemented for dashboard views
+- [x] Equipment dashboard layout refined and widget management improved
+- [x] **Home page** — new default landing view with 6 modules
+- [x] **Global Search** — real-time autofill across sites, plants, equipment, dashboard tabs
+- [x] **AI Summary** — mockup critical notices + safe suggested actions panel
+- [x] **Recent Dashboards** — live LRU list (max 6), auto-populated by all navigation paths
+- [x] **Favourite Dashboards** — bookmark icon on Equipment Dashboard header, shows in Home grid
+- [x] **Change Log** — dashboard + operation changes table with tab filtering
+- [x] **Your Documents** — document library with Uploaded/Shared + asset-level filtering
 - [ ] Features 2–5, 7–10 — not yet wired up / functional
 - [ ] Real data integration (replace mock data in `lib/data.ts`)
 - [ ] Authentication / user management
@@ -98,6 +111,11 @@ pnpm dev
 - [ ] Favorite & Share with me views (navigation items exist, views not built)
 
 ## Key Decisions & Constraints
+- **`currentView: "home"` is the default** — the app opens on the Home page. Do not change the default without discussion.
+- **Home page state is Zustand only** — `recentDashboardIds` and `favouriteDashboardIds` are in-memory only (no localStorage). They reset on hard refresh. Do not add persistence without discussing the approach.
+- **Bookmark is per-tab** — `toggleFavouriteDashboard` operates on a specific `dashboardCard.id`, not an entire equipment. Each tab is independently bookmarkable.
+- **LRU wiring** — `addRecentDashboard(card.id)` must be called in every place a dashboard is opened: `site-overview`, `plant-overview`, `equipment-dashboard` (handleTabChange), and `home-view` card clicks. Keep this consistent if adding new navigation paths.
+- **AI content rules** — AI Summary is a mock. Do not suggest dangerous operational actions (e.g., open/close valves). Only use "check / review / inspect" verbs.
 - **No backend yet** — all data is static mock data in `lib/data.ts`. Do not add API calls until a backend is decided.
 - **State management via Zustand** — all global state (navigation path, view mode, modal open/close, AI flags) lives in `lib/store.ts`. Never manage cross-component state locally.
 - **View routing is manual** — `currentView` in the store drives which `<View />` component renders in `page.tsx`. There is no Next.js file-based routing for sub-views; don't add it without discussion.

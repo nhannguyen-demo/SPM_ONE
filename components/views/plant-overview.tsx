@@ -14,13 +14,14 @@ import { useState } from "react"
 import { DashboardTabStack } from "@/components/ui/dashboard-tab-stack"
 
 export function PlantOverview() {
-  const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded, expandedEquipment } = useAppStore()
+  const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded, expandedEquipment, addRecentDashboard } = useAppStore()
   const [selectedFilter, setSelectedFilter] = useState("All")
   const [expandedEquipStack, setExpandedEquipStack] = useState<string | null>(null)
 
   const handleDashboardClick = (card: any) => {
     // Map "Equipment: a" -> "equipment-a" safely
     const equipId = card.equipId || card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
+    addRecentDashboard(card.id)
     setCurrentPath({
       ...currentPath,
       equipment: equipId,

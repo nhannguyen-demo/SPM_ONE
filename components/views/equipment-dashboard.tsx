@@ -10,6 +10,7 @@ import {
   Plus,
   ExternalLink,
   Search,
+  Bookmark,
 } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { ModuleLibrary, SPM_WIDGET_DRAG_TYPE, type LibraryModule } from "@/components/module-library"
@@ -224,6 +225,9 @@ export function EquipmentDashboard() {
     setWhatIfModalOpen,
     dashboardExpanded,
     setDashboardExpanded,
+    toggleFavouriteDashboard,
+    favouriteDashboardIds,
+    addRecentDashboard,
   } = useAppStore()
 
   // Grid widget + layout state
@@ -255,8 +259,17 @@ export function EquipmentDashboard() {
   const activeTab = currentPath.tab || "Demo Engineer Team's Dashboard"
   const isEditMode = viewMode === "edit" || viewMode === "modules"
 
+  // Find the dashboardCard that matches the current equipment + tab
+  const activeCard = dashboardCards.find(
+    (c) => c.equipId === equipment.id && c.tag === activeTab
+  )
+  const isBookmarked = activeCard ? favouriteDashboardIds.includes(activeCard.id) : false
+
   const handleTabChange = (tab: string) => {
     setCurrentPath({ ...currentPath, tab })
+    // Track recent dashboards when user switches tab
+    const card = dashboardCards.find((c) => c.equipId === equipment.id && c.tag === tab)
+    if (card) addRecentDashboard(card.id)
   }
 
   // Current tab's grid widgets
@@ -369,6 +382,23 @@ export function EquipmentDashboard() {
             {equipment.name} — {activeTab}
           </span>
           <div className="flex items-center gap-2">
+            {!isEditMode && (
+              <button
+                id="bookmark-dashboard-btn"
+                onClick={() => activeCard && toggleFavouriteDashboard(activeCard.id)}
+                disabled={!activeCard}
+                title={isBookmarked ? "Remove from favourites" : "Add to favourites"}
+                className={cn(
+                  "p-2 rounded-lg transition-colors",
+                  isBookmarked
+                    ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
+                    : "hover:bg-secondary text-muted-foreground"
+                )}
+                aria-label={isBookmarked ? "Remove from favourites" : "Favourite this dashboard"}
+              >
+                <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-amber-500")} />
+              </button>
+            )}
             {isEditMode ? (
               <button
                 onClick={() => setViewMode("view")}

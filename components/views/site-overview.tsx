@@ -14,7 +14,7 @@ import { useState } from "react"
 import { DashboardTabStack } from "@/components/ui/dashboard-tab-stack"
 
 export function SiteOverview() {
-  const { currentPath, setCurrentPath, setCurrentView, togglePlantExpanded, dashboardExpanded, setDashboardExpanded } = useAppStore()
+  const { currentPath, setCurrentPath, setCurrentView, togglePlantExpanded, dashboardExpanded, setDashboardExpanded, addRecentDashboard } = useAppStore()
   const [selectedFilter, setSelectedFilter] = useState("All")
   const [expandedEquipStack, setExpandedEquipStack] = useState<string | null>(null)
   
@@ -32,6 +32,7 @@ export function SiteOverview() {
     const equipId = card.equipId || card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
     // Fallback plant
     const plantId = currentPath.plant || "plant-1"
+    addRecentDashboard(card.id)
     setCurrentPath({
       ...currentPath,
       plant: plantId,

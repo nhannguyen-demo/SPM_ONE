@@ -11,7 +11,7 @@ export type NavigationPath = {
 
 export type ViewMode = "view" | "edit" | "modules"
 
-export type ActiveModule = 'portfolio' | 'workspace' | 'insights' | 'comms' | 'settings'
+export type ActiveModule = 'home' | 'portfolio' | 'workspace' | 'insights' | 'comms' | 'settings'
 
 interface AppState {
   // Navigation
@@ -43,8 +43,17 @@ interface AppState {
   // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
-  currentView: "site" | "plant" | "equipment" | "data-sync"
-  setCurrentView: (view: "site" | "plant" | "equipment" | "data-sync") => void
+  currentView: "home" | "site" | "plant" | "equipment" | "data-sync"
+  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "data-sync") => void
+
+  // ── HOME PAGE STATE ───────────────────────────────────────────────────────
+  /** Recently visited dashboard card IDs — newest first, max 6 (LRU). */
+  recentDashboardIds: string[]
+  addRecentDashboard: (cardId: string) => void
+  /** Favourited dashboard card IDs. */
+  favouriteDashboardIds: string[]
+  toggleFavouriteDashboard: (cardId: string) => void
+  // ─────────────────────────────────────────────────────────────────────────
   
   // Dashboard edit mode
   viewMode: ViewMode
@@ -104,11 +113,12 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
   // ── TWO-LAYER NAV STATE ───────────────────────────────────────────────────
-  activeModule: 'portfolio',
-  setActiveModule: (module) => set({ activeModule: module, isPanelOpen: true }),
-  isPanelOpen: true,
+  activeModule: 'home',
+  setActiveModule: (module) => set({ activeModule: module, isPanelOpen: module !== 'home' }),
+  isPanelOpen: false,
   togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
   navPanelSearch: {
+    home: "",
     portfolio: "",
     workspace: "",
     insights: "",
@@ -122,8 +132,24 @@ export const useAppStore = create<AppState>((set) => ({
   // ─────────────────────────────────────────────────────────────────────────
   
   // Current view
-  currentView: "site",
+  currentView: "home",
   setCurrentView: (view) => set({ currentView: view }),
+
+  // ── HOME PAGE STATE ───────────────────────────────────────────────────────
+  recentDashboardIds: [],
+  addRecentDashboard: (cardId) =>
+    set((state) => {
+      const filtered = state.recentDashboardIds.filter((id) => id !== cardId)
+      return { recentDashboardIds: [cardId, ...filtered].slice(0, 6) }
+    }),
+  favouriteDashboardIds: [],
+  toggleFavouriteDashboard: (cardId) =>
+    set((state) => ({
+      favouriteDashboardIds: state.favouriteDashboardIds.includes(cardId)
+        ? state.favouriteDashboardIds.filter((id) => id !== cardId)
+        : [...state.favouriteDashboardIds, cardId],
+    })),
+  // ─────────────────────────────────────────────────────────────────────────
   
   // Dashboard edit mode
   viewMode: "view",
