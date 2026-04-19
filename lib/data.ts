@@ -389,3 +389,161 @@ export const userDocuments: UserDocument[] = [
     sharedBy: "Nhan N.",
   },
 ]
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   WHAT-IF SCENARIOS
+───────────────────────────────────────────────────────────────────────────── */
+
+export interface WhatIfScenarioDefinition {
+  id: string
+  equipmentId: string
+  equipmentName: string
+  name: string
+  description: string
+  details: string
+  availableDashboards: string[]
+  defaultParams: Record<string, { value: string; unit: string }>
+  plant: string
+  site: string
+}
+
+export const whatIfScenarios: WhatIfScenarioDefinition[] = [
+  {
+    id: "scenario-coke-drum",
+    equipmentId: "equipment-a",
+    equipmentName: "Coke Drum",
+    name: "Coke Drum — Future Operating Scenario",
+    description: "Models a future operating cycle where inlet temperature and pressure profiles are varied to assess impact on fatigue accumulation, bulging probability, and remaining asset life.",
+    details: "Upload a CSV file containing projected temperature and pressure time-series data for the next scheduled operating period. The tool computes updated Damage (DMG%), Remaining Life, and generates scenario-specific equivalents of the Fatigue, Bulging, and Cracking dashboards so engineers can compare future state against current actuals.",
+    availableDashboards: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
+    defaultParams: {
+      "Inlet Pressure":    { value: "150.5", unit: "barg" },
+      "Inlet Temp":        { value: "450.2", unit: "°C" },
+      "Mass Flow":         { value: "12.4",  unit: "kg/s" },
+      "Molecular Wt":      { value: "28.05", unit: "g/mol" },
+      "Cp/Cv":             { value: "1.32",  unit: "-" },
+      "Z Factor":          { value: "0.98",  unit: "-" },
+      "Pipe Diameter":     { value: "250",   unit: "mm" },
+      "Wall Thickness":    { value: "12.5",  unit: "mm" },
+    },
+    plant: "Plant 1",
+    site: "Site X",
+  },
+  {
+    id: "scenario-hcu",
+    equipmentId: "equipment-b",
+    equipmentName: "HCU",
+    name: "HCU — Reactor Load Variation Scenario",
+    description: "Simulates the effect of varying hydrogen partial pressure and feed rate on reactor health indicators, catalyst deactivation rates, and predicted maintenance intervals.",
+    details: "Upload a CSV containing projected feed compositions, reactor inlet conditions, and recycle gas compositions for a specified future period. The tool produces scenario-adapted Reactor Health, Process Control, and Maintenance dashboards for direct comparison with current live data.",
+    availableDashboards: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
+    defaultParams: {
+      "H₂ Partial Pressure": { value: "38.2",  unit: "bar" },
+      "Feed Rate":            { value: "95.0",  unit: "t/h" },
+      "Reactor Inlet T":      { value: "372.0", unit: "°C" },
+      "LHSV":                 { value: "1.25",  unit: "h⁻¹" },
+      "H₂/HC Ratio":          { value: "650",   unit: "Nm³/m³" },
+      "Pressure Drop ΔP":     { value: "1.8",   unit: "bar" },
+      "Catalyst Age":         { value: "18",    unit: "months" },
+    },
+    plant: "Plant 1",
+    site: "Site X",
+  },
+]
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MOCK WHAT-IF RUN HISTORY  (pre-populated so tool is not empty on first load)
+───────────────────────────────────────────────────────────────────────────── */
+
+export const mockWhatifRunSessions = [
+  {
+    id: "wir-001",
+    scenarioId: "scenario-coke-drum",
+    equipmentId: "equipment-a",
+    equipmentName: "Coke Drum",
+    runName: "Q2 Extended Cycle Projection",
+    startedAt: "2026-04-18T14:22:00Z",
+    duration: "4m 52s",
+    status: "success" as const,
+    user: "Ben T.",
+    selectedDashboards: ["Fatigue", "Bulging"],
+    results: [
+      { checked: true, col1: "DMG Accumulation",   col2: "218.4%", col3: "Warning" },
+      { checked: true, col1: "Remaining Life",      col2: "36.2 yrs", col3: "Pass" },
+      { checked: true, col1: "Fatigue Index",       col2: "0.74",   col3: "Pass" },
+      { checked: true, col1: "Bulge Probability",   col2: "12.3%",  col3: "Pass" },
+      { checked: true, col1: "Crack Growth Rate",   col2: "0.018 mm/cycle", col3: "Pass" },
+      { checked: true, col1: "Peak Temperature",    col2: "492.1°C", col3: "Warning" },
+      { checked: true, col1: "Pressure Ratio",      col2: "0.96",   col3: "Pass" },
+      { checked: true, col1: "Cycle Count Delta",   col2: "+14",    col3: "Pass" },
+    ],
+    progressStep: 5,
+    params: { "Inlet Pressure": "155.0", "Inlet Temp": "462.5", "Mass Flow": "13.1", "Molecular Wt": "28.05", "Cp/Cv": "1.32", "Z Factor": "0.97", "Pipe Diameter": "250", "Wall Thickness": "12.5" },
+    source: "tool" as const,
+  },
+  {
+    id: "wir-002",
+    scenarioId: "scenario-coke-drum",
+    equipmentId: "equipment-a",
+    equipmentName: "Coke Drum",
+    runName: "Reduced Pressure Test Run",
+    startedAt: "2026-04-03T09:10:00Z",
+    duration: "3m 28s",
+    status: "success" as const,
+    user: "Nhan N.",
+    selectedDashboards: ["Process", "Cracking"],
+    results: [
+      { checked: true, col1: "DMG Accumulation",   col2: "195.2%", col3: "Pass" },
+      { checked: true, col1: "Remaining Life",      col2: "41.0 yrs", col3: "Pass" },
+      { checked: true, col1: "Fatigue Index",       col2: "0.61",   col3: "Pass" },
+      { checked: true, col1: "Bulge Probability",   col2: "8.9%",   col3: "Pass" },
+      { checked: true, col1: "Crack Growth Rate",   col2: "0.012 mm/cycle", col3: "Pass" },
+      { checked: true, col1: "Peak Temperature",    col2: "441.0°C", col3: "Pass" },
+      { checked: true, col1: "Pressure Ratio",      col2: "0.91",   col3: "Pass" },
+      { checked: true, col1: "Cycle Count Delta",   col2: "+8",     col3: "Pass" },
+    ],
+    progressStep: 5,
+    params: { "Inlet Pressure": "140.0", "Inlet Temp": "438.0", "Mass Flow": "11.8", "Molecular Wt": "28.05", "Cp/Cv": "1.32", "Z Factor": "0.99", "Pipe Diameter": "250", "Wall Thickness": "12.5" },
+    source: "dashboard" as const,
+  },
+  {
+    id: "wir-003",
+    scenarioId: "scenario-hcu",
+    equipmentId: "equipment-b",
+    equipmentName: "HCU",
+    runName: "High Feed Rate Stress Test",
+    startedAt: "2026-04-15T11:05:00Z",
+    duration: "5m 14s",
+    status: "success" as const,
+    user: "Alex P.",
+    selectedDashboards: ["Reactor Health", "Maintenance"],
+    results: [
+      { checked: true, col1: "Catalyst Activity",   col2: "74.2%",  col3: "Warning" },
+      { checked: true, col1: "Reactor ΔT",           col2: "28.5°C", col3: "Pass" },
+      { checked: true, col1: "H₂ Consumption",      col2: "102.4 Nm³/h", col3: "Pass" },
+      { checked: true, col1: "Run Length Est.",      col2: "8.2 months", col3: "Pass" },
+      { checked: true, col1: "Pressure Drop",        col2: "2.4 bar", col3: "Warning" },
+      { checked: true, col1: "Coke Deposition",      col2: "0.08%/hr", col3: "Pass" },
+    ],
+    progressStep: 5,
+    params: { "H₂ Partial Pressure": "40.0", "Feed Rate": "108.0", "Reactor Inlet T": "378.0", "LHSV": "1.45", "H₂/HC Ratio": "680", "Pressure Drop ΔP": "2.1", "Catalyst Age": "18" },
+    source: "tool" as const,
+  },
+  {
+    id: "wir-004",
+    scenarioId: "scenario-hcu",
+    equipmentId: "equipment-b",
+    equipmentName: "HCU",
+    runName: "Nominal Q2 Projection",
+    startedAt: "2026-03-28T08:30:00Z",
+    duration: "4m 02s",
+    status: "failed" as const,
+    user: "Simon K.",
+    selectedDashboards: ["Overview"],
+    results: [],
+    progressStep: 2,
+    params: { "H₂ Partial Pressure": "38.2", "Feed Rate": "95.0", "Reactor Inlet T": "372.0", "LHSV": "1.25", "H₂/HC Ratio": "650", "Pressure Drop ΔP": "1.8", "Catalyst Age": "20" },
+    source: "dashboard" as const,
+  },
+]
+

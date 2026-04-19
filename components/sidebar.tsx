@@ -505,11 +505,17 @@ function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
    INSIGHTS PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
 function InsightsPanel({ searchQuery }: { searchQuery: string }) {
-  const { currentView, setCurrentView, setViewMode } = useAppStore()
+  const { currentView, setCurrentView, setViewMode, setWhatifSelectedScenarioId } = useAppStore()
   const q = searchQuery
 
   const handleDataSyncClick = () => {
     setCurrentView("data-sync")
+    setViewMode("view")
+  }
+
+  const handleWhatIfClick = () => {
+    setWhatifSelectedScenarioId("scenario-coke-drum")
+    setCurrentView("whatif-tool")
     setViewMode("view")
   }
 
@@ -525,6 +531,13 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
       key: "shift",
       label: "Shift Log",
       icon: <FileText className="w-4 h-4 flex-shrink-0" />,
+    },
+    {
+      key: "whatif",
+      label: "What-If Scenarios",
+      icon: <BarChart3 className="w-4 h-4 flex-shrink-0" />,
+      onClick: handleWhatIfClick,
+      active: currentView === "whatif-tool",
     },
   ].filter((row) => navMatches(row.label, q))
 

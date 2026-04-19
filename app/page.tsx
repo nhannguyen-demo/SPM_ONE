@@ -7,6 +7,7 @@ import { PlantOverview } from "@/components/views/plant-overview"
 import { EquipmentDashboard } from "@/components/views/equipment-dashboard"
 import { DataSyncView } from "@/components/views/data-sync"
 import { HomeView } from "@/components/views/home-view"
+import { WhatifToolView } from "@/components/views/whatif-tool-view"
 import { WhatIfScenarioModal, WhatIfResultModal } from "@/components/modals/what-if-scenario"
 import { useAppStore } from "@/lib/store"
 // FEATURE 1 — Global Floating AI Spark Button (also houses FEATURE 7 logic)
@@ -21,11 +22,12 @@ export default function Home() {
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <Header />
         <main className="flex-1 min-w-0 flex overflow-hidden">
-          {currentView === "home"      && <HomeView />}
-          {currentView === "site"      && <SiteOverview />}
-          {currentView === "plant"     && <PlantOverview />}
-          {currentView === "equipment" && <EquipmentDashboard />}
-          {currentView === "data-sync" && <DataSyncView />}
+          {currentView === "home"        && <HomeView />}
+          {currentView === "site"        && <SiteOverview />}
+          {currentView === "plant"       && <PlantOverview />}
+          {currentView === "equipment"   && <EquipmentDashboard />}
+          {currentView === "data-sync"   && <DataSyncView />}
+          {currentView === "whatif-tool" && <WhatifToolView />}
         </main>
       </div>
       

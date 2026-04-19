@@ -2,6 +2,27 @@
 
 import { create } from "zustand"
 
+/* ─── What-If Run Session ─────────────────────────────────────────────────── */
+export type WhatIfRunStatus = "queued" | "running" | "success" | "failed"
+
+export interface WhatIfRunSession {
+  id: string
+  scenarioId: string          // e.g. "scenario-coke-drum"
+  equipmentId: string         // e.g. "equipment-a"
+  equipmentName: string
+  runName: string
+  startedAt: string           // ISO string
+  duration: string            // e.g. "4m 12s"
+  status: WhatIfRunStatus
+  user: string
+  selectedDashboards: string[]
+  results: Array<{ checked: boolean; col1: string; col2: string; col3: string }>
+  progressStep: number        // 0-5
+  params: Record<string, string>
+  source: "tool" | "dashboard" // where it was triggered from
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 export type NavigationPath = {
   site?: string
   plant?: string
@@ -43,8 +64,18 @@ interface AppState {
   // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
-  currentView: "home" | "site" | "plant" | "equipment" | "data-sync"
-  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "data-sync") => void
+  currentView: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatif-tool"
+  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatif-tool") => void
+
+  // ── WHAT-IF TOOL STATE ────────────────────────────────────────────────────
+  whatifRunSessions: WhatIfRunSession[]
+  addWhatifRunSession: (session: WhatIfRunSession) => void
+  updateWhatifRunSession: (id: string, updates: Partial<WhatIfRunSession>) => void
+  whatifSelectedScenarioId: string | null
+  setWhatifSelectedScenarioId: (id: string | null) => void
+  whatifActiveRunId: string | null
+  setWhatifActiveRunId: (id: string | null) => void
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── HOME PAGE STATE ───────────────────────────────────────────────────────
   /** Recently visited dashboard card IDs — newest first, max 6 (LRU). */
@@ -134,6 +165,22 @@ export const useAppStore = create<AppState>((set) => ({
   // Current view
   currentView: "home",
   setCurrentView: (view) => set({ currentView: view }),
+
+  // ── WHAT-IF TOOL STATE ────────────────────────────────────────────────────
+  whatifRunSessions: [],
+  addWhatifRunSession: (session) =>
+    set((state) => ({ whatifRunSessions: [session, ...state.whatifRunSessions] })),
+  updateWhatifRunSession: (id, updates) =>
+    set((state) => ({
+      whatifRunSessions: state.whatifRunSessions.map((s) =>
+        s.id === id ? { ...s, ...updates } : s
+      ),
+    })),
+  whatifSelectedScenarioId: "scenario-coke-drum",
+  setWhatifSelectedScenarioId: (id) => set({ whatifSelectedScenarioId: id }),
+  whatifActiveRunId: null,
+  setWhatifActiveRunId: (id) => set({ whatifActiveRunId: id }),
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── HOME PAGE STATE ───────────────────────────────────────────────────────
   recentDashboardIds: [],
