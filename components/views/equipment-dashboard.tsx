@@ -1,7 +1,7 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, equipmentKPIs, dashboardCards, plantDocuments, getEquipmentDashboardThumbnail } from "@/lib/data"
+import { sites, equipmentKPIs, dashboardCards, plantDocuments, getEquipmentDashboardThumbnail, whatIfScenarios } from "@/lib/data"
 import {
   Maximize2,
   Minimize2,
@@ -228,6 +228,9 @@ export function EquipmentDashboard() {
     toggleFavouriteDashboard,
     favouriteDashboardIds,
     addRecentDashboard,
+    setCurrentView,
+    setWhatifSelectedScenarioId,
+    setWhatifInitialTab,
   } = useAppStore()
 
   // Grid widget + layout state
@@ -639,10 +642,16 @@ export function EquipmentDashboard() {
                 ))}
               </div>
 
-              <div className="mt-8 pb-12"> {/* Added padding to avoid AI Spark overlap */}
+              <div className="mt-8 pb-12">
                 <h4 className="font-medium text-foreground mb-3">What-If Scenarios</h4>
                 <button
-                   onClick={() => setWhatIfModalOpen(true)}
+                   onClick={() => {
+                     const scenario = whatIfScenarios.find((s) => s.equipmentId === equipment.id)
+                     if (scenario) setWhatifSelectedScenarioId(scenario.id)
+                     setWhatifInitialTab("run")
+                     setCurrentView("whatif-tool")
+                     setViewMode("view")
+                   }}
                    className="w-full py-4 px-4 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-all shadow-[0_4px_14px_rgba(0,0,0,0.1)] active:scale-[0.98]"
                 >
                   Run What-If Scenarios

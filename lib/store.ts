@@ -1,6 +1,7 @@
 "use client"
 
 import { create } from "zustand"
+import type { UserDocument } from "@/lib/data"
 
 /* ─── What-If Run Session ─────────────────────────────────────────────────── */
 export type WhatIfRunStatus = "queued" | "running" | "success" | "failed"
@@ -64,8 +65,14 @@ interface AppState {
   // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
-  currentView: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatif-tool"
-  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatif-tool") => void
+  currentView: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatif-tool" | "documents-tool"
+  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatif-tool" | "documents-tool") => void
+
+  // ── DOCUMENTS TOOL STATE ─────────────────────────────────────────────────
+  /** All user-managed documents (seeded from data.ts + any generated reports) */
+  savedDocuments: UserDocument[]
+  addDocument: (doc: UserDocument) => void
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── WHAT-IF TOOL STATE ────────────────────────────────────────────────────
   whatifRunSessions: WhatIfRunSession[]
@@ -75,6 +82,9 @@ interface AppState {
   setWhatifSelectedScenarioId: (id: string | null) => void
   whatifActiveRunId: string | null
   setWhatifActiveRunId: (id: string | null) => void
+  /** Tab to open when navigating into What-If tool externally (e.g. from equipment dashboard) */
+  whatifInitialTab: "overview" | "run" | "history" | null
+  setWhatifInitialTab: (tab: "overview" | "run" | "history" | null) => void
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── HOME PAGE STATE ───────────────────────────────────────────────────────
@@ -166,6 +176,11 @@ export const useAppStore = create<AppState>((set) => ({
   currentView: "home",
   setCurrentView: (view) => set({ currentView: view }),
 
+  // ── DOCUMENTS TOOL STATE ─────────────────────────────────────────────────
+  savedDocuments: [],
+  addDocument: (doc) => set((state) => ({ savedDocuments: [doc, ...state.savedDocuments] })),
+  // ─────────────────────────────────────────────────────────────────────────
+
   // ── WHAT-IF TOOL STATE ────────────────────────────────────────────────────
   whatifRunSessions: [],
   addWhatifRunSession: (session) =>
@@ -180,6 +195,8 @@ export const useAppStore = create<AppState>((set) => ({
   setWhatifSelectedScenarioId: (id) => set({ whatifSelectedScenarioId: id }),
   whatifActiveRunId: null,
   setWhatifActiveRunId: (id) => set({ whatifActiveRunId: id }),
+  whatifInitialTab: null,
+  setWhatifInitialTab: (tab) => set({ whatifInitialTab: tab }),
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── HOME PAGE STATE ───────────────────────────────────────────────────────
