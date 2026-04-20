@@ -533,6 +533,13 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
       icon: <FileText className="w-4 h-4 flex-shrink-0" />,
     },
     {
+      key: "documents",
+      label: "Documents",
+      icon: <FolderOpen className="w-4 h-4 flex-shrink-0" />,
+      onClick: () => { setCurrentView("documents-tool"); setViewMode("view") },
+      active: currentView === "documents-tool",
+    },
+    {
       key: "whatif",
       label: "What-If Scenarios",
       icon: <BarChart3 className="w-4 h-4 flex-shrink-0" />,
