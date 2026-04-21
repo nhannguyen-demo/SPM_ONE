@@ -30,10 +30,10 @@ function EquipmentStackLabel({
 }) {
   return (
     <div className="absolute -top-5 left-0 z-30 flex items-center gap-0.5">
-      <span className="text-[10px] font-semibold text-primary/70 uppercase tracking-widest whitespace-nowrap">
+      <span className="text-xs font-bold text-primary/80 uppercase tracking-wider whitespace-nowrap">
         {equipmentName}
         {tabCount > 1 && (
-          <span className="ml-1 text-muted-foreground font-normal normal-case tracking-normal">
+          <span className="ml-1 text-muted-foreground font-medium normal-case tracking-normal">
             ({tabCount})
           </span>
         )}
@@ -86,7 +86,7 @@ export function DashboardTabStack({
         />
         {cards.map((card, idx) => (
           <div key={card.id} className="cursor-pointer flex-shrink-0" onClick={() => onCardClick(card)}>
-            <DashboardCard card={card} cardIndex={idx} thumbnailSrc={thumbnailSrc} />
+            <DashboardCard card={card} cardIndex={idx} thumbnailSrc={thumbnailSrc} showEquipmentName={false} />
           </div>
         ))}
       </div>
@@ -138,7 +138,7 @@ export function DashboardTabStack({
                 filter: depth > 1 ? "brightness(0.97)" : undefined,
               }}
             >
-              <DashboardCard card={card} cardIndex={depth} thumbnailSrc={thumbnailSrc} />
+              <DashboardCard card={card} cardIndex={depth} thumbnailSrc={thumbnailSrc} showEquipmentName={false} />
             </div>
           )
         })}
@@ -147,7 +147,7 @@ export function DashboardTabStack({
           className="absolute left-0 top-0 w-48 z-10 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-1 group-hover:shadow-lg"
           style={{ transformOrigin: "50% 100%" }}
         >
-          <DashboardCard card={cards[0]} cardIndex={0} thumbnailSrc={thumbnailSrc} />
+          <DashboardCard card={cards[0]} cardIndex={0} thumbnailSrc={thumbnailSrc} showEquipmentName={false} />
         </div>
       </div>
 

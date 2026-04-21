@@ -480,6 +480,7 @@ export const mockWhatifRunSessions = [
     progressStep: 5,
     params: { "Inlet Pressure": "155.0", "Inlet Temp": "462.5", "Mass Flow": "13.1", "Molecular Wt": "28.05", "Cp/Cv": "1.32", "Z Factor": "0.97", "Pipe Diameter": "250", "Wall Thickness": "12.5" },
     source: "tool" as const,
+    parameterInputMode: "full-csv" as const,
   },
   {
     id: "wir-002",
@@ -505,6 +506,7 @@ export const mockWhatifRunSessions = [
     progressStep: 5,
     params: { "Inlet Pressure": "140.0", "Inlet Temp": "438.0", "Mass Flow": "11.8", "Molecular Wt": "28.05", "Cp/Cv": "1.32", "Z Factor": "0.99", "Pipe Diameter": "250", "Wall Thickness": "12.5" },
     source: "dashboard" as const,
+    parameterInputMode: "mixed" as const,
   },
   {
     id: "wir-003",
@@ -544,6 +546,50 @@ export const mockWhatifRunSessions = [
     progressStep: 2,
     params: { "H₂ Partial Pressure": "38.2", "Feed Rate": "95.0", "Reactor Inlet T": "372.0", "LHSV": "1.25", "H₂/HC Ratio": "650", "Pressure Drop ΔP": "1.8", "Catalyst Age": "20" },
     source: "dashboard" as const,
+  },
+]
+
+/** Layout templates for What-If result exploration (widget / dashboard mock). */
+export interface WhatIfExploreTemplateWidget {
+  id: string
+  viewType: string
+  title?: string
+  layout: { i: string; x: number; y: number; w: number; h: number; minW?: number; minH?: number }
+}
+
+export interface WhatIfExploreDashboardTemplate {
+  id: string
+  name: string
+  description: string
+  widgets: WhatIfExploreTemplateWidget[]
+}
+
+export const whatIfExploreDashboardTemplates: WhatIfExploreDashboardTemplate[] = [
+  {
+    id: "tpl-monitoring",
+    name: "Monitoring template",
+    description: "KPIs plus sensor trends, similar to the Monitoring dashboard.",
+    widgets: [
+      { id: "tex-1", viewType: "kpi-dmg", title: "Damage KPI", layout: { i: "tex-1", x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2 } },
+      { id: "tex-2", viewType: "kpi-relife", title: "Re-Life KPI", layout: { i: "tex-2", x: 3, y: 0, w: 3, h: 2, minW: 2, minH: 2 } },
+      { id: "tex-3", viewType: "mon-sensor-1", title: "Sensor Channel 1", layout: { i: "tex-3", x: 0, y: 2, w: 6, h: 4, minW: 2, minH: 2 } },
+      { id: "tex-4", viewType: "mon-sensor-2", title: "Sensor Channel 2", layout: { i: "tex-4", x: 6, y: 2, w: 6, h: 4, minW: 2, minH: 2 } },
+    ],
+  },
+  {
+    id: "tpl-process",
+    name: "Process template",
+    description: "Composed process view with stream strip.",
+    widgets: [
+      { id: "tex-p1", viewType: "proc-composed", title: "Process Overview", layout: { i: "tex-p1", x: 0, y: 0, w: 8, h: 5, minW: 2, minH: 2 } },
+      { id: "tex-p2", viewType: "proc-stream", title: "Process Stream", layout: { i: "tex-p2", x: 8, y: 0, w: 4, h: 5, minW: 2, minH: 2 } },
+    ],
+  },
+  {
+    id: "tpl-blank",
+    name: "Blank canvas",
+    description: "Start empty and add widgets from the library.",
+    widgets: [],
   },
 ]
 

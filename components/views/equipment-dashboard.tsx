@@ -1,7 +1,14 @@
 "use client"
 
-import { useAppStore } from "@/lib/store"
-import { sites, equipmentKPIs, dashboardCards, plantDocuments, getEquipmentDashboardThumbnail, whatIfScenarios } from "@/lib/data"
+import { useAppStore, type WhatIfRunSession } from "@/lib/store"
+import {
+  sites,
+  equipmentKPIs,
+  dashboardCards,
+  plantDocuments,
+  getEquipmentDashboardThumbnail,
+  whatIfScenarios,
+} from "@/lib/data"
 import {
   Maximize2,
   Minimize2,
@@ -16,7 +23,16 @@ import { DashboardCard } from "@/components/dashboard-card"
 import { ModuleLibrary, SPM_WIDGET_DRAG_TYPE, type LibraryModule } from "@/components/module-library"
 import { Equipment3DViewer } from "@/components/equipment-3d"
 import { cn } from "@/lib/utils"
-import { useState, useCallback, useRef, type DragEvent } from "react"
+import {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  Component,
+  type ErrorInfo,
+  type ReactNode,
+  type DragEvent,
+} from "react"
 import { Responsive as ResponsiveGridLayout, Layout, LayoutItem } from "react-grid-layout/legacy"
 
 // CSS for react-grid-layout (must be imported here for Next.js)
@@ -26,7 +42,7 @@ import "react-resizable/css/styles.css"
 // Recharts imports
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  BarChart, Bar, LineChart, Line, ComposedChart, Legend, ScatterChart, Scatter, ZAxis, PieChart, Pie, Cell
+  BarChart, Bar, LineChart, Line, ComposedChart, Legend, ScatterChart, Scatter, ZAxis, PieChart, Pie, Cell,
 } from "recharts"
 // FEATURE 6A — KPI Pill AI Badge Wrappers
 // FEATURE 6B — Chart Anomaly Markers
@@ -44,7 +60,7 @@ type WidgetData = {
 type GridWidget = WidgetData & { layout: LayoutItem }
 
 /** Maps widget library entries to dashboard view types and default grid size (cols × rows). */
-const LIBRARY_MODULE_SPECS: Record<string, { viewType: string; w: number; h: number }> = {
+export const SPM_WIDGET_LIBRARY_SPECS: Record<string, { viewType: string; w: number; h: number }> = {
   "column-chart": { viewType: "demo-bar", w: 4, h: 4 },
   "data-grid": { viewType: "data-grid", w: 6, h: 5 },
   "line-chart": { viewType: "mon-sensor-1", w: 4, h: 4 },
@@ -222,7 +238,6 @@ export function EquipmentDashboard() {
     setCurrentPath,
     viewMode,
     setViewMode,
-    setWhatIfModalOpen,
     dashboardExpanded,
     setDashboardExpanded,
     toggleFavouriteDashboard,
@@ -231,10 +246,19 @@ export function EquipmentDashboard() {
     setCurrentView,
     setWhatifSelectedScenarioId,
     setWhatifInitialTab,
+    whatifRunSessions,
   } = useAppStore()
 
   // Grid widget + layout state
   const [grids, setGrids] = useState<Record<string, GridWidget[]>>(DEFAULT_GRIDS)
+  const [savedGrids, setSavedGrids] = useState<Record<string, GridWidget[]>>(DEFAULT_GRIDS)
+  const [gridDraftDirty, setGridDraftDirty] = useState(false)
+  const [customDashboardCards, setCustomDashboardCards] = useState<Record<string, typeof dashboardCards>>({})
+  const [deletedBaseTagsByEquip, setDeletedBaseTagsByEquip] = useState<Record<string, string[]>>({})
+  const [createDashOpen, setCreateDashOpen] = useState(false)
+  const [newDashName, setNewDashName] = useState("")
+  const [createMode, setCreateMode] = useState<"existing" | "blank">("existing")
+  const [templateTag, setTemplateTag] = useState("")
   // Container width for RGL (measured via ResizeObserver or default)
   const [gridWidth, setGridWidth] = useState(900)
   /** Active library module during HTML5 drag (for drop preview size). */
@@ -259,11 +283,18 @@ export function EquipmentDashboard() {
   if (!site || !plant || !equipment) return null
 
   const tabThumbnailSrc = getEquipmentDashboardThumbnail(equipment.id)
-  const activeTab = currentPath.tab || "Demo Engineer Team's Dashboard"
+  const deletedBaseTags = deletedBaseTagsByEquip[equipment.id] || []
+  const baseCardsForEquip = dashboardCards.filter((c) => c.equipId === equipment.id && !deletedBaseTags.includes(c.tag))
+  const customCardsForEquip = customDashboardCards[equipment.id] || []
+  const equipmentDashboardCards = [...baseCardsForEquip, ...customCardsForEquip]
+  const resolvedDefaultTab = equipmentDashboardCards[0]?.tag ?? equipment.tabs[0] ?? "Overview"
+  const activeTab = equipmentDashboardCards.some((c) => c.tag === currentPath.tab)
+    ? (currentPath.tab as string)
+    : resolvedDefaultTab
   const isEditMode = viewMode === "edit" || viewMode === "modules"
 
   // Find the dashboardCard that matches the current equipment + tab
-  const activeCard = dashboardCards.find(
+  const activeCard = equipmentDashboardCards.find(
     (c) => c.equipId === equipment.id && c.tag === activeTab
   )
   const isBookmarked = activeCard ? favouriteDashboardIds.includes(activeCard.id) : false
@@ -271,7 +302,7 @@ export function EquipmentDashboard() {
   const handleTabChange = (tab: string) => {
     setCurrentPath({ ...currentPath, tab })
     // Track recent dashboards when user switches tab
-    const card = dashboardCards.find((c) => c.equipId === equipment.id && c.tag === tab)
+    const card = equipmentDashboardCards.find((c) => c.equipId === equipment.id && c.tag === tab)
     if (card) addRecentDashboard(card.id)
   }
 
@@ -290,6 +321,7 @@ export function EquipmentDashboard() {
       })
       return { ...prev, [activeTab]: updated }
     })
+    setGridDraftDirty(true)
   }
 
   const removeWidget = (widgetId: string) => {
@@ -297,11 +329,12 @@ export function EquipmentDashboard() {
       ...prev,
       [activeTab]: (prev[activeTab] || []).filter((gw) => gw.id !== widgetId),
     }))
+    setGridDraftDirty(true)
   }
 
   const addWidgetFromLibrary = useCallback(
     (module: LibraryModule) => {
-      const spec = LIBRARY_MODULE_SPECS[module.id] ?? { viewType: "generic", w: 4, h: 4 }
+      const spec = SPM_WIDGET_LIBRARY_SPECS[module.id] ?? { viewType: "generic", w: 4, h: 4 }
       const id = `w-new-${Date.now()}`
       const newWidget: GridWidget = {
         id,
@@ -321,6 +354,7 @@ export function EquipmentDashboard() {
         ...prev,
         [activeTab]: [...(prev[activeTab] || []), newWidget],
       }))
+      setGridDraftDirty(true)
     },
     [activeTab]
   )
@@ -328,7 +362,7 @@ export function EquipmentDashboard() {
   const handleDropDragOver = useCallback((_e: DragEvent) => {
     const id = dragModuleRef.current?.id
     if (!id) return false
-    const spec = LIBRARY_MODULE_SPECS[id]
+    const spec = SPM_WIDGET_LIBRARY_SPECS[id]
     if (!spec) return { w: 4, h: 4 }
     return { w: spec.w, h: spec.h }
   }, [])
@@ -348,7 +382,7 @@ export function EquipmentDashboard() {
       dragModuleRef.current = null
       if (!module?.id) return
 
-      const spec = LIBRARY_MODULE_SPECS[module.id] ?? { viewType: "generic", w: 4, h: 4 }
+      const spec = SPM_WIDGET_LIBRARY_SPECS[module.id] ?? { viewType: "generic", w: 4, h: 4 }
       const id = `w-new-${Date.now()}`
       const newLayoutItem: LayoutItem = {
         i: id,
@@ -371,12 +405,111 @@ export function EquipmentDashboard() {
           },
         ],
       }))
+      setGridDraftDirty(true)
     },
     [activeTab]
   )
 
+  const equipmentRuns = whatifRunSessions
+    .filter((s) => s.equipmentId === equipment.id && s.status === "success")
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+
+  const [viewedDataIds, setViewedDataIds] = useState<string[]>(["live"])
+
+  useEffect(() => {
+    setViewedDataIds(["live"])
+  }, [equipment.id])
+
+  useEffect(() => {
+    const availableIds = ["live", ...equipmentRuns.map((run) => run.id)]
+    setViewedDataIds((prev) => {
+      return prev.filter((id) => availableIds.includes(id))
+    })
+  }, [equipmentRuns])
+
+  const duplicateGridForNewTab = (fromTag: string, toTag: string) => {
+    const source = grids[fromTag] || buildDefaultGrid(DEFAULT_WIDGET_SETS[fromTag] || [])
+    const stamp = Date.now()
+    const cloned = source.map((gw, idx) => {
+      const id = `w-${toTag.replace(/\s+/g, "-").toLowerCase()}-${stamp}-${idx}`
+      return { ...gw, id, layout: { ...gw.layout, i: id } }
+    })
+    setGrids((prev) => ({ ...prev, [toTag]: cloned }))
+    setSavedGrids((prev) => ({ ...prev, [toTag]: cloned }))
+  }
+
+  const createDashboard = () => {
+    const trimmed = newDashName.trim()
+    if (!trimmed) return
+    if (equipmentDashboardCards.some((c) => c.tag.toLowerCase() === trimmed.toLowerCase())) return
+
+    const newCard = {
+      id: `dash-${equipment.id}-${Date.now()}`,
+      equipment: equipment.name,
+      equipId: equipment.id,
+      tag: trimmed,
+      metrics: { value1: "90%", value2: "0.001%" },
+    }
+
+    setCustomDashboardCards((prev) => ({
+      ...prev,
+      [equipment.id]: [...(prev[equipment.id] || []), newCard],
+    }))
+
+    if (createMode === "existing") {
+      const sourceTag = templateTag || resolvedDefaultTab
+      duplicateGridForNewTab(sourceTag, trimmed)
+    } else {
+      setGrids((prev) => ({ ...prev, [trimmed]: [] }))
+      setSavedGrids((prev) => ({ ...prev, [trimmed]: [] }))
+      setViewMode("edit")
+    }
+
+    setCurrentPath({ ...currentPath, tab: trimmed })
+    addRecentDashboard(newCard.id)
+    setCreateDashOpen(false)
+    setNewDashName("")
+  }
+
+  const deleteDashboard = (tag: string) => {
+    if (equipmentDashboardCards.length <= 1) return
+    const isBase = baseCardsForEquip.some((c) => c.tag === tag)
+    if (isBase) {
+      setDeletedBaseTagsByEquip((prev) => ({
+        ...prev,
+        [equipment.id]: [...(prev[equipment.id] || []), tag],
+      }))
+    } else {
+      setCustomDashboardCards((prev) => ({
+        ...prev,
+        [equipment.id]: (prev[equipment.id] || []).filter((c) => c.tag !== tag),
+      }))
+    }
+    setGrids((prev) => {
+      const next = { ...prev }
+      delete next[tag]
+      return next
+    })
+    setSavedGrids((prev) => {
+      const next = { ...prev }
+      delete next[tag]
+      return next
+    })
+    if (activeTab === tag) {
+      const remaining = equipmentDashboardCards.filter((c) => c.tag !== tag)
+      const fallback = remaining[0]?.tag
+      if (fallback) setCurrentPath({ ...currentPath, tab: fallback })
+    }
+  }
+
+  useEffect(() => {
+    if (currentPath.tab !== activeTab) {
+      setCurrentPath({ ...currentPath, tab: activeTab })
+    }
+  }, [activeTab, currentPath, setCurrentPath])
+
   return (
-    <div className="flex-1 flex min-w-0 overflow-hidden">
+    <div className="flex-1 flex min-w-0 overflow-hidden relative">
       {/* Main Content */}
       <div className="flex-1 min-w-0 p-6 overflow-y-auto flex flex-col relative">
         {/* Header with controls */}
@@ -403,15 +536,38 @@ export function EquipmentDashboard() {
               </button>
             )}
             {isEditMode ? (
-              <button
-                onClick={() => setViewMode("view")}
-                className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg text-sm font-medium hover:bg-rose-200 transition-colors"
-              >
-                Exit Editing
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGrids(savedGrids)
+                    setGridDraftDirty(false)
+                    setViewMode("view")
+                  }}
+                  className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg text-sm font-medium hover:bg-rose-200 transition-colors"
+                >
+                  Discard & Exit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSavedGrids(grids)
+                    setGridDraftDirty(false)
+                    setViewMode("view")
+                  }}
+                  disabled={!gridDraftDirty}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  Save Dashboard
+                </button>
+              </>
             ) : (
               <button
-                onClick={() => setViewMode("edit")}
+                onClick={() => {
+                  setGrids(savedGrids)
+                  setGridDraftDirty(false)
+                  setViewMode("edit")
+                }}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
               >
                 Edit Dashboard
@@ -504,7 +660,14 @@ export function EquipmentDashboard() {
                     </div>
                     {/* Widget content */}
                     <div className="flex-1 min-h-0 p-2 overflow-hidden">
-                      <WidgetViewResolver viewType={gw.viewType} equipmentId={equipment.id} />
+                      <WidgetErrorBoundary>
+                        <WidgetViewResolver
+                          viewType={gw.viewType}
+                          equipmentId={equipment.id}
+                          viewedDataIds={viewedDataIds}
+                          scenarioRuns={equipmentRuns}
+                        />
+                      </WidgetErrorBoundary>
                     </div>
                   </div>
                 ))}
@@ -516,19 +679,39 @@ export function EquipmentDashboard() {
         {/* Regular bottom tab strip — hidden when expanded */}
         {!dashboardExpanded && (
           <div className="flex gap-3 overflow-x-auto pb-2 overflow-y-hidden">
-            {dashboardCards.filter(c => c.equipId === equipment.id).map((card, idx) => (
-              <button
-                key={card.id}
-                onClick={() => handleTabChange(card.tag)}
-                className={cn(
-                  "text-left transition-all rounded-xl border-2 border-transparent flex-shrink-0",
-                  activeTab === card.tag && "border-primary shadow-md"
+            {equipmentDashboardCards.map((card, idx) => (
+              <div key={card.id} className="relative flex-shrink-0">
+                <button
+                  onClick={() => handleTabChange(card.tag)}
+                  className={cn(
+                    "text-left transition-all rounded-xl border-2 border-transparent",
+                    activeTab === card.tag && "border-primary shadow-md"
+                  )}
+                >
+                  <DashboardCard card={card} cardIndex={idx} thumbnailSrc={tabThumbnailSrc} showEquipmentName={false} />
+                </button>
+                {isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => deleteDashboard(card.tag)}
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-bold shadow hover:bg-rose-600 disabled:opacity-40"
+                    disabled={equipmentDashboardCards.length <= 1}
+                    title="Delete dashboard"
+                  >
+                    ×
+                  </button>
                 )}
-              >
-                <DashboardCard card={card} cardIndex={idx} thumbnailSrc={tabThumbnailSrc} />
-              </button>
+              </div>
             ))}
-            <button className="flex-shrink-0 w-16 h-[min(100%,130px)] my-auto border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
+            <button
+              type="button"
+              onClick={() => {
+                setTemplateTag(resolvedDefaultTab)
+                setCreateMode("existing")
+                setCreateDashOpen(true)
+              }}
+              className="flex-shrink-0 w-16 h-[min(100%,130px)] my-auto border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors"
+            >
               <Plus className="w-6 h-6 text-muted-foreground" />
             </button>
           </div>
@@ -541,23 +724,8 @@ export function EquipmentDashboard() {
               <div className="w-16 h-1.5 rounded-full bg-border/80" />
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {equipment.tabs.map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => handleTabChange(tab)}
-                    className={cn(
-                      "px-4 py-2 rounded-full text-sm font-medium transition-colors",
-                      activeTab === tab
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold text-foreground">{equipment.name} dashboards</div>
               <button
                 onClick={() => setDashboardExpanded(false)}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground text-xs"
@@ -566,19 +734,42 @@ export function EquipmentDashboard() {
               </button>
             </div>
 
-            <div className="flex gap-3 mt-4 overflow-x-auto pb-2">
-              {dashboardCards.filter(c => c.equipId === equipment.id).map((card, idx) => (
-                <button
-                  key={card.id}
-                  onClick={() => handleTabChange(card.tag)}
-                  className={cn(
-                    "text-left transition-all rounded-xl border-2 border-transparent flex-shrink-0",
-                    activeTab === card.tag && "border-primary shadow-md"
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {equipmentDashboardCards.map((card, idx) => (
+                <div key={card.id} className="relative flex-shrink-0">
+                  <button
+                    onClick={() => handleTabChange(card.tag)}
+                    className={cn(
+                      "text-left transition-all rounded-xl border-2 border-transparent",
+                      activeTab === card.tag && "border-primary shadow-md"
+                    )}
+                  >
+                    <DashboardCard card={card} cardIndex={idx} thumbnailSrc={tabThumbnailSrc} showEquipmentName={false} />
+                  </button>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() => deleteDashboard(card.tag)}
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-bold shadow hover:bg-rose-600 disabled:opacity-40"
+                      disabled={equipmentDashboardCards.length <= 1}
+                      title="Delete dashboard"
+                    >
+                      ×
+                    </button>
                   )}
-                >
-                  <DashboardCard card={card} cardIndex={idx} thumbnailSrc={tabThumbnailSrc} />
-                </button>
+                </div>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setTemplateTag(resolvedDefaultTab)
+                  setCreateMode("existing")
+                  setCreateDashOpen(true)
+                }}
+                className="flex-shrink-0 w-16 h-[min(100%,130px)] my-auto border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors"
+              >
+                <Plus className="w-6 h-6 text-muted-foreground" />
+              </button>
             </div>
           </div>
         )}
@@ -642,23 +833,167 @@ export function EquipmentDashboard() {
                 ))}
               </div>
 
-              <div className="mt-8 pb-12">
-                <h4 className="font-medium text-foreground mb-3">What-If Scenarios</h4>
+              <div className="mt-8 pb-12 space-y-3">
+                <h4 className="font-medium text-foreground">What-If Scenarios</h4>
                 <button
-                   onClick={() => {
-                     const scenario = whatIfScenarios.find((s) => s.equipmentId === equipment.id)
-                     if (scenario) setWhatifSelectedScenarioId(scenario.id)
-                     setWhatifInitialTab("run")
-                     setCurrentView("whatif-tool")
-                     setViewMode("view")
-                   }}
-                   className="w-full py-4 px-4 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-all shadow-[0_4px_14px_rgba(0,0,0,0.1)] active:scale-[0.98]"
+                  onClick={() => {
+                    const scenario = whatIfScenarios.find((s) => s.equipmentId === equipment.id)
+                    if (scenario) setWhatifSelectedScenarioId(scenario.id)
+                    setWhatifInitialTab("run")
+                    setCurrentView("whatif-tool")
+                    setViewMode("view")
+                  }}
+                  className="w-full py-3.5 px-4 bg-primary text-primary-foreground rounded-lg font-bold text-sm hover:bg-primary/90 transition-all shadow-[0_4px_14px_rgba(0,0,0,0.1)] active:scale-[0.98]"
                 >
                   Run What-If Scenarios
                 </button>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    Viewed Data
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+                    Select and unselect freely. At least one scenario must stay selected.
+                  </p>
+                  <label className="flex items-start gap-2 p-2 rounded-lg bg-secondary/40 border border-border cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 accent-primary"
+                      checked={viewedDataIds.includes("live")}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setViewedDataIds((prev) => (prev.includes("live") ? prev : ["live", ...prev]))
+                          return
+                        }
+                        setViewedDataIds((prev) => {
+                          if (prev.length <= 1) return prev
+                          return prev.filter((id) => id !== "live")
+                        })
+                      }}
+                    />
+                    <span className="min-w-0">
+                      <div className="text-xs font-medium text-foreground">Live Data</div>
+                      <div className="text-[10px] text-muted-foreground">Current equipment scenario data</div>
+                    </span>
+                  </label>
+                  {equipmentRuns.length === 0 ? (
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      No passed scenario results yet.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5 max-h-52 overflow-y-auto pr-0.5">
+                      {equipmentRuns.map((run) => (
+                        <li key={run.id}>
+                          <label className="flex items-start gap-2 p-2 rounded-lg bg-secondary/40 border border-border cursor-pointer hover:bg-secondary">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 accent-primary"
+                              checked={viewedDataIds.includes(run.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setViewedDataIds((prev) => (prev.includes(run.id) ? prev : [...prev, run.id]))
+                                  return
+                                }
+                                setViewedDataIds((prev) => {
+                                  if (prev.length <= 1) return prev
+                                  return prev.filter((id) => id !== run.id)
+                                })
+                              }}
+                            />
+                            <span className="min-w-0">
+                              <div className="text-xs font-medium text-foreground line-clamp-2">{run.runName}</div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
+                                {new Date(run.startedAt).toLocaleDateString()} · {run.duration || "—"} · {run.user}
+                              </div>
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {createDashOpen && (
+        <div className="absolute inset-0 z-[120] flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-xl bg-card border border-border rounded-2xl shadow-xl p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-1">Create Dashboard</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create a new dashboard for {equipment.name}.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Dashboard name</label>
+                <input
+                  value={newDashName}
+                  onChange={(e) => setNewDashName(e.target.value)}
+                  placeholder="e.g. Reliability Comparison"
+                  className="w-full h-10 px-3 bg-secondary border border-border rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Creation mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreateMode("existing")}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-sm text-left",
+                      createMode === "existing" ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-secondary"
+                    )}
+                  >
+                    From Existing Dashboard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreateMode("blank")}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-sm text-left",
+                      createMode === "blank" ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-secondary"
+                    )}
+                  >
+                    New Blank Dashboard
+                  </button>
+                </div>
+              </div>
+              {createMode === "existing" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Template dashboard</label>
+                  <select
+                    value={templateTag}
+                    onChange={(e) => setTemplateTag(e.target.value)}
+                    className="w-full h-10 px-3 bg-secondary border border-border rounded-lg text-sm"
+                  >
+                    {equipmentDashboardCards.map((card) => (
+                      <option key={card.id} value={card.tag}>
+                        {card.tag}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                type="button"
+                onClick={() => setCreateDashOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={createDashboard}
+                disabled={!newDashName.trim()}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+              >
+                Create Dashboard
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -668,6 +1003,32 @@ export function EquipmentDashboard() {
 /* ═══════════════════════════════════════════════════════════════════════════
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════════════════════════ */
+
+class WidgetErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
+    // Avoid crashing the whole dashboard when a widget fails.
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-full w-full rounded-lg border border-rose-300/40 bg-rose-500/5 text-rose-700 dark:text-rose-300 flex items-center justify-center text-xs px-3 text-center">
+          This widget failed to render. Switch tabs or recreate this widget.
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function KPIPill({ label, value }: { label?: string; value: string }) {
   return (
@@ -706,18 +1067,61 @@ const pieData = [
   { name: 'Process D', value: 200 },
 ];
 
-function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equipmentId?: string }) {
+export function WidgetViewResolver({
+  viewType,
+  equipmentId,
+  viewedDataIds = ["live"],
+  scenarioRuns = [],
+}: {
+  viewType: string
+  equipmentId?: string
+  viewedDataIds?: string[]
+  scenarioRuns?: WhatIfRunSession[]
+}) {
+  const selectedIds = viewedDataIds.length > 0 ? viewedDataIds : ["live"]
+  const selectedScenarioRuns = selectedIds
+    .filter((id) => id !== "live")
+    .map((id) => scenarioRuns.find((run) => run.id === id))
+    .filter((run): run is WhatIfRunSession => Boolean(run))
+
+  const primaryRun = selectedScenarioRuns[0]
+  const hasScenarioSelection = selectedScenarioRuns.length > 0
+  const skew = hasScenarioSelection ? 1.12 : 1
+  const dmgVal = `${Math.round(parseFloat(String(equipmentKPIs.dmg).replace("%", "")) * skew)}%`
+  const relifeYears = parseInt(String(equipmentKPIs.reLife).replace(/\D/g, ""), 10) || 40
+  const relifeVal =
+    hasScenarioSelection ? `${Math.max(25, Math.round(relifeYears / skew))} yrs` : equipmentKPIs.reLife
+
+  const dataLabels = selectedIds.map((id, idx) => {
+    if (id === "live") return idx === 0 ? "Live Data" : `Live Data ${idx + 1}`
+    const run = scenarioRuns.find((s) => s.id === id)
+    return run?.runName ?? `Scenario ${idx + 1}`
+  })
+
+  const colorByIndex = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#a855f7", "#14b8a6"]
+
+  const multiSeriesData = mockLineData.map((point, pointIndex) => {
+    const row: Record<string, string | number> = { name: point.name }
+    selectedIds.forEach((id, index) => {
+      const seriesSkew = id === "live" ? 1 : 1.06 + index * 0.04
+      row[`series_${index}`] = Math.round((mockLineData[pointIndex]?.value ?? point.value) * seriesSkew)
+    })
+    return row
+  })
+
+  const chartSeriesKeys = selectedIds.map((_, idx) => `series_${idx}`)
+
   switch (viewType) {
     case "kpi-dmg":
       return (
         <AIKPIBadgeWrapper kpiKey="dmg">
-          <KPIPill label="DMG" value={equipmentKPIs.dmg} />
+          <KPIPill label="DMG" value={hasScenarioSelection ? dmgVal : equipmentKPIs.dmg} />
         </AIKPIBadgeWrapper>
       );
     case "kpi-relife":
       return (
         <AIKPIBadgeWrapper kpiKey="reLife">
-          <KPIPill label="Re-Life" value={equipmentKPIs.reLife} />
+          <KPIPill label="Re-Life" value={relifeVal} />
         </AIKPIBadgeWrapper>
       );
     case "kpi-date":
@@ -734,17 +1138,23 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
       );
     case "equipment-3d":
       return <Equipment3DViewer equipmentId={equipmentId} />;
-    case "demo-pie":
+    case "demo-pie": {
+      const pieSkew = hasScenarioSelection ? 1.1 : 1
+      const pie = pieData.map((p) => ({
+        ...p,
+        value: Math.round(p.value * pieSkew),
+      }))
       return (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value">
-              {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+            <Pie data={pie} cx="50%" cy="50%" innerRadius={40} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value">
+              {pie.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
             </Pie>
             <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
           </PieChart>
         </ResponsiveContainer>
       );
+    }
     case "data-grid":
       return (
         <div className="h-full overflow-auto text-[11px]">
@@ -785,12 +1195,22 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
     case "demo-bar":
       return (
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={mockLineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <BarChart data={multiSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis fontSize={11} tickLine={false} axisLine={false} />
             <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
-            <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            {chartSeriesKeys.map((key, idx) => (
+              <Bar
+                key={key}
+                dataKey={key}
+                name={dataLabels[idx]}
+                fill={colorByIndex[idx % colorByIndex.length]}
+                radius={[4, 4, 0, 0]}
+                barSize={Math.max(10, 22 - selectedIds.length * 2)}
+              />
+            ))}
+            {selectedIds.length > 1 && <Legend wrapperStyle={{ fontSize: 10 }} />}
           </BarChart>
         </ResponsiveContainer>
       );
@@ -812,24 +1232,47 @@ function WidgetViewResolver({ viewType, equipmentId }: { viewType: string, equip
     case "mon-sensor-1":
       return (
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={mockLineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <LineChart data={multiSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis fontSize={11} tickLine={false} axisLine={false} />
             <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
-            <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+            {chartSeriesKeys.map((key, idx) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                name={dataLabels[idx]}
+                stroke={colorByIndex[idx % colorByIndex.length]}
+                strokeWidth={idx === 0 ? 3 : 2}
+                dot={idx === 0 ? { r: 4 } : false}
+                activeDot={idx === 0 ? { r: 6 } : undefined}
+              />
+            ))}
+            {selectedIds.length > 1 && <Legend wrapperStyle={{ fontSize: 10 }} />}
           </LineChart>
         </ResponsiveContainer>
       );
     case "mon-sensor-2":
       return (
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={mockLineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <LineChart data={multiSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis fontSize={11} tickLine={false} axisLine={false} />
             <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: 'none', borderRadius: '8px', color: 'hsl(var(--foreground))' }} />
-            <Line type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={2} dot={false} />
+            {chartSeriesKeys.map((key, idx) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                name={dataLabels[idx]}
+                stroke={colorByIndex[idx % colorByIndex.length]}
+                strokeWidth={2}
+                dot={false}
+              />
+            ))}
+            {selectedIds.length > 1 && <Legend wrapperStyle={{ fontSize: 10 }} />}
           </LineChart>
         </ResponsiveContainer>
       );

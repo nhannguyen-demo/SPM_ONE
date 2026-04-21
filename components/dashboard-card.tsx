@@ -19,9 +19,15 @@ interface DashboardCardProps {
   thumbnailSrc?: string
   // FEATURE 4: cardIndex determines which hardcoded insight to show (0–3)
   cardIndex?: number
+  showEquipmentName?: boolean
 }
 
-export function DashboardCard({ card, thumbnailSrc, cardIndex = 0 }: DashboardCardProps) {
+export function DashboardCard({
+  card,
+  thumbnailSrc,
+  cardIndex = 0,
+  showEquipmentName = true,
+}: DashboardCardProps) {
   const [thumbFailed, setThumbFailed] = useState(false)
   const showThumbnail = Boolean(thumbnailSrc) && !thumbFailed
 
@@ -56,10 +62,12 @@ export function DashboardCard({ card, thumbnailSrc, cardIndex = 0 }: DashboardCa
         )}
       </div>
       <div className="px-3 py-2 border-t border-border bg-secondary/30">
-        <div className="font-medium text-sm text-foreground truncate">{card.equipment}</div>
-        <span className="inline-block px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full mt-1">
-          {card.tag}
-        </span>
+        <div className="font-semibold text-sm text-foreground truncate">{card.tag}</div>
+        {showEquipmentName && (
+          <span className="inline-block px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full mt-1">
+            {card.equipment}
+          </span>
+        )}
       </div>
       {/* FEATURE 4 — AI Insight Strip: sits flush at bottom of card */}
       <AIInsightStrip cardIndex={cardIndex} />
