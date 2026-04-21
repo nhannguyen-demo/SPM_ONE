@@ -928,8 +928,8 @@ export function EquipmentDashboard() {
                         }}
                         className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-xs hover:bg-primary/90 flex items-center gap-1"
                       >
-                        <Share2 className="w-3.5 h-3.5" />
-                        Share Now
+                        <Share2 className="w-3.5 h-8.5" />
+
                       </button>
                     </div>
                   </div>
