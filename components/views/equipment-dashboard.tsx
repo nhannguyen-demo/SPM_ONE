@@ -18,6 +18,8 @@ import {
   ExternalLink,
   Search,
   Bookmark,
+  FileText,
+  Share2,
 } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { ModuleLibrary, SPM_WIDGET_DRAG_TYPE, type LibraryModule } from "@/components/module-library"
@@ -247,6 +249,9 @@ export function EquipmentDashboard() {
     setWhatifSelectedScenarioId,
     setWhatifInitialTab,
     whatifRunSessions,
+    addDocument,
+    whatifDashboardAutoSelectRunId,
+    setWhatifDashboardAutoSelectRunId,
   } = useAppStore()
 
   // Grid widget + layout state
@@ -259,6 +264,9 @@ export function EquipmentDashboard() {
   const [newDashName, setNewDashName] = useState("")
   const [createMode, setCreateMode] = useState<"existing" | "blank">("existing")
   const [templateTag, setTemplateTag] = useState("")
+  const [visualReportGenerated, setVisualReportGenerated] = useState(false)
+  const [shareNowOpen, setShareNowOpen] = useState(false)
+  const [shareRecipient, setShareRecipient] = useState("")
   // Container width for RGL (measured via ResizeObserver or default)
   const [gridWidth, setGridWidth] = useState(900)
   /** Active library module during HTML5 drag (for drop preview size). */
@@ -414,11 +422,26 @@ export function EquipmentDashboard() {
     .filter((s) => s.equipmentId === equipment.id && s.status === "success")
     .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
 
+  const scenarioForEquipment = whatIfScenarios.find((s) => s.equipmentId === equipment.id)
+
   const [viewedDataIds, setViewedDataIds] = useState<string[]>(["live"])
 
   useEffect(() => {
     setViewedDataIds(["live"])
   }, [equipment.id])
+
+  useEffect(() => {
+    if (!whatifDashboardAutoSelectRunId) return
+    const session = whatifRunSessions.find((s) => s.id === whatifDashboardAutoSelectRunId)
+    if (session?.equipmentId !== equipment.id) return
+    setViewedDataIds([whatifDashboardAutoSelectRunId])
+    setWhatifDashboardAutoSelectRunId(null)
+  }, [
+    equipment.id,
+    whatifDashboardAutoSelectRunId,
+    whatifRunSessions,
+    setWhatifDashboardAutoSelectRunId,
+  ])
 
   useEffect(() => {
     const availableIds = ["live", ...equipmentRuns.map((run) => run.id)]
@@ -469,6 +492,26 @@ export function EquipmentDashboard() {
     addRecentDashboard(newCard.id)
     setCreateDashOpen(false)
     setNewDashName("")
+  }
+
+  const generateViewedDataReport = () => {
+    const selectedLabels = viewedDataIds.map((id) =>
+      id === "live" ? "Live Data" : equipmentRuns.find((r) => r.id === id)?.runName ?? id
+    )
+    const doc = {
+      id: `vis-report-${equipment.id}-${Date.now()}`,
+      name: `[What-If Visual Report] ${equipment.name} — ${activeTab}.pdf`,
+      fileType: "pdf" as const,
+      category: "Uploaded" as const,
+      siteId: site.id,
+      plantId: plant.id,
+      equipmentId: equipment.id,
+      size: `${(0.9 + Math.random() * 1.5).toFixed(1)} MB`,
+      date: new Date().toISOString().split("T")[0],
+    }
+    addDocument(doc)
+    setVisualReportGenerated(true)
+    return selectedLabels
   }
 
   const deleteDashboard = (tag: string) => {
@@ -678,7 +721,7 @@ export function EquipmentDashboard() {
 
         {/* Regular bottom tab strip — hidden when expanded */}
         {!dashboardExpanded && (
-          <div className="flex gap-3 overflow-x-auto pb-2 overflow-y-hidden">
+          <div className="flex gap-3 overflow-x-auto pb-2 overflow-y-visible pt-2">
             {equipmentDashboardCards.map((card, idx) => (
               <div key={card.id} className="relative flex-shrink-0">
                 <button
@@ -794,13 +837,13 @@ export function EquipmentDashboard() {
             <div className="flex-1 p-4 overflow-y-auto">
               <h3 className="font-semibold text-foreground mb-4">Equipment Information</h3>
               <div className="space-y-2 mb-4">
-                 <div className="h-3 bg-muted rounded w-3/4" />
-                 <div className="h-3 bg-muted rounded w-1/2" />
-                 <div className="h-3 bg-muted rounded w-5/6" />
-                 <div className="h-3 bg-muted rounded w-2/3" />
+                <div className="h-3 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-1/2" />
+                <div className="h-3 bg-muted rounded w-5/6" />
+                <div className="h-3 bg-muted rounded w-2/3" />
               </div>
               <hr className="border-border my-4" />
-              
+
               <div className="space-y-3 mb-6">
                 {[1, 2].map(i => (
                   <div key={i} className="flex items-center gap-2">
@@ -833,27 +876,66 @@ export function EquipmentDashboard() {
                 ))}
               </div>
 
-              <div className="mt-8 pb-12 space-y-3">
-                <h4 className="font-medium text-foreground">What-If Scenarios</h4>
-                <button
-                  onClick={() => {
-                    const scenario = whatIfScenarios.find((s) => s.equipmentId === equipment.id)
-                    if (scenario) setWhatifSelectedScenarioId(scenario.id)
-                    setWhatifInitialTab("run")
-                    setCurrentView("whatif-tool")
-                    setViewMode("view")
-                  }}
-                  className="w-full py-3.5 px-4 bg-primary text-primary-foreground rounded-lg font-bold text-sm hover:bg-primary/90 transition-all shadow-[0_4px_14px_rgba(0,0,0,0.1)] active:scale-[0.98]"
-                >
-                  Run What-If Scenarios
-                </button>
+              <div className="mt-8 pb-12 space-y-5">
+                {scenarioForEquipment && (
+                  <>
+                    <h4 className="font-medium text-foreground">What-If Scenarios</h4>
+                    <button
+                      onClick={() => {
+                        setWhatifSelectedScenarioId(scenarioForEquipment.id)
+                        setWhatifInitialTab("run")
+                        setCurrentView("whatif-tool")
+                        setViewMode("view")
+                      }}
+                      className="w-full py-3.5 px-4 bg-primary text-primary-foreground rounded-lg font-bold text-sm hover:bg-primary/90 transition-all shadow-[0_4px_14px_rgba(0,0,0,0.1)] active:scale-[0.98]"
+                    >
+                      Run What-If Scenarios
+                    </button>
+                  </>
+                )}
                 <div className="pt-2 border-t border-border">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                    Viewed Data
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
-                    Select and unselect freely. At least one scenario must stay selected.
-                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-foreground">Viewed Data</h4>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!scenarioForEquipment) return
+                          setWhatifSelectedScenarioId(scenarioForEquipment.id)
+                          setWhatifInitialTab("history")
+                          setCurrentView("whatif-tool")
+                          setViewMode("view")
+                        }}
+                        className="px-2 py-1 rounded-md text-xs text-primary hover:underline"
+                      >
+                        View Run history
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          generateViewedDataReport()
+                        }}
+                        className="px-2 py-1 rounded-md border border-border text-xs text-foreground hover:bg-secondary flex items-center gap-1"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Generate Report
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          generateViewedDataReport()
+                          setShareNowOpen(true)
+                        }}
+                        className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-xs hover:bg-primary/90 flex items-center gap-1"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        Share Now
+                      </button>
+                    </div>
+                  </div>
+                  {visualReportGenerated && (
+                    <p className="text-[11px] text-emerald-600 mb-2">Visual report saved to Documents.</p>
+                  )}
                   <label className="flex items-start gap-2 p-2 rounded-lg bg-secondary/40 border border-border cursor-pointer">
                     <input
                       type="checkbox"
@@ -875,11 +957,7 @@ export function EquipmentDashboard() {
                       <div className="text-[10px] text-muted-foreground">Current equipment scenario data</div>
                     </span>
                   </label>
-                  {equipmentRuns.length === 0 ? (
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      No passed scenario results yet.
-                    </p>
-                  ) : (
+                  {equipmentRuns.length > 0 && (
                     <ul className="space-y-1.5 max-h-52 overflow-y-auto pr-0.5">
                       {equipmentRuns.map((run) => (
                         <li key={run.id}>
@@ -914,6 +992,42 @@ export function EquipmentDashboard() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {shareNowOpen && (
+        <div className="absolute inset-0 z-[140] flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md bg-card border border-border rounded-xl p-5">
+            <h4 className="font-semibold text-foreground mb-1">Share Report Now</h4>
+            <p className="text-xs text-muted-foreground mb-3">
+              The generated visual report is saved in Documents and can be shared immediately.
+            </p>
+            <input
+              value={shareRecipient}
+              onChange={(e) => setShareRecipient(e.target.value)}
+              placeholder="Recipient email or user"
+              className="w-full h-10 px-3 bg-secondary border border-border rounded-lg text-sm"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setShareNowOpen(false)}
+                className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShareNowOpen(false)
+                  setShareRecipient("")
+                }}
+                className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90"
+              >
+                Share
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

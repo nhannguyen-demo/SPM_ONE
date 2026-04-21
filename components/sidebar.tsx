@@ -133,7 +133,7 @@ function ModuleRail() {
         {/* Module buttons */}
         <nav className="flex flex-col items-center gap-1 flex-1 w-full px-1">
           {MODULES.map(({ key, icon, label }) => {
-            const isActive = activeModule === key && isPanelOpen
+            const isActive = activeModule === key
             return (
               <Tooltip key={key}>
                 <TooltipTrigger asChild>

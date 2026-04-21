@@ -94,6 +94,9 @@ interface AppState {
   /** When set, equipment dashboard shows full-screen explore workspace for this successful run id. */
   whatifExploreRunId: string | null
   setWhatifExploreRunId: (id: string | null) => void
+  /** One-shot: when navigating from What-If results to dashboard, auto-select this run in Viewed Data. */
+  whatifDashboardAutoSelectRunId: string | null
+  setWhatifDashboardAutoSelectRunId: (id: string | null) => void
   removeWhatifRunSession: (id: string) => void
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -184,7 +187,22 @@ export const useAppStore = create<AppState>((set) => ({
   
   // Current view
   currentView: "home",
-  setCurrentView: (view) => set({ currentView: view }),
+  setCurrentView: (view) =>
+    set((state) => {
+      let activeModule: ActiveModule = state.activeModule
+      let isPanelOpen = state.isPanelOpen
+      if (view === "home") {
+        activeModule = "home"
+        isPanelOpen = false
+      } else if (view === "site" || view === "plant" || view === "equipment") {
+        activeModule = "portfolio"
+        isPanelOpen = true
+      } else if (view === "data-sync" || view === "whatif-tool" || view === "documents-tool") {
+        activeModule = "insights"
+        isPanelOpen = true
+      }
+      return { currentView: view, activeModule, isPanelOpen }
+    }),
 
   // ── DOCUMENTS TOOL STATE ─────────────────────────────────────────────────
   savedDocuments: [],
@@ -209,11 +227,15 @@ export const useAppStore = create<AppState>((set) => ({
   setWhatifInitialTab: (tab) => set({ whatifInitialTab: tab }),
   whatifExploreRunId: null,
   setWhatifExploreRunId: (id) => set({ whatifExploreRunId: id }),
+  whatifDashboardAutoSelectRunId: null,
+  setWhatifDashboardAutoSelectRunId: (id) => set({ whatifDashboardAutoSelectRunId: id }),
   removeWhatifRunSession: (id) =>
     set((state) => ({
       whatifRunSessions: state.whatifRunSessions.filter((s) => s.id !== id),
       whatifExploreRunId: state.whatifExploreRunId === id ? null : state.whatifExploreRunId,
       whatifActiveRunId: state.whatifActiveRunId === id ? null : state.whatifActiveRunId,
+      whatifDashboardAutoSelectRunId:
+        state.whatifDashboardAutoSelectRunId === id ? null : state.whatifDashboardAutoSelectRunId,
     })),
   // ─────────────────────────────────────────────────────────────────────────
 
