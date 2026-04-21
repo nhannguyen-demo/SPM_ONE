@@ -194,6 +194,7 @@ export function SiteOverview() {
                       card={card}
                       cardIndex={idx}
                       thumbnailSrc={getEquipmentDashboardThumbnail(card.equipId)}
+                      showEquipmentName={false}
                     />
                   </div>
                 ))
@@ -241,7 +242,7 @@ export function SiteOverview() {
               </div>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-6 pt-2">
+            <div className="flex gap-4 overflow-x-auto pb-6 pt-6">
               {Object.entries(groupedCards).map(([equipId, group]) => (
                 <DashboardTabStack
                   key={equipId}

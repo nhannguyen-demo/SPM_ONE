@@ -6,30 +6,40 @@
  */
 
 import { useState, useEffect, useRef } from "react"
-import { useAppStore, type WhatIfRunSession } from "@/lib/store"
-import { whatIfScenarios, mockWhatifRunSessions } from "@/lib/data"
+import { useAppStore, type WhatIfRunSession, type WhatIfParameterInputMode } from "@/lib/store"
+import { whatIfScenarios, mockWhatifRunSessions, sites } from "@/lib/data"
 import type { UserDocument } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import {
-  Play, History, GitCompareArrows, ChevronRight,
-  Upload, CheckCircle2, XCircle, Loader2,
+  Play, History, ChevronRight, GitCompareArrows,
+  Upload, CheckCircle2, Loader2,
   ArrowLeft, ExternalLink, MessageSquare, Check, Box,
-  Search, AlertTriangle, LayoutDashboard, Info,
-  Sparkles, FileText, Trash2, Download,
+  Search, LayoutDashboard, Info,
+  FileText, Trash2,
 } from "lucide-react"
-import { AIWhatIfSummaryCard } from "@/components/ai/feature8-whatif-summary"
-
 /* ═══════════════════════════════════════════════════════════════════════════
    CONSTANTS
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const RUN_STEPS = [
-  "Uploading scenario data file",
+  "Ingesting parameter files and typed values",
   "Validating parameter inputs",
   "Running scenario engine",
-  "Computing dashboard outputs",
+  "Computing dashboard-quality datasets",
   "Finalising results",
 ]
+
+function findAssetPathForEquipment(equipmentId: string): { site: string; plant: string; tab: string } {
+  for (const site of sites) {
+    for (const plant of site.plants) {
+      const eq = plant.equipment.find((e) => e.id === equipmentId)
+      if (eq) {
+        return { site: site.id, plant: plant.id, tab: eq.tabs?.[0] ?? "Overview" }
+      }
+    }
+  }
+  return { site: "site-x", plant: "plant-1", tab: "Overview" }
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SEED MOCK HISTORY
@@ -41,9 +51,9 @@ function useSeedMockHistory() {
   useEffect(() => {
     if (seeded.current || whatifRunSessions.length > 0) return
     seeded.current = true
-    ;[...mockWhatifRunSessions].reverse().forEach((s) =>
-      addWhatifRunSession(s as unknown as WhatIfRunSession)
-    )
+      ;[...mockWhatifRunSessions].reverse().forEach((s) =>
+        addWhatifRunSession(s as unknown as WhatIfRunSession)
+      )
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
@@ -54,9 +64,9 @@ function useSeedMockHistory() {
 function StatusBadge({ status }: { status: WhatIfRunSession["status"] }) {
   const map = {
     success: { label: "Success", cls: "bg-emerald-500/10 text-emerald-600" },
-    failed:  { label: "Failed",  cls: "bg-rose-500/10 text-rose-600" },
+    failed: { label: "Failed", cls: "bg-rose-500/10 text-rose-600" },
     running: { label: "Running", cls: "bg-blue-500/10 text-blue-600 animate-pulse" },
-    queued:  { label: "Queued",  cls: "bg-amber-500/10 text-amber-600" },
+    queued: { label: "Queued", cls: "bg-amber-500/10 text-amber-600" },
   }
   const { label, cls } = map[status]
   return (
@@ -96,12 +106,12 @@ function RunProgressOverlay({
             duration: `${Math.floor(Math.random() * 3 + 3)}m ${Math.floor(Math.random() * 59)}s`,
             progressStep: RUN_STEPS.length,
             results: [
-              { checked: true, col1: "DMG Accumulation",  col2: `${(190 + Math.random() * 40).toFixed(1)}%`, col3: Math.random() > 0.3 ? "Pass" : "Warning" },
-              { checked: true, col1: "Remaining Life",    col2: `${(35 + Math.random() * 10).toFixed(1)} yrs`, col3: "Pass" },
-              { checked: true, col1: "Fatigue Index",     col2: (0.6 + Math.random() * 0.3).toFixed(2),       col3: "Pass" },
-              { checked: true, col1: "Peak Temperature",  col2: `${(440 + Math.random() * 60).toFixed(1)}°C`, col3: Math.random() > 0.5 ? "Pass" : "Warning" },
-              { checked: true, col1: "Pressure Ratio",    col2: (0.88 + Math.random() * 0.1).toFixed(2),      col3: "Pass" },
-              { checked: true, col1: "Cycle Count Delta", col2: `+${Math.floor(Math.random() * 20 + 5)}`,     col3: "Pass" },
+              { checked: true, col1: "DMG Accumulation", col2: `${(190 + Math.random() * 40).toFixed(1)}%`, col3: Math.random() > 0.3 ? "Pass" : "Warning" },
+              { checked: true, col1: "Remaining Life", col2: `${(35 + Math.random() * 10).toFixed(1)} yrs`, col3: "Pass" },
+              { checked: true, col1: "Fatigue Index", col2: (0.6 + Math.random() * 0.3).toFixed(2), col3: "Pass" },
+              { checked: true, col1: "Peak Temperature", col2: `${(440 + Math.random() * 60).toFixed(1)}°C`, col3: Math.random() > 0.5 ? "Pass" : "Warning" },
+              { checked: true, col1: "Pressure Ratio", col2: (0.88 + Math.random() * 0.1).toFixed(2), col3: "Pass" },
+              { checked: true, col1: "Cycle Count Delta", col2: `+${Math.floor(Math.random() * 20 + 5)}`, col3: "Pass" },
             ],
           }
           updateWhatifRunSession(sessionId, finishedSession)
@@ -171,20 +181,20 @@ function RunProgressOverlay({
 
 function ResultsPanel({
   session,
-  scenarioId,
   onSaveBack,
   onDiscard,
-  onCompare,
+  onCompareData,
 }: {
   session: WhatIfRunSession
-  scenarioId: string
   onSaveBack: () => void
   onDiscard: () => void
-  onCompare: () => void
+  onCompareData: () => void
 }) {
   const { addDocument } = useAppStore()
   const [reportGenerated, setReportGenerated] = useState(false)
-  const scenario = whatIfScenarios.find((s) => s.id === scenarioId)
+  const pseudo = session.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+  const tokenConsumed = 100 + (pseudo % 700)
+  const childJobs = Math.max(3, Math.min(12, session.results.length || 6))
 
   const handleGenerateReport = () => {
     const doc: UserDocument = {
@@ -221,13 +231,13 @@ function ResultsPanel({
 
           {/* Primary actions */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Compare */}
             <button
-              onClick={onCompare}
+              type="button"
+              onClick={onCompareData}
               className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-foreground rounded-lg text-sm hover:bg-secondary transition-colors"
             >
               <GitCompareArrows className="w-4 h-4" />
-              Compare with Live
+              View Data
             </button>
 
             {/* Generate Report */}
@@ -242,12 +252,13 @@ function ResultsPanel({
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/30 text-primary rounded-lg text-sm hover:bg-primary/10 transition-colors"
               >
                 <FileText className="w-4 h-4" />
-                Generate Report
+                Generate report (parameters)
               </button>
             )}
 
             {/* Discard */}
             <button
+              type="button"
               onClick={onDiscard}
               className="flex items-center gap-1.5 px-3 py-1.5 border border-rose-300/50 text-rose-600 rounded-lg text-sm hover:bg-rose-500/8 transition-colors"
             >
@@ -255,8 +266,8 @@ function ResultsPanel({
               Discard
             </button>
 
-            {/* Save & Back — primary */}
             <button
+              type="button"
               onClick={onSaveBack}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
             >
@@ -267,76 +278,26 @@ function ResultsPanel({
         </div>
       </div>
 
-      {/* Dashboard tags */}
-      <div className="px-6 py-2.5 border-b border-border flex items-center gap-2 flex-wrap flex-shrink-0 bg-card">
-        <span className="text-xs text-muted-foreground">Dashboards written:</span>
-        {session.selectedDashboards.map((d) => (
-          <span key={d} className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">{d}</span>
-        ))}
-      </div>
-
       <div className="flex-1 overflow-y-auto">
-        {/* AI Summary */}
-        <div className="px-6 pt-5">
-          <div className="border border-blue-200/60 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-50/60 to-emerald-50/40 dark:from-blue-950/20 dark:to-emerald-950/10">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-blue-200/40">
-              <Sparkles className="w-4 h-4 text-blue-500" />
-              <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">AI Summary</span>
-              <span className="ml-auto text-[11px] text-muted-foreground">Generated by SPM AI</span>
-            </div>
-            <div className="px-4 py-3 text-sm text-foreground leading-relaxed">
-              {warningCount > 0 ? (
-                <>
-                  This scenario shows{" "}
-                  <strong>{warningCount} parameter{warningCount > 1 ? "s" : ""}</strong>
-                  {" "}outside safe thresholds. The most significant deviation is in{" "}
-                  <strong>
-                    {session.results.find((r) => r.col3 !== "Pass")?.col1 ?? "peak parameters"}
-                  </strong>
-                  . Review the highlighted rows and compare against live data before making operational decisions.
-                </>
-              ) : (
-                <>
-                  All parameters are within safe operational thresholds under this scenario.
-                  The modelled conditions show a <strong>stable future state</strong> with no critical deviations detected.
-                  This result can be saved as a reference for the next planning cycle.
-                </>
-              )}
-            </div>
-            <div className="px-4 pb-3 text-[11px] text-muted-foreground">
-              ⚠ AI summaries are advisory only. Always validate with engineering judgement.
-            </div>
-          </div>
-        </div>
-
-        {/* Results table */}
-        <div className="px-6 py-4">
-          <h4 className="text-sm font-semibold text-foreground mb-3">Parameter Results</h4>
+        {/* Run session info */}
+        <div className="px-6 pt-5 pb-4">
+          <h4 className="text-sm font-semibold text-foreground mb-3">Run Session Information</h4>
           <div className="border border-border rounded-xl overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parameter</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Value</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
               <tbody className="divide-y divide-border">
-                {session.results.map((r, i) => (
-                  <tr key={i} className={cn("hover:bg-secondary/20", r.col3 !== "Pass" && "bg-amber-500/5")}>
-                    <td className="px-4 py-3 text-foreground">
-                      {r.col3 !== "Pass" && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 inline mr-1.5" />}
-                      {r.col1}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-foreground">{r.col2}</td>
-                    <td className="px-4 py-3">
-                      <span className={cn(
-                        "px-2.5 py-0.5 rounded-full text-xs font-semibold",
-                        r.col3 === "Pass" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
-                      )}>
-                        {r.col3}
-                      </span>
-                    </td>
+                {[
+                  ["Time run", new Date(session.startedAt).toLocaleString()],
+                  ["Elapsed", session.duration || "—"],
+                  ["User ran", session.user],
+                  ["Status", session.status],
+                  ["Number of child jobs", String(childJobs)],
+                  ["Token consumed", String(tokenConsumed)],
+                  ["Sub-jobs", "View sub-jobs"],
+                  ["Run log file", "View log file"],
+                ].map(([label, value]) => (
+                  <tr key={label}>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{label}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{value}</td>
                   </tr>
                 ))}
               </tbody>
@@ -346,7 +307,30 @@ function ResultsPanel({
 
         {/* Input params used */}
         <div className="px-6 pb-8">
-          <h4 className="text-sm font-semibold text-foreground mb-3">Input Parameters Used</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-3">Input parameters used</h4>
+          {session.parameterInputMode && (
+            <p className="text-xs text-muted-foreground mb-3">
+              Input pattern recorded:{" "}
+              <span className="font-medium text-foreground capitalize">
+                {session.parameterInputMode.replace(/-/g, " ")}
+              </span>
+            </p>
+          )}
+          {session.parameterInputMode === "full-csv" && (
+            <div className="mb-3 text-xs text-muted-foreground rounded-lg border border-border bg-secondary/30 px-3 py-2">
+              Uploaded full equipment CSV file. Individual parameter rows are populated from file mapping.
+            </div>
+          )}
+          {session.parameterInputMode === "per-parameter-csv" && (
+            <div className="mb-3 text-xs text-muted-foreground rounded-lg border border-border bg-secondary/30 px-3 py-2">
+              Per-parameter CSV files uploaded. Values below show interpreted primary values by parameter.
+            </div>
+          )}
+          {session.parameterInputMode === "mixed" && (
+            <div className="mb-3 text-xs text-muted-foreground rounded-lg border border-border bg-secondary/30 px-3 py-2">
+              Mixed mode run: full CSV and per-parameter CSV entries combined with typed overrides.
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(session.params).map(([k, v]) => (
               <div key={k} className="flex justify-between px-3 py-2 bg-secondary/40 rounded-lg text-xs">
@@ -355,115 +339,6 @@ function ResultsPanel({
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   COMPARE PANEL
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-function ComparePanel({
-  session,
-  onBack,
-}: {
-  session: WhatIfRunSession
-  onBack: () => void
-}) {
-  const liveKPIs = [
-    { label: "DMG Accumulation", value: "201%",       note: "Current" },
-    { label: "Remaining Life",   value: "40 yrs",     note: "Current" },
-    { label: "Fatigue Index",    value: "0.58",        note: "Current" },
-  ]
-  const scenarioKPIs = session.results.slice(0, 3).map((r) => ({
-    label: r.col1, value: r.col2, warn: r.col3 !== "Pass",
-  }))
-
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="px-6 py-4 border-b border-border flex items-center gap-3 flex-shrink-0">
-        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
-          <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-        </button>
-        <div>
-          <div className="font-semibold text-foreground">Comparison View</div>
-          <div className="text-xs text-muted-foreground">{session.runName} vs Live Data</div>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid grid-cols-2 gap-6 mb-8">
-          {/* Live */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="font-semibold text-foreground">Live Dashboard</span>
-              <span className="text-xs text-muted-foreground">(real data)</span>
-            </div>
-            <div className="space-y-3">
-              {liveKPIs.map((k) => (
-                <div key={k.label} className="bg-card border border-border rounded-xl p-4">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{k.label}</div>
-                  <div className="text-2xl font-bold text-foreground">{k.value}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{k.note}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Scenario */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <span className="font-semibold text-foreground">Scenario Dashboard</span>
-              <span className="text-xs text-muted-foreground">(future projection)</span>
-            </div>
-            <div className="space-y-3">
-              {scenarioKPIs.map((k) => (
-                <div key={k.label} className={cn(
-                  "bg-card border rounded-xl p-4",
-                  k.warn ? "border-amber-400/50 bg-amber-500/5" : "border-border"
-                )}>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{k.label}</div>
-                  <div className="text-2xl font-bold text-foreground">{k.value}</div>
-                  <div className={cn("text-xs mt-1 font-medium", k.warn ? "text-amber-600" : "text-emerald-600")}>
-                    {k.warn ? <>Warning <AlertTriangle className="w-3 h-3 inline" /></> : "Pass ✓"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Delta table */}
-        <h4 className="font-semibold text-foreground mb-4">Full Parameter Delta</h4>
-        <div className="border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Parameter</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Live</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Scenario</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {session.results.map((r, i) => (
-                <tr key={i} className={cn("hover:bg-secondary/20", r.col3 !== "Pass" && "bg-amber-500/5")}>
-                  <td className="px-4 py-3 text-foreground">{r.col1}</td>
-                  <td className="px-4 py-3 font-mono text-muted-foreground">—</td>
-                  <td className="px-4 py-3 font-mono text-foreground">{r.col2}</td>
-                  <td className="px-4 py-3">
-                    <span className={cn("px-2 py-0.5 rounded-full text-xs font-semibold",
-                      r.col3 === "Pass" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
-                    )}>{r.col3}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
@@ -483,8 +358,11 @@ function ConfigureRunPanel({
 }) {
   const { addWhatifRunSession, setWhatifActiveRunId } = useAppStore()
   const [runName, setRunName] = useState("")
-  const [selectedDashboards, setSelectedDashboards] = useState<string[]>(scenario.availableDashboards.slice(0, 2))
   const [csvFile, setCsvFile] = useState<string | null>(null)
+  const [paramInputMode, setParamInputMode] = useState<WhatIfParameterInputMode>("typed")
+  const [paramCsvNames, setParamCsvNames] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(Object.keys(scenario.defaultParams).map((k) => [k, null]))
+  )
   const [params, setParams] = useState(() =>
     Object.fromEntries(Object.entries(scenario.defaultParams).map(([k, v]) => [k, v.value]))
   )
@@ -492,11 +370,11 @@ function ConfigureRunPanel({
   const [calcMethod, setCalcMethod] = useState("IEC 12345-6-789")
   const [recompute, setRecompute] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const perFileRef = useRef<HTMLInputElement>(null)
+  const [perUploadKey, setPerUploadKey] = useState<string | null>(null)
 
-  const toggleDashboard = (d: string) =>
-    setSelectedDashboards((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
-    )
+  const showFullCsv = paramInputMode === "full-csv" || paramInputMode === "mixed"
+  const showPerParamCol = paramInputMode === "per-parameter-csv" || paramInputMode === "mixed"
 
   const handleRun = () => {
     const id = `wir-${Date.now()}`
@@ -510,54 +388,136 @@ function ConfigureRunPanel({
       duration: "",
       status: "running",
       user: "Nhan N.",
-      selectedDashboards,
+      selectedDashboards: scenario.availableDashboards,
       results: [],
       progressStep: 0,
       params,
       source: "tool",
+      parameterInputMode: paramInputMode,
     }
     addWhatifRunSession(session)
     setWhatifActiveRunId(id)
     onRunStarted(id)
   }
 
+  const inputModeOptions: {
+    id: WhatIfParameterInputMode
+    title: string
+    desc: string
+  }[] = [
+      {
+        id: "full-csv",
+        title: "Full equipment CSV",
+        desc: "One file containing all parameters for the whole asset row-set.",
+      },
+      {
+        id: "per-parameter-csv",
+        title: "Per-parameter CSV",
+        desc: "Upload a separate CSV for one parameter at a time (or each parameter in turn).",
+      },
+      {
+        id: "typed",
+        title: "Type values",
+        desc: "Enter coefficients and standalone scalars directly in the table.",
+      },
+      {
+        id: "mixed",
+        title: "Mixed",
+        desc: "Combine a whole-equipment file, per-parameter files, and typed overrides.",
+      },
+    ]
+
   return (
     <div className="flex-1 overflow-y-auto">
+      <input
+        ref={perFileRef}
+        type="file"
+        accept=".csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (!f || !perUploadKey) return
+          setParamCsvNames((p) => ({ ...p, [perUploadKey]: f.name }))
+          e.target.value = ""
+          setPerUploadKey(null)
+        }}
+      />
       <div className="p-6 max-w-3xl space-y-8">
-        {/* Upload */}
         <section>
-          <h3 className="font-semibold text-foreground mb-1">1. Upload Data File</h3>
+          <h3 className="font-semibold text-foreground mb-1">1. Parameter input method</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Upload a correctly formatted <code className="bg-muted px-1 rounded">.csv</code> file.
+            Client agreements define how data is ingested. Choose the pattern that matches your scenario contract.
           </p>
-          <div
-            className={cn(
-              "border-2 border-dashed rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer transition-colors",
-              csvFile ? "border-primary/40 bg-primary/5" : "border-border hover:border-primary/30 hover:bg-secondary/30"
-            )}
-            onClick={() => fileRef.current?.click()}
-          >
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) setCsvFile(f.name) }}
-            />
-            {csvFile ? (
-              <><CheckCircle2 className="w-8 h-8 text-primary" /><span className="font-medium text-foreground">{csvFile}</span></>
-            ) : (
-              <><Upload className="w-8 h-8 text-muted-foreground" /><span className="font-medium text-foreground">Drop CSV here or click to browse</span></>
-            )}
+          <div className="grid sm:grid-cols-2 gap-3">
+            {inputModeOptions.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setParamInputMode(opt.id)}
+                className={cn(
+                  "text-left rounded-xl border p-4 transition-all",
+                  paramInputMode === opt.id
+                    ? "border-primary bg-primary/8 ring-1 ring-primary/20"
+                    : "border-border hover:border-primary/25 hover:bg-secondary/40"
+                )}
+              >
+                <div className="font-medium text-sm text-foreground">{opt.title}</div>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{opt.desc}</p>
+              </button>
+            ))}
           </div>
         </section>
 
+        {showFullCsv && (
+          <section>
+            <h3 className="font-semibold text-foreground mb-1">2. Full equipment CSV</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Upload a correctly formatted <code className="bg-muted px-1 rounded">.csv</code> with every parameter column.
+            </p>
+            <div
+              className={cn(
+                "border-2 border-dashed rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer transition-colors",
+                csvFile ? "border-primary/40 bg-primary/5" : "border-border hover:border-primary/30 hover:bg-secondary/30"
+              )}
+              onClick={() => fileRef.current?.click()}
+            >
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) setCsvFile(f.name)
+                }}
+              />
+              {csvFile ? (
+                <>
+                  <CheckCircle2 className="w-8 h-8 text-primary" />
+                  <span className="font-medium text-foreground">{csvFile}</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-8 h-8 text-muted-foreground" />
+                  <span className="font-medium text-foreground">Drop CSV here or click to browse</span>
+                </>
+              )}
+            </div>
+          </section>
+        )}
+
+        {!showFullCsv && paramInputMode !== "typed" && (
+          <section className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+            No whole-equipment CSV is required for this mode. Use per-parameter uploads and/or the value column below.
+          </section>
+        )}
+
         {/* Config */}
         <section>
-          <h3 className="font-semibold text-foreground mb-4">2. Scenario Configuration</h3>
+          <h3 className="font-semibold text-foreground mb-4">3. Scenario configuration</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Run Name</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Scenario Name</label>
               <input
                 type="text"
                 value={runName}
@@ -589,76 +549,83 @@ function ConfigureRunPanel({
         </section>
 
         {/* Parameters */}
-        <section>
-          <h3 className="font-semibold text-foreground mb-4">3. Parameter Inputs</h3>
-          <div className="border border-border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Parameter</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Value</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Unit</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {Object.entries(scenario.defaultParams).map(([key, def]) => (
-                  <tr key={key}>
-                    <td className="px-4 py-2 text-muted-foreground">{key}</td>
-                    <td className="px-4 py-2">
-                      <input type="text" value={params[key]}
-                        onChange={(e) => setParams((p) => ({ ...p, [key]: e.target.value }))}
-                        className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/30" />
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">{def.unit}</td>
+        {paramInputMode === "full-csv" ? (
+          <section className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+            Full equipment CSV mode selected. Parameter values are read from the uploaded file, so manual parameter value entry is disabled.
+          </section>
+        ) : (
+          <section>
+            <h3 className="font-semibold text-foreground mb-1">4. Parameter values &amp; series files</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Typed values always apply. When per-parameter CSV is enabled, attach a file per row as needed.
+            </p>
+            <div
+              className={cn(
+                "border border-border rounded-xl overflow-hidden",
+                paramInputMode === "typed" && "ring-1 ring-primary/15"
+              )}
+            >
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Parameter</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Value</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">Unit</th>
+                    {showPerParamCol && (
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase">
+                        Parameter CSV
+                      </th>
+                    )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Dashboard selection */}
-        <section>
-          <h3 className="font-semibold text-foreground mb-1">4. Select Result Dashboards</h3>
-          <p className="text-sm text-muted-foreground mb-4">Choose which dashboards the scenario results will be written to.</p>
-          <div className="grid grid-cols-2 gap-2">
-            {scenario.availableDashboards.map((d) => (
-              <button key={d} onClick={() => toggleDashboard(d)}
-                className={cn(
-                  "flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium text-left transition-all",
-                  selectedDashboards.includes(d)
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-primary/30 text-foreground hover:bg-secondary"
-                )}>
-                <div className={cn("w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0",
-                  selectedDashboards.includes(d) ? "border-primary bg-primary" : "border-muted-foreground")}>
-                  {selectedDashboards.includes(d) && <Check className="w-3 h-3 text-white" />}
-                </div>
-                <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
-                {d}
-              </button>
-            ))}
-          </div>
-          {selectedDashboards.length === 0 && (
-            <p className="text-xs text-rose-500 mt-2">Select at least one dashboard to continue.</p>
-          )}
-        </section>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {Object.entries(scenario.defaultParams).map(([key, def]) => (
+                    <tr key={key}>
+                      <td className="px-4 py-2 text-muted-foreground">{key}</td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          value={params[key]}
+                          onChange={(e) => setParams((p) => ({ ...p, [key]: e.target.value }))}
+                          className="w-full h-8 px-2 bg-secondary border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">{def.unit}</td>
+                      {showPerParamCol && (
+                        <td className="px-4 py-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPerUploadKey(key)
+                              requestAnimationFrame(() => perFileRef.current?.click())
+                            }}
+                            className="text-xs font-medium text-primary hover:underline"
+                          >
+                            {paramCsvNames[key] ?? "Upload CSV…"}
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {/* Run */}
         <section className="pb-8">
           <button
             id={`run-whatif-${scenario.id}`}
+            type="button"
             onClick={handleRun}
-            disabled={selectedDashboards.length === 0}
             className={cn(
               "w-full py-4 rounded-xl font-bold text-base transition-all shadow-sm active:scale-[0.99]",
-              selectedDashboards.length > 0
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-muted text-muted-foreground cursor-not-allowed"
+              "bg-primary text-primary-foreground hover:bg-primary/90"
             )}
           >
             <div className="flex items-center justify-center gap-2">
-              <Play className="w-5 h-5" /> Run What-If Scenario
+              <Play className="w-5 h-5" /> Run What-If Scenarios
             </div>
           </button>
           <p className="text-center text-xs text-muted-foreground mt-3">
@@ -768,12 +735,20 @@ function HistoryPanel({
 type MainPanelMode =
   | { mode: "overview" | "run" | "history" }
   | { mode: "results"; session: WhatIfRunSession }
-  | { mode: "compare"; session: WhatIfRunSession }
   | { mode: "running"; sessionId: string }
 
 function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
   const scenario = whatIfScenarios.find((s) => s.id === scenarioId)
-  const { whatifRunSessions, whatifInitialTab, setWhatifInitialTab } = useAppStore()
+  const {
+    whatifRunSessions,
+    whatifInitialTab,
+    setWhatifInitialTab,
+    setCurrentPath,
+    setCurrentView,
+    setViewMode,
+    setWhatifDashboardAutoSelectRunId,
+    removeWhatifRunSession,
+  } = useAppStore()
 
   // Consume the initial tab set by external navigation (e.g. equipment dashboard)
   const [panel, setPanel] = useState<MainPanelMode>(() => {
@@ -799,9 +774,9 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
   const lastSuccess = whatifRunSessions.find((s) => s.scenarioId === scenarioId && s.status === "success")
 
   const tabs: { id: "overview" | "run" | "history"; label: string; icon: React.ReactNode }[] = [
-    { id: "overview", label: "Overview",        icon: <Info className="w-3.5 h-3.5" /> },
-    { id: "run",      label: "Configure & Run", icon: <Play className="w-3.5 h-3.5" /> },
-    { id: "history",  label: `History (${sessionCount})`, icon: <History className="w-3.5 h-3.5" /> },
+    { id: "overview", label: "Overview", icon: <Info className="w-3.5 h-3.5" /> },
+    { id: "run", label: "Configure & Run", icon: <Play className="w-3.5 h-3.5" /> },
+    { id: "history", label: `History (${sessionCount})`, icon: <History className="w-3.5 h-3.5" /> },
   ]
 
   if (panel.mode === "running") {
@@ -817,19 +792,18 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
     return (
       <ResultsPanel
         session={panel.session}
-        scenarioId={scenarioId}
         onSaveBack={() => setPanel({ mode: "history" })}
-        onDiscard={() => setPanel({ mode: "history" })}
-        onCompare={() => setPanel({ mode: "compare", session: panel.session })}
-      />
-    )
-  }
-
-  if (panel.mode === "compare") {
-    return (
-      <ComparePanel
-        session={panel.session}
-        onBack={() => setPanel({ mode: "results", session: panel.session })}
+        onDiscard={() => {
+          removeWhatifRunSession(panel.session.id)
+          setPanel({ mode: "history" })
+        }}
+        onCompareData={() => {
+          const { site, plant, tab } = findAssetPathForEquipment(panel.session.equipmentId)
+          setCurrentPath({ site, plant, equipment: panel.session.equipmentId, tab })
+          setWhatifDashboardAutoSelectRunId(panel.session.id)
+          setCurrentView("equipment")
+          setViewMode("view")
+        }}
       />
     )
   }
@@ -842,11 +816,9 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-foreground">{scenario.name}</h2>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-              <span>{scenario.site}</span><ChevronRight className="w-3 h-3" />
-              <span>{scenario.plant}</span><ChevronRight className="w-3 h-3" />
-              <Box className="w-3 h-3" /><span>{scenario.equipmentName}</span>
-            </div>
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+              {scenario.description}
+            </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {lastSuccess && (
@@ -967,8 +939,7 @@ function ScenarioSidebarList({
   return (
     <div className="w-72 flex-shrink-0 border-r border-border flex flex-col overflow-hidden bg-secondary/10">
       <div className="px-4 py-4 border-b border-border">
-        <h2 className="font-semibold text-foreground text-base">Scenarios</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">Select a scenario to manage</p>
+        <h2 className="font-semibold text-foreground text-base">What-If Scenarios</h2>
       </div>
       <div className="px-3 py-2 border-b border-border">
         <div className="relative">
@@ -994,9 +965,14 @@ function ScenarioSidebarList({
                 <span className="font-semibold text-foreground text-sm truncate">{scenario.equipmentName}</span>
                 {hasRunning && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin ml-auto" />}
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                {scenario.description.split(".")[0]}.
-              </p>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>{scenario.site}</span>
+                <ChevronRight className="w-3 h-3" />
+                <span>{scenario.plant}</span>
+                <ChevronRight className="w-3 h-3" />
+                <Box className="w-3 h-3" />
+                <span>{scenario.equipmentName}</span>
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 {lastRun ? <StatusBadge status={lastRun.status} /> : <span className="text-[11px] text-muted-foreground">Never run</span>}
                 {runs.length > 0 && <span className="text-[11px] text-muted-foreground">{runs.length} run{runs.length !== 1 ? "s" : ""}</span>}

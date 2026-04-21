@@ -26,10 +26,14 @@ function useSeedDocuments() {
   const { savedDocuments, addDocument } = useAppStore()
   const seeded = useRef(false)
   useEffect(() => {
-    if (seeded.current || savedDocuments.length > 0) return
+    if (seeded.current) return
     seeded.current = true
-    ;[...userDocuments].reverse().forEach((d) => addDocument(d))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    const existingIds = new Set(savedDocuments.map((d) => d.id))
+    ;[...userDocuments]
+      .reverse()
+      .filter((d) => !existingIds.has(d.id))
+      .forEach((d) => addDocument(d))
+  }, [savedDocuments, addDocument])
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -144,6 +148,18 @@ function ShareModal({ doc, onClose }: { doc: UserDocument; onClose: () => void }
    DOCUMENT CARD
    ═══════════════════════════════════════════════════════════════════════════ */
 
+function isWhatIfParameterReport(name: string) {
+  return name.startsWith("[What-If Report]")
+}
+
+function isWhatIfVisualReport(name: string) {
+  return name.startsWith("[What-If Visual Report]")
+}
+
+function isWhatIfDocument(name: string) {
+  return isWhatIfParameterReport(name) || isWhatIfVisualReport(name)
+}
+
 function DocumentCard({
   doc,
   onShare,
@@ -153,7 +169,9 @@ function DocumentCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const meta = fileMeta(doc.fileType)
-  const isWhatIfReport = doc.name.startsWith("[What-If Report]")
+  const isParamReport = isWhatIfParameterReport(doc.name)
+  const isVisualReport = isWhatIfVisualReport(doc.name)
+  const isWhatIfReport = isParamReport || isVisualReport
 
   // Find equipment name
   const equipName = useMemo(() => {
@@ -169,11 +187,17 @@ function DocumentCard({
 
   return (
     <div className="group relative bg-card border border-border rounded-2xl p-4 hover:border-primary/30 hover:shadow-md transition-all flex flex-col">
-      {/* What-If badge */}
-      {isWhatIfReport && (
+      {isParamReport && (
         <div className="absolute top-3 right-3">
           <span className="px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-bold uppercase rounded tracking-wide">
-            What-If
+            What-If · Parameters
+          </span>
+        </div>
+      )}
+      {isVisualReport && (
+        <div className="absolute top-3 right-3">
+          <span className="px-2 py-0.5 bg-violet-500/15 text-violet-700 dark:text-violet-300 text-[9px] font-bold uppercase rounded tracking-wide">
+            What-If · Visual
           </span>
         </div>
       )}
@@ -183,7 +207,11 @@ function DocumentCard({
 
       {/* Name */}
       <div className="text-sm font-medium text-foreground line-clamp-2 leading-snug mb-2 flex-1 group-hover:text-primary transition-colors pr-12">
-        {isWhatIfReport ? doc.name.replace("[What-If Report] ", "") : doc.name}
+        {isParamReport
+          ? doc.name.replace("[What-If Report] ", "")
+          : isVisualReport
+            ? doc.name.replace("[What-If Visual Report] ", "")
+            : doc.name}
       </div>
 
       {/* Meta tags */}
@@ -247,8 +275,13 @@ function DocumentRow({
   onShare: (doc: UserDocument) => void
 }) {
   const meta = fileMeta(doc.fileType)
-  const isWhatIfReport = doc.name.startsWith("[What-If Report]")
-  const displayName = isWhatIfReport ? doc.name.replace("[What-If Report] ", "") : doc.name
+  const isParamReport = isWhatIfParameterReport(doc.name)
+  const isVisualReport = isWhatIfVisualReport(doc.name)
+  const displayName = isParamReport
+    ? doc.name.replace("[What-If Report] ", "")
+    : isVisualReport
+      ? doc.name.replace("[What-If Visual Report] ", "")
+      : doc.name
 
   const equipName = useMemo(() => {
     if (!doc.equipmentId) return null
@@ -275,8 +308,15 @@ function DocumentRow({
             <div className="text-sm font-medium text-foreground truncate max-w-xs group-hover:text-primary transition-colors">
               {displayName}
             </div>
-            {isWhatIfReport && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded font-bold uppercase">What-If</span>
+            {isParamReport && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded font-bold uppercase">
+                What-If · Parameters
+              </span>
+            )}
+            {isVisualReport && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-violet-500/15 text-violet-700 dark:text-violet-300 rounded font-bold uppercase">
+                What-If · Visual
+              </span>
             )}
           </div>
         </div>
@@ -352,7 +392,7 @@ export function DocumentsView() {
     })
   }, [savedDocuments, categoryFilter, typeFilter, assetFilter, docSearch])
 
-  const whatIfCount = savedDocuments.filter((d) => d.name.startsWith("[What-If Report]")).length
+  const whatIfCount = savedDocuments.filter((d) => isWhatIfDocument(d.name)).length
 
   return (
     <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">

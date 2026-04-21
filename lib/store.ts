@@ -2,9 +2,13 @@
 
 import { create } from "zustand"
 import type { UserDocument } from "@/lib/data"
+import { mockWhatifRunSessions } from "@/lib/data"
 
 /* ─── What-If Run Session ─────────────────────────────────────────────────── */
 export type WhatIfRunStatus = "queued" | "running" | "success" | "failed"
+
+/** How the user supplied parameters for this run (mock / UX only). */
+export type WhatIfParameterInputMode = "full-csv" | "per-parameter-csv" | "typed" | "mixed"
 
 export interface WhatIfRunSession {
   id: string
@@ -21,6 +25,8 @@ export interface WhatIfRunSession {
   progressStep: number        // 0-5
   params: Record<string, string>
   source: "tool" | "dashboard" // where it was triggered from
+  /** Mock: describes CSV / typing / mixed inputs used for this run. */
+  parameterInputMode?: WhatIfParameterInputMode
 }
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -85,6 +91,13 @@ interface AppState {
   /** Tab to open when navigating into What-If tool externally (e.g. from equipment dashboard) */
   whatifInitialTab: "overview" | "run" | "history" | null
   setWhatifInitialTab: (tab: "overview" | "run" | "history" | null) => void
+  /** When set, equipment dashboard shows full-screen explore workspace for this successful run id. */
+  whatifExploreRunId: string | null
+  setWhatifExploreRunId: (id: string | null) => void
+  /** One-shot: when navigating from What-If results to dashboard, auto-select this run in Viewed Data. */
+  whatifDashboardAutoSelectRunId: string | null
+  setWhatifDashboardAutoSelectRunId: (id: string | null) => void
+  removeWhatifRunSession: (id: string) => void
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── HOME PAGE STATE ───────────────────────────────────────────────────────
@@ -174,7 +187,22 @@ export const useAppStore = create<AppState>((set) => ({
   
   // Current view
   currentView: "home",
-  setCurrentView: (view) => set({ currentView: view }),
+  setCurrentView: (view) =>
+    set((state) => {
+      let activeModule: ActiveModule = state.activeModule
+      let isPanelOpen = state.isPanelOpen
+      if (view === "home") {
+        activeModule = "home"
+        isPanelOpen = false
+      } else if (view === "site" || view === "plant" || view === "equipment") {
+        activeModule = "portfolio"
+        isPanelOpen = true
+      } else if (view === "data-sync" || view === "whatif-tool" || view === "documents-tool") {
+        activeModule = "insights"
+        isPanelOpen = true
+      }
+      return { currentView: view, activeModule, isPanelOpen }
+    }),
 
   // ── DOCUMENTS TOOL STATE ─────────────────────────────────────────────────
   savedDocuments: [],
@@ -182,7 +210,7 @@ export const useAppStore = create<AppState>((set) => ({
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── WHAT-IF TOOL STATE ────────────────────────────────────────────────────
-  whatifRunSessions: [],
+  whatifRunSessions: [...mockWhatifRunSessions] as unknown as WhatIfRunSession[],
   addWhatifRunSession: (session) =>
     set((state) => ({ whatifRunSessions: [session, ...state.whatifRunSessions] })),
   updateWhatifRunSession: (id, updates) =>
@@ -197,6 +225,18 @@ export const useAppStore = create<AppState>((set) => ({
   setWhatifActiveRunId: (id) => set({ whatifActiveRunId: id }),
   whatifInitialTab: null,
   setWhatifInitialTab: (tab) => set({ whatifInitialTab: tab }),
+  whatifExploreRunId: null,
+  setWhatifExploreRunId: (id) => set({ whatifExploreRunId: id }),
+  whatifDashboardAutoSelectRunId: null,
+  setWhatifDashboardAutoSelectRunId: (id) => set({ whatifDashboardAutoSelectRunId: id }),
+  removeWhatifRunSession: (id) =>
+    set((state) => ({
+      whatifRunSessions: state.whatifRunSessions.filter((s) => s.id !== id),
+      whatifExploreRunId: state.whatifExploreRunId === id ? null : state.whatifExploreRunId,
+      whatifActiveRunId: state.whatifActiveRunId === id ? null : state.whatifActiveRunId,
+      whatifDashboardAutoSelectRunId:
+        state.whatifDashboardAutoSelectRunId === id ? null : state.whatifDashboardAutoSelectRunId,
+    })),
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── HOME PAGE STATE ───────────────────────────────────────────────────────
