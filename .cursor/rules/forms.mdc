@@ -1,0 +1,19 @@
+---
+description: Form validation and input-schema rules
+globs: "{components,lib}/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Validation / Form Rules
+
+- Validate all user-entered scenario inputs before run submission.
+- Keep input models aligned to ontology entities:
+  - `WhatIfScenarioParameter`
+  - `WhatIfRunInput`
+  - `UserDocument` share metadata
+- Prefer Zod schemas colocated by feature when introducing form-heavy flows.
+- For create/update flows:
+  - create schemas require mandatory fields
+  - update schemas should be partial/optional by default
+- Normalize types at boundaries (e.g., string form values -> typed domain values where required).
+- Surface validation messages in UI; do not silently coerce invalid values.

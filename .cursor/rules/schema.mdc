@@ -1,0 +1,20 @@
+---
+description: Domain schema and data-model rules
+globs: "domain.ontology.yaml"
+alwaysApply: false
+---
+
+# Schema / Domain Model Rules
+
+- Every persistent entity must include: `id`, `createdAt`, `updatedAt`.
+- Keep schema/entity names aligned with current ontology:
+  - `Dashboard` (not `DashboardTab`)
+  - `Widget` + `DashboardWidget` join
+  - `WhatIfRunSelectedDashboard` is removed
+- Use enums for lifecycle and type fields (`status`, `kind`, `source`, `category`, etc.).
+- Preserve key invariants:
+  - Dashboard name unique per equipment.
+  - Dashboard widget layout constraints (`x,y,w,h,minW,minH`).
+  - WhatIf run status transitions and progress bounds.
+  - Referential integrity for Site->Plant->Equipment and run/document links.
+- If schema evolves, update both `domain.ontology.yaml` and `PROJECT.md` summary sections together.

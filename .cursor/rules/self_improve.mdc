@@ -1,0 +1,14 @@
+---
+description: Continuous rule quality and project alignment
+alwaysApply: true
+---
+
+# Self-Improvement Rules
+
+- Before major code suggestions, re-check `PROJECT.md` for current build state and constraints.
+- If implementation reality differs from docs, propose doc updates to `PROJECT.md` and/or `domain.ontology.yaml`.
+- Prefer incremental, reversible changes over broad rewrites.
+- When introducing new domain terms, map them to existing ontology names or propose explicit migration notes.
+- Reduce duplication when touching code (extract shared helpers/components instead of copy-paste).
+- Call out assumptions clearly when backend behavior is not yet implemented.
+- Keep new rules concise, scoped, and based on repeated project patterns.

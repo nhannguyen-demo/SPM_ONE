@@ -1,0 +1,15 @@
+---
+description: API/domain service rules for future backend work
+globs: "lib/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# API Layer Rules (Backend-Ready Guidance)
+
+- Backend is not implemented yet; when adding API code, align models to `domain.ontology.yaml`.
+- Define one service/module per core entity group (Assets, Dashboards, WhatIf, Documents, SyncJobs).
+- Validate all mutation inputs with Zod schemas.
+- Enforce domain invariants from ontology (run status transitions, dashboard/layout constraints, document scoping).
+- Prefer typed DTOs and explicit field selection; avoid leaking internal shapes to UI.
+- Treat `WhatIfRunSession` as queued/running/completed workflow; support queued concurrent runs.
+- Keep side effects idempotent where possible (report generation, run submission retries).
