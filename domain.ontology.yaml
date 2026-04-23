@@ -1,18 +1,8 @@
-# ============================================================
-# SPM ONE — Domain Ontology (Revised)
-# ============================================================
-# Revised based on product-owner feedback (Apr 2026)
-# Notes:
-# - KPI is modeled as Widget (not a separate entity).
-# - DashboardTab concept is replaced by Dashboard.
-# - Widget can appear in many Dashboards.
-# - WhatIfRunSelectedDashboard removed.
-# - What-If run queuing allowed.
-# ============================================================
+# SPM ONE — Domain Ontology (Canonical)
+# Revised Apr 2026 from audit + product clarifications.
 
 entities:
   User:
-    description: System user (engineer/admin/operator) who interacts with assets and tools.
     fields:
       id: { type: uuid }
       name: { type: string }
@@ -20,288 +10,205 @@ entities:
       role:
         type: enum
         values: [integrity_engineer, process_engineer, admin]
-        comment: "# ASSUMPTION — verify exact role taxonomy with product owner"
-      avatarUrl: { type: string, nullable: true }
+        comment: "# ASSUMPTION — verify role taxonomy with product owner."
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   Site:
-    description: Top-level industrial location.
     fields:
       id: { type: uuid }
-      code: { type: string, nullable: true, comment: "# ASSUMPTION — optional business code (e.g. SITE_X)" }
       name: { type: string }
-      aerialImageUrl: { type: string, nullable: true }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   Plant:
-    description: Process plant/unit belonging to a site.
     fields:
       id: { type: uuid }
       siteId: { type: uuid, references: Site.id }
-      code: { type: string, nullable: true }
       name: { type: string }
-      pidDiagramUrl: { type: string, nullable: true }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   Equipment:
-    description: Physical equipment asset monitored by dashboards and widgets.
     fields:
       id: { type: uuid }
       plantId: { type: uuid, references: Plant.id }
-      code: { type: string, nullable: true, comment: "# ASSUMPTION — equipment register code/tag" }
       name: { type: string }
       type:
         type: enum
-        values: [vessel, reactor, pump, pipe, other]
-        comment: "# ASSUMPTION — inferable from UI naming but should be confirmed"
+        values: [vessel, reactor, pump, other]
+        comment: "# ASSUMPTION — inferred from UI naming."
       hasWhatIfTool: { type: boolean, default: false }
-      thumbnailUrl: { type: string, nullable: true, comment: "Default dashboard-card thumbnail for this equipment" }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   Dashboard:
-    description: >
-      A dashboard workspace for one equipment. This is what users click in the
-      bottom panel to switch views. A dashboard may be system-seeded, cloned
-      from an existing dashboard, or blank.
     fields:
       id: { type: uuid }
       equipmentId: { type: uuid, references: Equipment.id }
-      name: { type: string, example: "Fatigue" }
-      description: { type: string, nullable: true }
-      thumbnailUrl: { type: string, nullable: true, comment: "# ASSUMPTION — can override equipment thumbnail later" }
-      sourceDashboardId: { type: uuid, nullable: true, references: Dashboard.id, comment: "Populated when created from existing dashboard template" }
-      isSystemDashboard: { type: boolean, default: false }
+      name: { type: string }
       orderIndex: { type: integer }
-      archivedAt: { type: datetime, nullable: true, comment: "# ASSUMPTION — soft delete support for dashboard lifecycle" }
-      createdById: { type: uuid, nullable: true, references: User.id, comment: "# ASSUMPTION — current prototype does not track authorship" }
+      sourceDashboardId:
+        type: uuid
+        nullable: true
+        references: Dashboard.id
+        comment: "Set when cloned from an existing dashboard."
+      isSystemDashboard: { type: boolean, default: false }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   Widget:
-    description: >
-      Reusable metric/visual component that represents equipment performance or
-      health data. KPI widgets are a subtype of Widget (merged concept).
-      Widgets can appear in multiple dashboards.
     fields:
       id: { type: uuid }
-      key: { type: string, comment: "Stable technical key, e.g. kpi-dmg, fatigue-trend" }
+      key: { type: string }
       name: { type: string }
       kind:
         type: enum
-        values: [kpi, chart, table, model_view, status, summary, generic]
-      chartType:
-        type: enum
-        values: [line, bar, pie, area, scatter, composed, table, none]
-        nullable: true
+        values: [kpi, chart, table, model_view, summary, generic]
       dataSourceType:
         type: enum
         values: [live_equipment, whatif_result, mixed, static_mock]
-        comment: "# ASSUMPTION — intended production source modes"
-      unit: { type: string, nullable: true, comment: "# ASSUMPTION — KPI/metric display unit where applicable" }
-      defaultConfig: { type: json, nullable: true, comment: "# ASSUMPTION — style/axis/threshold defaults for rendering" }
+        comment: "# ASSUMPTION — intended production source modes."
+      defaultConfig:
+        type: json
+        nullable: true
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   DashboardWidget:
-    description: >
-      Join entity that places a Widget inside a specific Dashboard with layout
-      and optional per-dashboard overrides. Enables one Widget to appear in
-      many Dashboards.
     fields:
       id: { type: uuid }
       dashboardId: { type: uuid, references: Dashboard.id }
       widgetId: { type: uuid, references: Widget.id }
-      titleOverride: { type: string, nullable: true }
-      x: { type: integer, comment: "Grid column position (0-based)" }
-      y: { type: integer, comment: "Grid row position (0-based)" }
-      w: { type: integer, comment: "Grid width in columns" }
-      h: { type: integer, comment: "Grid height in rows" }
+      x: { type: integer }
+      y: { type: integer }
+      w: { type: integer }
+      h: { type: integer }
       minW: { type: integer, default: 2 }
       minH: { type: integer, default: 2 }
-      isVisible: { type: boolean, default: true }
-      configOverride: { type: json, nullable: true, comment: "# ASSUMPTION — per-dashboard widget config diff" }
+      configOverride: { type: json, nullable: true }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   WidgetLibraryItem:
-    description: Widget catalog item users can drag/drop from the library panel.
     fields:
       id: { type: uuid }
       widgetId: { type: uuid, references: Widget.id }
       displayName: { type: string }
-      category:
-        type: enum
-        values: [asset_efficiency, asset_information, event_visualization, other]
-      iconKey: { type: string }
+      category: { type: string }
       defaultW: { type: integer }
       defaultH: { type: integer }
-      isActive: { type: boolean, default: true }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   AppModule:
-    description: ModuleRail module (Home, Assets, Dashboard, Tools, Comms, Settings).
     fields:
       id: { type: uuid }
-      key:
-        type: enum
-        values: [home, assets, dashboard, tools, comms, settings]
+      key: { type: enum, values: [home, assets, workspace, insights, comms, settings] }
       displayName: { type: string }
-      orderIndex: { type: integer }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   Tool:
-    description: Functional tool under a module (e.g. What-If Scenarios under Tools).
     fields:
       id: { type: uuid }
       moduleId: { type: uuid, references: AppModule.id }
-      key: { type: string, example: "whatif-scenarios" }
+      key: { type: string }
       name: { type: string }
       isEnabled: { type: boolean, default: true }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   WhatIfScenario:
-    description: Scenario definition for a specific equipment in the What-If tool.
     fields:
       id: { type: uuid }
-      toolId: { type: uuid, references: Tool.id, comment: "Should reference the What-If Scenarios tool" }
+      toolId: { type: uuid, references: Tool.id }
       equipmentId: { type: uuid, references: Equipment.id }
       name: { type: string }
       description: { type: string }
       details: { type: string, nullable: true }
-      isActive: { type: boolean, default: true }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   WhatIfScenarioParameter:
-    description: Parameter definition for scenario configuration.
     fields:
       id: { type: uuid }
       scenarioId: { type: uuid, references: WhatIfScenario.id }
       name: { type: string }
       unit: { type: string, nullable: true }
       defaultValue: { type: string }
-      dataType:
-        type: enum
-        values: [number, string, boolean]
-        comment: "# ASSUMPTION — inferred parameter typing for validation"
-      minValue: { type: float, nullable: true, comment: "# ASSUMPTION — optional limit support for safer simulation" }
-      maxValue: { type: float, nullable: true, comment: "# ASSUMPTION — optional limit support for safer simulation" }
-      orderIndex: { type: integer }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   WhatIfRunSession:
-    description: >
-      One execution request for a scenario. Queued/running/completed sessions
-      are shown in history and can be explored via Viewed Data on dashboards.
     fields:
       id: { type: uuid }
       scenarioId: { type: uuid, references: WhatIfScenario.id }
       equipmentId: { type: uuid, references: Equipment.id }
-      requestedById: { type: uuid, references: User.id, nullable: true, comment: "# ASSUMPTION — auth not implemented yet" }
+      requestedById: { type: uuid, references: User.id, nullable: true }
       runName: { type: string }
-      status:
-        type: enum
-        values: [queued, running, success, failed, cancelled]
+      status: { type: enum, values: [queued, running, success, failed, cancelled] }
       progressStep: { type: integer, min: 0, max: 5 }
-      source:
-        type: enum
-        values: [tool, dashboard]
-      parameterInputMode:
-        type: enum
-        values: [full-csv, per-parameter-csv, typed, mixed]
+      source: { type: enum, values: [tool, dashboard] }
+      parameterInputMode: { type: enum, values: [full-csv, per-parameter-csv, typed, mixed] }
       startedAt: { type: datetime, nullable: true }
       completedAt: { type: datetime, nullable: true }
-      durationSeconds: { type: integer, nullable: true, comment: "# ASSUMPTION — normalize from display string to integer seconds" }
-      childJobCount: { type: integer, nullable: true }
-      tokenConsumed: { type: integer, nullable: true, comment: "# ASSUMPTION — unit semantics to be finalized" }
-      errorMessage: { type: string, nullable: true }
+      durationSeconds:
+        type: integer
+        nullable: true
+        comment: "# ASSUMPTION — UI currently stores formatted duration strings."
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   WhatIfRunInput:
-    description: Concrete input values used in a run.
     fields:
       id: { type: uuid }
       runSessionId: { type: uuid, references: WhatIfRunSession.id }
-      parameterId: { type: uuid, references: WhatIfScenarioParameter.id, nullable: true, comment: "# ASSUMPTION — nullable to keep history if parameter deleted/renamed" }
+      parameterId: { type: uuid, references: WhatIfScenarioParameter.id, nullable: true }
       parameterNameSnapshot: { type: string }
       value: { type: string }
-      sourceType:
-        type: enum
-        values: [typed, full_csv, per_parameter_csv, mixed]
+      sourceType: { type: enum, values: [typed, full_csv, per_parameter_csv, mixed] }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   WhatIfRunResult:
-    description: Result row produced by one run session.
     fields:
       id: { type: uuid }
       runSessionId: { type: uuid, references: WhatIfRunSession.id }
       metricName: { type: string }
-      value: { type: string, comment: "Stored as string due to mixed units/text outputs" }
-      status:
-        type: enum
-        values: [pass, warning, fail]
-      included: { type: boolean, default: true, comment: "Whether row is selected for reporting/output" }
+      value: { type: string }
+      status: { type: enum, values: [pass, warning, fail] }
+      included: { type: boolean, default: true }
       orderIndex: { type: integer }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   UserDocument:
-    description: Uploaded/shared/generated document entry visible in Documents tool.
     fields:
       id: { type: uuid }
       name: { type: string }
-      fileType:
-        type: enum
-        values: [pdf, docx, xlsx, link]
-      category:
-        type: enum
-        values: [uploaded, shared]
-      subType:
-        type: enum
-        values: [general, whatif_parameter_report, whatif_visual_report]
-        default: general
-      storageUrl: { type: string, nullable: true, comment: "# ASSUMPTION — prototype currently keeps metadata only" }
-      fileSizeBytes: { type: integer, nullable: true }
+      fileType: { type: enum, values: [pdf, docx, xlsx, link] }
+      category: { type: enum, values: [uploaded, shared] }
+      subType: { type: enum, values: [general, whatif_parameter_report, whatif_visual_report], default: general }
       siteId: { type: uuid, nullable: true, references: Site.id }
       plantId: { type: uuid, nullable: true, references: Plant.id }
       equipmentId: { type: uuid, nullable: true, references: Equipment.id }
       sourceRunSessionId: { type: uuid, nullable: true, references: WhatIfRunSession.id }
-      uploadedById: { type: uuid, nullable: true, references: User.id }
-      sharedById: { type: uuid, nullable: true, references: User.id }
-      dateLabel: { type: date, nullable: true, comment: "Business date shown in UI (can mirror createdAt date)" }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   ChangeLogEntry:
-    description: Immutable audit/event row shown in Home Change Log.
     fields:
       id: { type: uuid }
-      type:
-        type: enum
-        values: [dashboard, operation]
+      type: { type: enum, values: [dashboard, operation] }
       action: { type: string }
       locationLabel: { type: string }
       userId: { type: uuid, nullable: true, references: User.id }
-      siteId: { type: uuid, nullable: true, references: Site.id }
-      plantId: { type: uuid, nullable: true, references: Plant.id }
-      equipmentId: { type: uuid, nullable: true, references: Equipment.id }
-      dashboardId: { type: uuid, nullable: true, references: Dashboard.id }
       occurredAt: { type: datetime }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
   DataSyncStatus:
-    description: Current data ingestion health by equipment.
     fields:
       id: { type: uuid }
       equipmentId: { type: uuid, references: Equipment.id }
@@ -313,568 +220,51 @@ entities:
       updatedAt: { type: datetime }
 
   SyncJob:
-    description: Background sync/model job history entry.
     fields:
       id: { type: uuid }
       equipmentId: { type: uuid, references: Equipment.id }
       userId: { type: uuid, nullable: true, references: User.id }
       description: { type: string }
-      status:
-        type: enum
-        values: [queued, running, success, failed, cancelled]
+      status: { type: enum, values: [queued, running, success, failed, cancelled] }
       startedAt: { type: datetime, nullable: true }
       completedAt: { type: datetime, nullable: true }
       elapsedSeconds: { type: integer, nullable: true }
       tokenCount: { type: integer, default: 0 }
-      logUrl: { type: string, nullable: true }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
-
 relationships:
   - "A Site has many Plants; a Plant belongs to one Site."
-  - "A Plant has many Equipment items; an Equipment item belongs to one Plant."
-  - "An Equipment item has zero or many Dashboards."
-  - "A Dashboard belongs to one Equipment item."
-  - "A Widget can appear in many Dashboards."
-  - "A Dashboard contains many Widgets through DashboardWidget."
-  - "A DashboardWidget belongs to one Dashboard and one Widget."
-  - "A Widget may have one or many WidgetLibraryItem entries for catalog grouping/presentation."
-  - "A Tool belongs to one AppModule; the What-If Scenarios tool belongs to the Tools module."
-  - "A WhatIfScenario belongs to one Tool and one Equipment item."
-  - "A WhatIfScenario has many WhatIfScenarioParameters."
-  - "A WhatIfScenario has many WhatIfRunSessions (history of runs). # ASSUMPTION — user note mentioned 'only one WhatIfRunSessions', but history behavior implies many; verify final intent."
-  - "A WhatIfRunSession has many WhatIfRunInput records and many WhatIfRunResult records."
-  - "A UserDocument can optionally reference Site, Plant, Equipment, and/or source WhatIfRunSession."
-  - "A ChangeLogEntry can optionally reference Site, Plant, Equipment, and Dashboard."
-  - "A DataSyncStatus belongs to one Equipment item."
-  - "A SyncJob belongs to one Equipment item and is optionally linked to a User."
-
+  - "A Plant has many Equipment; an Equipment belongs to one Plant."
+  - "An Equipment has zero or many Dashboards."
+  - "A Widget can appear in many Dashboards via DashboardWidget."
+  - "A Dashboard has many DashboardWidgets; each DashboardWidget references one Widget."
+  - "A Tool belongs to one AppModule; What-If Scenario is a Tool under the Tools module."
+  - "A WhatIfScenario belongs to one Equipment."
+  - "A WhatIfScenario has many parameters and many run sessions (history)."
+  - "A WhatIfRunSession has many inputs and many results."
+  - "A UserDocument can optionally reference Site, Plant, Equipment, and source WhatIfRunSession."
+  - "A DataSyncStatus belongs to one Equipment."
+  - "A SyncJob belongs to one Equipment and optionally one User."
 
 business_rules:
-  - "Only equipment with hasWhatIfTool=true can expose What-If Scenarios in the Tools module."
-  - "Users can create a Dashboard from an existing Dashboard (clone widgets/layout) or from blank."
-  - "Users can drag/drop widgets from WidgetLibraryItem into a Dashboard."
-  - "Users can rearrange and resize widgets on a Dashboard while editing."
-  - "Users can remove widgets from a Dashboard without deleting the underlying Widget definition."
-  - "A Widget may be reused across multiple Dashboards; per-dashboard differences are stored on DashboardWidget overrides."
-  - "Users can queue a second (or more) What-If run while another run for the same scenario is running."
-  - "What-If parameter input supports four modes: full-csv, per-parameter-csv, typed, mixed."
-  - "A run result can be reviewed in the scenario result page and then selected in Equipment Dashboard Viewed Data."
-  - "Viewed Data can combine live data and one or more run datasets to render through widgets."
-  - "What-If report generation stores a document record in UserDocument with subtype whatif_parameter_report or whatif_visual_report."
-  - "The old rule 'run must target at least one selected dashboard' is removed."
-  - "What-If Scenarios are accessed under Tools module in the ModuleRail."
-
+  - "KPI is represented as a Widget subtype; there is no separate EquipmentKPI entity."
+  - "Users can create a dashboard from blank or clone an existing dashboard."
+  - "Users can drag/drop, resize, and remove widgets while editing dashboards."
+  - "Users can queue multiple What-If runs while another run is running."
+  - "The old rule requiring selected dashboards for a run is removed."
+  - "What-If results can be surfaced through Viewed Data on the Equipment Dashboard."
+  - "What-If Scenarios are accessed from the Tools module."
+  - "Documents generated from runs are stored in the same document library."
 
 invariants:
   - "Every entity has id, createdAt, and updatedAt."
-  - "Dashboard name must be unique within the same Equipment scope."
-  - "At least one Dashboard should remain active for an Equipment that is visible in UI. # ASSUMPTION — confirm whether equipment can temporarily have zero dashboards"
-  - "DashboardWidget (dashboardId, widgetId) pair can repeat only if intentionally allowed with distinct titles/layout; otherwise enforce uniqueness on (dashboardId, widgetId). # ASSUMPTION — verify desired behavior"
-  - "DashboardWidget.w >= DashboardWidget.minW and DashboardWidget.h >= DashboardWidget.minH."
-  - "DashboardWidget.x >= 0 and y >= 0."
-  - "For 12-column layout, DashboardWidget.x + DashboardWidget.w <= 12."
-  - "WhatIfRunSession.progressStep is between 0 and 5 inclusive."
-  - "WhatIfRunSession status transitions are valid: queued -> running -> success|failed|cancelled."
-  - "If status=success then completedAt is not null and at least one WhatIfRunResult exists."
-  - "If status=failed then completedAt is not null and errorMessage may be present."
-  - "If status=running then startedAt is not null."
-  - "WhatIfRunInput.parameterNameSnapshot must be preserved even if underlying parameter is renamed/deleted."
-  - "If UserDocument.category=shared then sharedById is required."
-  - "If UserDocument.subType starts with whatif_ then sourceRunSessionId should be present."
-  - "If UserDocument.equipmentId is set, the referenced equipment must belong to the referenced plant/site when those are set."
-  - "DataSyncStatus.loadedFiles <= DataSyncStatus.totalFiles."
-  - "DataSyncStatus.errorFiles <= DataSyncStatus.totalFiles."
-  - "DataSyncStatus.loadedFiles + DataSyncStatus.errorFiles <= DataSyncStatus.totalFiles."
-  - "SyncJob.elapsedSeconds is non-negative when present."
-# ============================================================
-# SPM ONE — Domain Ontology
-# ============================================================
-# Generated from: UI audit + full source read (April 22 2026)
-# Status: DRAFT — review all ASSUMPTION comments with product owner
-#
-# Conventions used in this file:
-#   type: string | integer | float | boolean | datetime | date | enum | uuid
-#   nullable: true  →  field may be absent / null
-#   ASSUMPTION comment → type or rule inferred from UI; needs confirmation
-# ============================================================
-
-# ────────────────────────────────────────────────────────────
-# ENTITIES
-# ────────────────────────────────────────────────────────────
-entities:
-
-  # ──────────────────────────────────────────────────────────
-  User:
-    description: >
-      A person who has an account in SPM ONE. Role determines what the user
-      can see and do. Currently implied by the UI (names appear in run history,
-      change log, shared-by fields) but the entity is not modelled in code.
-    fields:
-      id:           { type: uuid }
-      name:         { type: string, example: "Ben T." }
-      email:        { type: string, format: email }
-      role:         { type: enum, values: [integrity_engineer, process_engineer, admin], comment: "# ASSUMPTION — roles inferred from names in mock data (process en, integrit...); verify exact role set" }
-      avatarUrl:    { type: string, nullable: true, comment: "# ASSUMPTION — avatar shown as initials in UI; real URL needed when auth is added" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  Site:
-    description: >
-      Top-level physical location. Appears as the root of the asset hierarchy
-      tree in the sidebar Portfolio panel and in SiteOverview.
-    fields:
-      id:           { type: string, example: "site-x", comment: "# ASSUMPTION — currently a human-readable slug; consider uuid in production" }
-      name:         { type: string, example: "Site X" }
-      aerialImageUrl: { type: string, nullable: true, comment: "# ASSUMPTION — maps to public/images/site-map.jpg; stored per site in production" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  Plant:
-    description: >
-      A processing unit within a site. Appears as the second level of the
-      asset hierarchy. Has a P&ID diagram. Currently plants have no KPIs of
-      their own; KPIs live at equipment level.
-    fields:
-      id:           { type: string, example: "plant-1", comment: "# ASSUMPTION — slug; consider uuid" }
-      siteId:       { type: uuid, references: Site.id }
-      name:         { type: string, example: "Plant 1" }
-      pidDiagramUrl: { type: string, nullable: true, comment: "# ASSUMPTION — maps to public/images/pid-diagram.jpg; stored per plant in production" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  Equipment:
-    description: >
-      A physical piece of plant equipment (vessel, reactor, pump, etc.).
-      Appears as the leaf node of the asset hierarchy. Has one or more
-      DashboardTabs and optionally one WhatIfScenario.
-    fields:
-      id:           { type: string, example: "equipment-a", comment: "# ASSUMPTION — slug; consider uuid" }
-      plantId:      { type: uuid, references: Plant.id }
-      name:         { type: string, example: "Coke Drum" }
-      type:         { type: enum, values: [vessel, reactor, pump, pipe, other], nullable: true, comment: "# ASSUMPTION — not modelled in current code; inferred from equipment names" }
-      tagNumber:    { type: string, nullable: true, example: "ND.1X02", comment: "# ASSUMPTION — Pump ND.1X02 implies a tag/asset register number; confirm field name and format" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  EquipmentKPI:
-    description: >
-      A snapshot of key performance indicators for a specific equipment at a
-      point in time. In the current prototype this is a single global constant
-      object shared across all equipment — it must become per-equipment in
-      production.
-    fields:
-      id:           { type: uuid }
-      equipmentId:  { type: uuid, references: Equipment.id }
-      damage:       { type: float, unit: "%", example: 201.0, comment: "# ASSUMPTION — stored as float (e.g. 201.0), displayed as '201%'" }
-      remainingLife: { type: float, unit: "years", example: 40.0 }
-      installDate:  { type: date, example: "2026-02-10", comment: "# ASSUMPTION — UI shows '10/02/2026'; could be installation or reference date; verify semantics" }
-      tagId:        { type: string, example: "260020", comment: "# ASSUMPTION — appears to be an asset register / FEA job reference ID" }
-      recordedAt:   { type: datetime, comment: "Timestamp of the calculation that produced these KPIs" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  DashboardTab:
-    description: >
-      A named tab within an Equipment's dashboard. Each tab has its own
-      independently configurable widget grid. Called "tag" in the current
-      data model and "tab" in navigation state — these refer to the same thing.
-    fields:
-      id:           { type: uuid }
-      equipmentId:  { type: uuid, references: Equipment.id }
-      name:         { type: string, example: "Fatigue", comment: "Tab name displayed in the UI and used as a unique identifier within the equipment scope" }
-      order:        { type: integer, comment: "Display order within the equipment's tab strip" }
-      thumbnailUrl: { type: string, nullable: true, comment: "Hero image shown on the DashboardCard thumbnail; currently shared per equipment, not per tab" }
-      metricLabel1: { type: string, nullable: true, comment: "# ASSUMPTION — currently stored as anonymous value1/value2; these likely represent named KPIs (e.g. 'DMG%', 'Crack Rate')" }
-      metricValue1: { type: string, nullable: true, example: "80%" }
-      metricLabel2: { type: string, nullable: true }
-      metricValue2: { type: string, nullable: true, example: "0.005%" }
-      isSystemTab:  { type: boolean, default: false, comment: "true for base tabs seeded by the system; false for user-created tabs. System tabs can be deleted by users but this should be confirmed." }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  Widget:
-    description: >
-      A single chart, KPI tile, or data panel placed on a DashboardTab grid.
-      Each widget has a viewType that determines what it renders, and a layout
-      record that stores its position/size in the react-grid-layout grid.
-    fields:
-      id:           { type: string, comment: "Prefixed by convention: 'w-{tab}-{index}'. Consider uuid in production." }
-      dashboardTabId: { type: uuid, references: DashboardTab.id }
-      viewType:     { type: enum, values: [kpi-dmg, kpi-relife, kpi-date, kpi-id, equipment-3d, demo-pie, demo-bar, demo-summary, data-grid, mon-sensor-1, mon-sensor-2, mon-temp, proc-composed, proc-stream, fatigue-trend, fatigue-cycle, fatigue-rem, bulge-bar, bulge-scatter, crack-line, crack-flaws, generic], comment: "# ASSUMPTION — this enum will grow; consider a registry pattern rather than an enum column in the DB" }
-      title:        { type: string, nullable: true, example: "Fatigue Trend" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  WidgetLayout:
-    description: >
-      The react-grid-layout position and size for a Widget within its
-      DashboardTab. Stored separately so layouts can be versioned or
-      personalised per user in future.
-    fields:
-      id:           { type: uuid }
-      widgetId:     { type: uuid, references: Widget.id }
-      x:            { type: integer, comment: "Column index (0-based, grid is 12 columns wide at lg breakpoint)" }
-      y:            { type: integer, comment: "Row index (0-based)" }
-      w:            { type: integer, comment: "Width in columns" }
-      h:            { type: integer, comment: "Height in rows (1 row = 80px)" }
-      minW:         { type: integer, nullable: true, default: 2 }
-      minH:         { type: integer, nullable: true, default: 2 }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  WhatIfScenario:
-    description: >
-      A reusable scenario definition describing what can be simulated for a
-      specific piece of equipment. One scenario per equipment is the current
-      model; this may become many-to-one in future.
-    fields:
-      id:           { type: string, example: "scenario-coke-drum", comment: "# ASSUMPTION — slug; consider uuid" }
-      equipmentId:  { type: uuid, references: Equipment.id }
-      name:         { type: string, example: "Coke Drum — Future Operating Scenario" }
-      description:  { type: string, comment: "Short summary shown in the scenario list sidebar" }
-      details:      { type: string, comment: "Long-form description including instructions for CSV upload" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  WhatIfScenarioParameter:
-    description: >
-      A configurable input parameter for a WhatIfScenario. Defines the
-      parameter name, default value, and unit. Users can override the value
-      per run.
-    fields:
-      id:           { type: uuid }
-      scenarioId:   { type: uuid, references: WhatIfScenario.id }
-      name:         { type: string, example: "Inlet Pressure" }
-      defaultValue: { type: string, example: "150.5", comment: "Stored as string to accommodate varied numeric formats and scientific notation" }
-      unit:         { type: string, example: "barg" }
-      displayOrder: { type: integer, comment: "# ASSUMPTION — not currently tracked; add to control parameter table order" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  WhatIfRunSession:
-    description: >
-      A single execution of a WhatIfScenario. Progresses through 5 internal
-      steps (queued → running → success/failed). Holds the parameter values
-      used, the result rows, and metadata about how it was triggered.
-    fields:
-      id:           { type: string, example: "wir-001", comment: "# ASSUMPTION — currently prefixed slug; uuid in production" }
-      scenarioId:   { type: uuid, references: WhatIfScenario.id }
-      equipmentId:  { type: uuid, references: Equipment.id, comment: "Denormalised from scenario for faster queries; must match scenario.equipmentId" }
-      userId:       { type: uuid, references: User.id, comment: "# ASSUMPTION — currently stored as display name string (e.g. 'Ben T.'); needs FK in production" }
-      runName:      { type: string, example: "Q2 Extended Cycle Projection" }
-      status:       { type: enum, values: [queued, running, success, failed] }
-      progressStep: { type: integer, min: 0, max: 5, comment: "Current step index of the 5-step simulation pipeline; 5 = complete" }
-      source:       { type: enum, values: [tool, dashboard], comment: "'tool' = launched from WhatifToolView; 'dashboard' = launched from Equipment Dashboard sidebar" }
-      parameterInputMode: { type: enum, values: [full-csv, per-parameter-csv, typed, mixed], nullable: true, comment: "Describes how the user supplied parameter values for this run" }
-      startedAt:    { type: datetime }
-      completedAt:  { type: datetime, nullable: true }
-      duration:     { type: string, nullable: true, example: "4m 52s", comment: "# ASSUMPTION — currently stored as a formatted string; consider storing as integer seconds and formatting in the UI" }
-      childJobCount: { type: integer, nullable: true, comment: "Number of sub-jobs spawned by the scenario engine; shown in results panel" }
-      tokenConsumed: { type: integer, nullable: true, comment: "Compute tokens used by the scenario engine run; currently derived from run ID hash in mock" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  WhatIfRunParameter:
-    description: >
-      The actual value supplied by the user for a specific scenario parameter
-      in a particular run. Together, all rows for a run form the parameter
-      snapshot used by the engine.
-    fields:
-      id:           { type: uuid }
-      runSessionId: { type: uuid, references: WhatIfRunSession.id }
-      parameterName: { type: string, comment: "Matches WhatIfScenarioParameter.name; denormalised to preserve history if scenario params change" }
-      value:        { type: string, comment: "User-supplied or CSV-sourced value; stored as string" }
-      createdAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  WhatIfRunResult:
-    description: >
-      A single output row from a completed WhatIfRunSession. Currently modelled
-      as col1/col2/col3 in the prototype — these should be renamed to
-      parameterName/value/status in production.
-    fields:
-      id:           { type: uuid }
-      runSessionId: { type: uuid, references: WhatIfRunSession.id }
-      parameterName: { type: string, example: "DMG Accumulation", comment: "Formerly col1 in mock data" }
-      value:        { type: string, example: "218.4%", comment: "Formerly col2; string to accommodate mixed unit/format output" }
-      status:       { type: enum, values: [Pass, Warning, Failed], comment: "Formerly col3" }
-      included:     { type: boolean, default: true, comment: "Whether the user has checked this row for inclusion in reports; formerly 'checked'" }
-      displayOrder: { type: integer, comment: "# ASSUMPTION — order of result rows as returned by the engine" }
-      createdAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  WhatIfRunSelectedDashboard:
-    description: >
-      The dashboard tabs the user selected to generate scenario-equivalent
-      results for in a particular run. A run can target multiple dashboards.
-    fields:
-      id:           { type: uuid }
-      runSessionId: { type: uuid, references: WhatIfRunSession.id }
-      dashboardTabName: { type: string, comment: "# ASSUMPTION — currently stored as the tab name string (e.g. 'Fatigue'); should reference DashboardTab.id in production" }
-      createdAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  UserDocument:
-    description: >
-      A file or link associated with the user's work. Can be uploaded by the
-      user or shared with them by a colleague. WIS-generated reports are also
-      stored here with a naming-convention prefix.
-    fields:
-      id:           { type: string, example: "doc-1", comment: "# ASSUMPTION — slug; uuid in production" }
-      name:         { type: string, example: "Coke Drum Fatigue Assessment 2026.pdf" }
-      fileType:     { type: enum, values: [pdf, docx, xlsx, link] }
-      category:     { type: enum, values: [Uploaded, Shared] }
-      subType:      { type: enum, values: [user, wis_parameter_report, wis_visual_report], nullable: true, comment: "# ASSUMPTION — currently inferred from name prefix '[What-If Report]' / '[What-If Visual Report]'; should be an explicit field" }
-      siteId:       { type: uuid, references: Site.id, nullable: true, comment: "Asset scope: document relates to this site" }
-      plantId:      { type: uuid, references: Plant.id, nullable: true, comment: "Asset scope: narrows to this plant within the site" }
-      equipmentId:  { type: uuid, references: Equipment.id, nullable: true, comment: "Asset scope: narrows to this specific equipment" }
-      fileSizeBytes: { type: integer, nullable: true, comment: "# ASSUMPTION — currently stored as display string (e.g. '4.2 MB'); should be raw bytes for sorting and quota enforcement" }
-      fileSizeDisplay: { type: string, nullable: true, example: "4.2 MB", comment: "Pre-formatted for display; derived from fileSizeBytes" }
-      fileUrl:      { type: string, nullable: true, comment: "# ASSUMPTION — no real storage exists yet; will be a blob storage URL in production" }
-      uploadedById: { type: uuid, references: User.id, nullable: true, comment: "User who uploaded or generated this document" }
-      sharedById:   { type: uuid, references: User.id, nullable: true, comment: "Populated when category = Shared; the colleague who shared it" }
-      sourceRunId:  { type: uuid, references: WhatIfRunSession.id, nullable: true, comment: "# ASSUMPTION — links a WIS-generated report back to its originating run session; not currently in data model" }
-      uploadedAt:   { type: date, comment: "Date the document was created or received; currently stored as a date string" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  ChangeLogEntry:
-    description: >
-      An immutable audit record of a user action — either a dashboard
-      configuration change or an operational action. Currently hardcoded mock
-      data; in production, entries are created by the system automatically.
-    fields:
-      id:           { type: string, example: "cl-1" }
-      userId:       { type: uuid, references: User.id, comment: "# ASSUMPTION — currently stored as display name string; needs FK" }
-      action:       { type: string, comment: "Human-readable description of what happened" }
-      type:         { type: enum, values: [dashboard, operation] }
-      siteId:       { type: uuid, references: Site.id, nullable: true }
-      plantId:      { type: uuid, references: Plant.id, nullable: true }
-      equipmentId:  { type: uuid, references: Equipment.id, nullable: true }
-      dashboardTabId: { type: uuid, references: DashboardTab.id, nullable: true }
-      locationLabel: { type: string, example: "Site X › Plant 1 › Coke Drum › Fatigue", comment: "Breadcrumb string for display; denormalised snapshot of the path at the time of the action" }
-      occurredAt:   { type: datetime, comment: "When the action actually happened (not when the record was created)" }
-      createdAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  DataSyncStatus:
-    description: >
-      A record of the current data-loading state for a specific equipment.
-      Shown in the Data & Sync view. Tracks file counts and error counts.
-    fields:
-      id:           { type: uuid }
-      equipmentId:  { type: uuid, references: Equipment.id }
-      totalFiles:   { type: integer, comment: "Total number of data files expected for this equipment" }
-      loadedFiles:  { type: integer, comment: "Number of files successfully loaded" }
-      errorFiles:   { type: integer, comment: "Number of files that failed to load" }
-      lastUpdatedAt: { type: datetime, comment: "Timestamp of the most recent successful data sync" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  SyncJob:
-    description: >
-      A single data processing or FEA job run against an equipment's dataset.
-      Shown in the 'Sync & FEA Jobs' table. The 'tokens' field suggests this
-      may include AI/compute jobs, not just file ingestion.
-    fields:
-      id:           { type: uuid }
-      equipmentId:  { type: uuid, references: Equipment.id }
-      userId:       { type: uuid, references: User.id, comment: "# ASSUMPTION — stored as display name in mock; needs FK" }
-      description:  { type: string, example: "fix pressure" }
-      status:       { type: enum, values: [Queued, Running, Success, Failed] }
-      startedAt:    { type: datetime }
-      completedAt:  { type: datetime, nullable: true }
-      elapsedSeconds: { type: integer, nullable: true, comment: "# ASSUMPTION — stored as formatted string (e.g. '4m 52s') in mock; store as integer seconds" }
-      tokenCount:   { type: integer, default: 0, comment: "Compute / AI tokens consumed by this job; 0 for pure sync jobs" }
-      logFileUrl:   { type: string, nullable: true, comment: "# ASSUMPTION — results panel references a 'View log file' link; not yet stored" }
-      createdAt:    { type: datetime }
-      updatedAt:    { type: datetime }
-
-  # ──────────────────────────────────────────────────────────
-  WidgetLibraryItem:
-    description: >
-      A catalogue entry for a widget type that can be added to a dashboard.
-      Shown in the Module Library slide-in panel during Edit mode. This is
-      configuration data, not user data — it likely lives in code or a config
-      table rather than a transactional DB table.
-    fields:res
-      id:           { type: string, example: "column-chart", comment: "Stable identifier used as the drag payload and to look up SPM_WIDGET_LIBRARY_SPECS" }
-      name:         { type: string, example: "Column Chart" }
-      iconKey:      { type: string, example: "bar-chart", comment: "Maps to the iconMap in module-library.tsx" }
-      category:     { type: enum, values: [Asset Efficiency, Asset Information, Event Visualization] }
-      defaultViewType: { type: string, comment: "The viewType string passed to WidgetViewResolver when this library item is dropped" }
-      defaultW:     { type: integer, comment: "Default grid width in columns" }
-      defaultH:     { type: integer, comment: "Default grid height in rows" }
-
-
-# ────────────────────────────────────────────────────────────
-# RELATIONSHIPS
-# ────────────────────────────────────────────────────────────
-relationships:
-
-  asset_hierarchy:
-    - "A Site contains one or more Plants."
-    - "A Plant belongs to exactly one Site."
-    - "A Plant contains zero or more Equipment items."
-    - "An Equipment item belongs to exactly one Plant."
-
-  dashboard:
-    - "An Equipment item has one or more DashboardTabs."
-    - "A DashboardTab belongs to exactly one Equipment item."
-    - "A DashboardTab contains zero or more Widgets."
-    - "A Widget belongs to exactly one DashboardTab."
-    - "Each Widget has exactly one WidgetLayout record."
-
-  kpis:
-    - "An Equipment item has zero or more EquipmentKPI snapshots over time."
-    - "The most recent EquipmentKPI snapshot is the 'live' state shown in the dashboard."
-
-  what_if:
-    - "An Equipment item has zero or one WhatIfScenario."
-    - "A WhatIfScenario has one or more WhatIfScenarioParameters."
-    - "A WhatIfScenario has zero or more WhatIfRunSessions."
-    - "A WhatIfRunSession belongs to exactly one WhatIfScenario and one Equipment."
-    - "A WhatIfRunSession has zero or more WhatIfRunParameters (the input snapshot)."
-    - "A WhatIfRunSession has zero or more WhatIfRunResults (the output rows)."
-    - "A WhatIfRunSession targets one or more DashboardTabs via WhatIfRunSelectedDashboard."
-
-  documents:
-    - "A UserDocument is optionally scoped to a Site, Plant, or Equipment (any combination of the three)."
-    - "A UserDocument with category Shared has a sharedById referencing the User who shared it."
-    - "A UserDocument of subType wis_parameter_report or wis_visual_report optionally references the WhatIfRunSession that generated it via sourceRunId."
-
-  audit:
-    - "A ChangeLogEntry is created by a User."
-    - "A ChangeLogEntry is optionally linked to a Site, Plant, Equipment, or DashboardTab."
-
-  sync:
-    - "A DataSyncStatus record exists for each Equipment item."
-    - "A SyncJob belongs to one Equipment item and one User."
-
-
-# ────────────────────────────────────────────────────────────
-# BUSINESS RULES
-# ────────────────────────────────────────────────────────────
-business_rules:
-
-  navigation:
-    - "Navigating to Home always resets the sidebar panel to the collapsed state."
-    - "Navigating to a Site, Plant, or Equipment automatically opens the Assets panel in the sidebar."
-    - "Navigating to Data & Sync, What-If Tool, or Documents automatically opens the Tools panel."
-    - "# ASSUMPTION — deep-link URLs do not currently exist; all navigation is in-memory. Back-button and shareable URLs are out of scope until URL routing is added."
-
-  dashboard_editing:
-    - "A user may enter Edit mode on any Equipment DashboardTab."
-    - "In Edit mode, widgets can be repositioned, resized, added from the library, or removed."
-    - "The user must explicitly click 'Save Dashboard' to persist layout changes; 'Discard & Exit' reverts to the last saved state."
-    - "A new DashboardTab can be created from an existing tab (copies the widget layout) or as a blank canvas."
-    - "A DashboardTab cannot be deleted if it is the last remaining tab for its Equipment."
-    - "# ASSUMPTION — any authenticated user can edit any dashboard. Per-user or per-role dashboard ownership is not yet modelled."
-
-  favourites_and_recents:
-    - "A user can bookmark (favourite) any DashboardTab; the bookmark applies to the specific tab, not the equipment."
-    - "The Recent Dashboards list holds a maximum of 6 entries (LRU — newest first); adding a 7th evicts the oldest."
-    - "Favourites have no enforced maximum count; the UI shows 6 and provides a 'Show more' toggle."
-    - "Recent and favourite lists are scoped to the current browser session (no persistence). # ASSUMPTION — persistence should be added before public rollout."
-
-  what_if:
-    - "A WIS run can only be started for equipment that has a WhatIfScenario defined."
-    - "A run must have a non-empty runName before it can be submitted."
-    - "A run must target at least one DashboardTab (selectedDashboards must not be empty). # ASSUMPTION — enforced only by UI selection; verify whether the engine enforces this."
-    - "While a run is in status 'running', the user cannot start a second run for the same scenario. # ASSUMPTION — not currently enforced in the UI; verify with product owner."
-    - "A run with status 'failed' produces no WhatIfRunResult rows."
-    - "A user may Discard a completed run; this permanently removes the WhatIfRunSession and its results."
-    - "A 'Save & Back' action on results returns the user to the History tab with the session persisted."
-    - "Generating a report from a run result saves a UserDocument of subType wis_parameter_report to the Documents store."
-    - "Generating a visual report from the Equipment Dashboard saves a UserDocument of subType wis_visual_report."
-    - "A generated report document inherits the siteId, plantId, and equipmentId of the equipment the run was for."
-    - "WIS run sessions are visible in the Equipment Dashboard 'Viewed Data' panel only for the equipment they belong to."
-    - "When a Viewed Data run is selected on the Equipment Dashboard, chart widgets apply a deterministic data skew to reflect the scenario; KPI widgets show recalculated values."
-
-  documents:
-    - "Any user can view all documents in the Documents library."
-    - "A document with category Uploaded was uploaded by the current user (or auto-generated by the system)."
-    - "A document with category Shared was shared to the current user by another user."
-    - "Sharing a document requires a valid recipient email address."
-    - "A shared document message is optional."
-    - "# ASSUMPTION — document upload (file input) is not yet implemented; the UI shows a share flow but no actual file picker."
-    - "# ASSUMPTION — documents cannot be deleted in the current UI; a delete action should be considered."
-
-  data_sync:
-    - "The Data & Sync view is read-only in the current prototype."
-    - "# ASSUMPTION — in production, users will be able to upload data files, trigger sync jobs, and view job logs."
-    - "The 'tokens' count on a SyncJob represents compute resources consumed; 0 for pure data sync jobs. # ASSUMPTION — confirm whether tokens refers to AI inference tokens or a different unit."
-
-
-# ────────────────────────────────────────────────────────────
-# INVARIANTS
-# ────────────────────────────────────────────────────────────
-invariants:
-
-  uniqueness:
-    - "Site.id is globally unique."
-    - "Plant.id is globally unique."
-    - "Equipment.id is globally unique."
-    - "DashboardTab.name is unique within the scope of its Equipment (no two tabs on the same equipment share a name)."
-    - "Widget.id is globally unique."
-    - "WhatIfRunSession.id is globally unique."
-    - "UserDocument.id is globally unique."
-    - "ChangeLogEntry.id is globally unique."
-
-  referential_integrity:
-    - "Plant.siteId must reference an existing Site."
-    - "Equipment.plantId must reference an existing Plant."
-    - "DashboardTab.equipmentId must reference an existing Equipment."
-    - "Widget.dashboardTabId must reference an existing DashboardTab."
-    - "WidgetLayout.widgetId must reference an existing Widget (1-to-1)."
-    - "WhatIfScenario.equipmentId must reference an existing Equipment."
-    - "WhatIfRunSession.scenarioId must reference an existing WhatIfScenario."
-    - "WhatIfRunSession.equipmentId must equal WhatIfScenario.equipmentId for the referenced scenario."
-    - "WhatIfRunResult.runSessionId must reference an existing WhatIfRunSession."
-    - "WhatIfRunParameter.runSessionId must reference an existing WhatIfRunSession."
-    - "UserDocument.siteId, plantId, equipmentId (when non-null) must reference existing entities."
-    - "UserDocument.plantId (when non-null) must belong to UserDocument.siteId (when non-null)."
-    - "UserDocument.equipmentId (when non-null) must belong to UserDocument.plantId (when non-null)."
-
-  run_session_state:
-    - "WhatIfRunSession.progressStep must be an integer in the range [0, 5]."
-    - "A WhatIfRunSession with status 'success' must have progressStep = 5."
-    - "A WhatIfRunSession with status 'failed' must have progressStep < 5."
-    - "A WhatIfRunSession with status 'running' must have progressStep in [0, 4]."
-    - "A WhatIfRunSession with status 'success' must have at least one WhatIfRunResult row."
-    - "A WhatIfRunSession with status 'failed' must have zero WhatIfRunResult rows."
-    - "WhatIfRunSession.completedAt must be after WhatIfRunSession.startedAt (when non-null)."
-
-  dashboard_integrity:
-    - "An Equipment must have at least one DashboardTab at all times (the last tab cannot be deleted)."
-    - "WidgetLayout.w must be >= WidgetLayout.minW (when minW is set)."
-    - "WidgetLayout.h must be >= WidgetLayout.minH (when minH is set)."
-    - "WidgetLayout.x + WidgetLayout.w must be <= 12 (the grid column count)."
-
-  kpi_values:
-    - "EquipmentKPI.damage must be >= 0."
-    - "EquipmentKPI.remainingLife must be >= 0."
-
-  documents:
-    - "A UserDocument with category 'Shared' must have a non-null sharedById."
-    - "A UserDocument with subType 'wis_parameter_report' or 'wis_visual_report' should have a non-null sourceRunId. # ASSUMPTION — currently inferred from name prefix; make explicit."
-
-  data_sync:
-    - "DataSyncStatus.loadedFiles must be <= DataSyncStatus.totalFiles."
-    - "DataSyncStatus.errorFiles must be >= 0."
-    - "DataSyncStatus.loadedFiles + DataSyncStatus.errorFiles must be <= DataSyncStatus.totalFiles."
+  - "Dashboard name is unique within one Equipment."
+  - "DashboardWidget layout must satisfy x >= 0, y >= 0, w >= minW, h >= minH."
+  - "For 12-column layout, x + w <= 12."
+  - "WhatIfRunSession.progressStep is between 0 and 5."
+  - "Valid run state progression is queued -> running -> success|failed|cancelled."
+  - "If run status is success, completedAt is not null and at least one result exists."
+  - "If document category is shared, sharedBy semantics are required. # ASSUMPTION — sharedBy currently inferred from prototype fields."
+  - "If UserDocument.equipmentId is set with plant/site, asset hierarchy references must be consistent."
+  - "DataSyncStatus.loadedFiles + errorFiles <= totalFiles."

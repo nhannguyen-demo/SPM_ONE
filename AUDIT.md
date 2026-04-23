@@ -59,19 +59,19 @@ There is **one Next.js route** — `app/page.tsx`. All navigation is client-side
 
 | `currentView` value | Component rendered | What it shows |
 |---|---|---|
-| `"home"` | `HomeView` | Default landing: greeting, global search, AI summary, recent/favourite dashboards, change log, documents |
+| `"home"` | `HomeView` | Default landing: greeting, global search, AI summary, recent/favorite dashboards, change log, documents |
 | `"site"` | `SiteOverview` | Aerial map of the selected site with plant markers, KPI stats, mini charts, document list, and a tab strip of all equipment dashboards at that site |
 | `"plant"` | `PlantOverview` | Plant-level view with equipment cards, P&ID diagram, mini KPI bars, AI health summary |
 | `"equipment"` | `EquipmentDashboard` | Multi-tab, drag-resize widget dashboard for the selected equipment; includes Edit mode with widget library |
 | `"data-sync"` | `DataSyncView` | Read-only tables for data upload status and FEA/sync job history |
-| `"whatif-tool"` | `WhatifToolView` | Centralised WIS tool: scenario list sidebar → Configure & Run → animated 5-step progress → Results → Compare |
+| `"whatIfTool"` | `WhatIfToolView` | Centralized What-If Scenario tool: scenario list sidebar → Configure & Run → animated 5-step progress → Results → Compare |
 | `"documents-tool"` | `DocumentsView` | Full document library: grid/list layout, category/asset/filetype filters, share, download |
 
 **Navigation that exists in the sidebar but has no view yet:**
 - Shift Log (Insights panel)
 - Chat (Comms panel)
 - Alerts (Comms panel)
-- Favourite (Workspace panel)
+- Favorite (Workspace panel)
 - Share with me (Workspace panel)
 - General / Integrations / Notifications (Settings panel)
 
@@ -83,11 +83,11 @@ There is **one Next.js route** — `app/page.tsx`. All navigation is client-side
 
 | Component | File | What it does |
 |---|---|---|
-| `Sidebar` | `components/sidebar.tsx` | Two-layer nav: fixed 56px `ModuleRail` + sliding 220px `ContextualPanel`. Contains 8 sub-components below. |
-| `ModuleRail` | sidebar.tsx (internal) | 6 icon buttons: Home, Assets, Dashboard, Tools, Comms, Settings. Clicking same active icon closes the panel. |
+| `Sidebar` | `components/sidebar.tsx` | Two-layer nav: fixed 56px `ModuleRail` + sliding 220px `ContextualPanel`. Config/constants extracted to `components/sidebar/config.tsx`. |
+| `ModuleRail` | sidebar.tsx (internal) | 6 icon buttons: Home, Assets, Workspace, Tools, Comms, Settings. Clicking same active icon closes the panel. |
 | `ContextualPanel` | sidebar.tsx (internal) | Slide-in panel with per-module search bar. Routes to the correct sub-panel below. |
-| `PortfolioPanel` | sidebar.tsx (internal) | Hierarchical asset tree (Sites → Plants → Equipment). Full search/filter with auto-expand. |
-| `WorkspacePanel` | sidebar.tsx (internal) | Stub: "Favourite" and "Share with me" items (unlinked). |
+| `AssetsPanel` | sidebar.tsx (internal) | Hierarchical asset tree (Sites → Plants → Equipment). Full search/filter with auto-expand. |
+| `WorkspacePanel` | sidebar.tsx (internal) | Stub: "Favorite" and "Share with me" items (unlinked). |
 | `InsightsPanel` | sidebar.tsx (internal) | Links to Data & Sync, Shift Log (stub), Documents, What-If Scenarios. |
 | `CommsPanel` | sidebar.tsx (internal) | Stub: Chat and Alerts items. |
 | `SettingsPanel` | sidebar.tsx (internal) | Stub: General, Integrations, Notifications. |
@@ -97,33 +97,33 @@ There is **one Next.js route** — `app/page.tsx`. All navigation is client-side
 
 | Component | File | Key props / data consumed |
 |---|---|---|
-| `HomeView` | `views/home-view.tsx` | `recentDashboardIds`, `favouriteDashboardIds` from store; `changeLogEntries`, `userDocuments` from data.ts |
+| `HomeView` | `views/home-view.tsx` | `recentDashboardIds`, `favoriteDashboardIds` from store; `changeLogEntries`, `userDocuments` from data.ts |
 | `SiteOverview` | `views/site-overview.tsx` | `currentPath.site` → renders from `sites[]`; `dashboardCards`, `siteDocuments` |
 | `PlantOverview` | `views/plant-overview.tsx` | `currentPath.{site,plant}` → renders from `sites[]`; `dashboardCards`, `plantDocuments` |
-| `EquipmentDashboard` | `views/equipment-dashboard.tsx` | `currentPath.{site,plant,equipment,tab}`; `equipmentKPIs`, `dashboardCards`, `whatifRunSessions` from store |
-| `WhatifToolView` | `views/whatif-tool-view.tsx` | `whatifRunSessions`, `whatifSelectedScenarioId`, `whatifInitialTab`, `whatifActiveRunId` from store; `whatIfScenarios` from data.ts |
+| `EquipmentDashboard` | `views/equipment-dashboard.tsx` | `currentPath.{site,plant,equipment,tab}`; `equipmentKPIs`, `dashboardCards`, `whatIfRunSessions` from store |
+| `WhatIfToolView` | `views/whatif-tool-view.tsx` | `whatIfRunSessions`, `whatIfSelectedScenarioId`, `whatIfInitialTab`, `whatIfActiveRunId` from store; `whatIfScenarios` from data.ts |
 | `DocumentsView` | `views/documents-view.tsx` | `savedDocuments` from store (seeded from `userDocuments` on first mount) |
 | `DataSyncView` | `views/data-sync.tsx` | `dataStatusItems`, `syncJobs` from data.ts. **Fully static, no interactivity.** |
 
-### Home View Sub-Modules (all defined inline in `home-view.tsx`)
+### Home View Sub-Modules
 
 | Sub-component | What it does |
 |---|---|
-| `GlobalSearchBar` | Real-time autocomplete over a static search index built from `sites[]`. Keyboard navigable (↑↓ Enter Escape). Navigates on select. |
+| `GlobalSearchBar` | Real-time autocomplete over a static search index built from `sites[]` (index moved to `components/views/home/constants.tsx`). Keyboard navigable (↑↓ Enter Escape). Navigates on select. |
 | `AISummaryModule` | Two-column layout: "Critical Notices" and "Suggested Actions". Both hardcoded. Marked "AI Preview". |
 | `RecentDashboardsModule` | LRU list of up to 6 dashboard cards from Zustand state. Empty state shown until navigation. |
-| `FavouriteDashboardsModule` | Bookmarked dashboards from Zustand. Show-more toggle at 6 items. |
+| `FavoriteDashboardsModule` | Bookmarked dashboards from Zustand. Show-more toggle at 6 items. |
 | `ChangeLogModule` | Tab-filtered table (All / Dashboard / Operations). Data from `changeLogEntries`. |
 | `DocumentsModule` | Category + asset filter + search over `userDocuments` static array. Grid layout with `DocumentCard`. |
 
-### Equipment Dashboard Sub-Components (all in `equipment-dashboard.tsx`)
+### Equipment Dashboard Sub-Components
 
 | Sub-component | What it does |
 |---|---|
 | `EquipmentDashboard` | Main container: tab strip, RGL grid, right sidebar slot selector, create/delete dashboard dialogs |
-| `WidgetViewResolver` | Giant switch on `viewType` string; renders 20+ chart/KPI variants using Recharts |
-| `WidgetErrorBoundary` | Class component error boundary; catches per-widget render failures without crashing the whole dashboard |
-| `KPIPill` | Simple label + large value display for KPI widgets |
+| `WidgetViewResolver` | Giant switch on `viewType` string; renders 20+ chart/KPI variants using Recharts. Extracted to `views/equipment-dashboard/widget-view-resolver.tsx` |
+| `WidgetErrorBoundary` | Class component error boundary; catches per-widget render failures without crashing the whole dashboard. Extracted to `views/equipment-dashboard/widget-view-resolver.tsx` |
+| `KPIPill` | Simple label + large value display for KPI widgets (inside extracted resolver module) |
 
 ### Shared / Reusable
 
@@ -324,9 +324,9 @@ Everything in `lib/data.ts` is mock data. Specifically:
 | Dashboard card metrics | `dashboardCards[]` | `value1` and `value2` per tab — unlabelled percentages |
 | Equipment KPIs | `equipmentKPIs` | **Single global object** — DMG 201%, Re-Life 40yrs, date 10/02/2026, ID 260020. Same for all equipment |
 | Equipment thumbnails | `equipmentDashboardThumbnails` | Three hardcoded image paths |
-| Widget chart data | In `equipment-dashboard.tsx` | `mockLineData`, `mockProcessData`, `mockScatterData`, `pieData` — all static arrays |
+| Widget chart data | `components/views/equipment-dashboard/widget-view-resolver.tsx` | `mockLineData`, `mockProcessData`, `mockScatterData`, `pieData` — all static arrays |
 | WIS scenario definitions | `whatIfScenarios[]` | 2 scenarios (Coke Drum, HCU) with hand-written params |
-| WIS run history | `mockWhatifRunSessions[]` | 4 pre-seeded runs (wir-001 to wir-004) |
+| WIS run history | `mockWhatIfRunSessions[]` | 4 pre-seeded runs (wir-001 to wir-004) |
 | WIS result rows | `whatIfResults[]` | 8 generic parameter rows (col1/col2/col3 unlabelled) |
 | User documents | `userDocuments[]` | 8 documents with hardcoded sizes and dates |
 | Change log | `changeLogEntries[]` | 8 entries with hardcoded users (Nhan N., Ben T., Alex P., Simon K.) |
@@ -336,13 +336,13 @@ Everything in `lib/data.ts` is mock data. Specifically:
 | Plant documents | `plantDocuments[]` | 5 docs (same informal style) |
 | Module library | `moduleLibrary[]` | 7 widget types with categories |
 | WIS explore templates | `whatIfExploreDashboardTemplates[]` | 3 layout templates |
-| AI notices | `AI_NOTICES` in `home-view.tsx` | 3 hardcoded critical notices |
-| AI actions | `AI_ACTIONS` in `home-view.tsx` | 3 hardcoded suggested actions |
-| Data grid widget data | `WidgetViewResolver` inline | 4 hardcoded sensor rows (T_in, P_shell, ΔP, Flow) |
-| Process stream widget | `WidgetViewResolver` inline | 6 hardcoded process points with formula-generated values |
-| Summary widget KPIs | `WidgetViewResolver` inline | OEE 86%, Uptime 99.9%, Quality 98.5% |
-| Fatigue remaining cycles | `WidgetViewResolver` inline | Hardcoded `12,405` |
-| Flaw sizes | `WidgetViewResolver` inline | `Math.random()` — changes on every render |
+| AI notices | `components/views/home/constants.tsx` (`AI_NOTICES`) | 3 hardcoded critical notices |
+| AI actions | `components/views/home/constants.tsx` (`AI_ACTIONS`) | 3 hardcoded suggested actions |
+| Data grid widget data | `components/views/equipment-dashboard/widget-view-resolver.tsx` | 4 hardcoded sensor rows (T_in, P_shell, ΔP, Flow) |
+| Process stream widget | `components/views/equipment-dashboard/widget-view-resolver.tsx` | 6 hardcoded process points with formula-generated values |
+| Summary widget KPIs | `components/views/equipment-dashboard/widget-view-resolver.tsx` | OEE 86%, Uptime 99.9%, Quality 98.5% |
+| Fatigue remaining cycles | `components/views/equipment-dashboard/widget-view-resolver.tsx` | Hardcoded `12,405` |
+| Flaw sizes | `components/views/equipment-dashboard/widget-view-resolver.tsx` | `Math.random()` — changes on every render |
 | Logged-in user name | `home-view.tsx` | `"Welcome back, Nhan 👋"` — hardcoded string |
 | User avatar initial | `sidebar.tsx` | `"U"` — hardcoded letter |
 
@@ -354,38 +354,34 @@ Everything in `lib/data.ts` is mock data. Specifically:
 
 | Issue | Where |
 |---|---|
-| Module rail key `"portfolio"` but its label is `"Assets"` | `sidebar.tsx` |
-| Module rail key `"workspace"` but its label is `"Dashboard"` | `sidebar.tsx` |
-| Module rail key `"insights"` but its label is `"Tools"` | `sidebar.tsx` |
-| British `"favourite"` / `"favouriteDashboardIds"` — fine to keep, just be consistent; the UI also says "Favorite" (American) in the Workspace panel | `store.ts`, `home-view.tsx`, `sidebar.tsx` |
-| WIS is called: `what-if` (kebab in `currentView`), `whatif` (camelCase in store keys), `WhatIf` (PascalCase in modal names), `WIS` (acronym in comments). No single canonical spelling | throughout |
+| Module rail key `"insights"` but user-facing label is `"Tools"` (intentional UX wording, but still dual terminology) | `sidebar.tsx` |
 | `WhatIfRunSession.results` columns named `col1`, `col2`, `col3` — purely positional, no domain meaning | `store.ts`, `data.ts` |
 | `DashboardCard.metrics.value1` / `value2` — also positional and undocumented | `lib/data.ts` |
 
-### 6b. Duplicate Components
+### 6b. Duplicate Components (Resolved)
 
-| Duplicate | Files | Impact |
+| Resolution | Files | Outcome |
 |---|---|---|
-| Document display/filter (full version) | `components/views/documents-view.tsx` AND `DocumentsModule` in `components/views/home-view.tsx` | Two separate implementations; filters and layout logic will drift |
-| Dashboard tab strip (exact copy) | Appears **twice** inside `EquipmentDashboard` — once in normal view (line ~724) and once in the expanded slide-up panel (line ~780) | Any tab strip change requires editing both |
-| `handleCardClick` (navigate to equipment from dashboard card) | Duplicated identically in `RecentDashboardsModule` and `FavouriteDashboardsModule` inside `home-view.tsx` | Should be extracted to a shared function or hook |
-| `hooks/use-mobile.ts` and `hooks/use-toast.ts` | Duplicate of `components/ui/use-mobile.tsx` and `components/ui/use-toast.ts` | Two copies of the same code |
+| Extracted shared document filtering/options helpers to `lib/documents.ts` and reused in Home + Documents views | `components/views/home-view.tsx`, `components/views/documents-view.tsx`, `lib/documents.ts` | Removes drift risk and centralizes document filter behavior |
+| Extracted reusable dashboard tab strip renderer | `components/views/equipment-dashboard.tsx` | Normal and expanded modes now share one render path |
+| Extracted shared dashboard-card navigation helper | `components/views/home-view.tsx` | Recents/Favorites navigation now uses one helper |
+| Consolidated duplicate hooks into canonical sources | `hooks/use-mobile.ts`, `hooks/use-toast.ts` | Hooks now re-export canonical `components/ui/*` implementations |
 
-### 6c. Overly Large Components
+### 6c. Overly Large Components (Partially Addressed)
 
 | File | Lines | Problem |
 |---|---|---|
-| `equipment-dashboard.tsx` | 1,533 | Contains: main component, `WidgetViewResolver` (20+ chart types as inline JSX), all chart mock data, `DEFAULT_WIDGET_SETS`, `DEFAULT_GRIDS`, `buildDefaultGrid`, `KPIPill`, `WidgetErrorBoundary`. The `WidgetViewResolver` alone is ~300 lines. |
-| `whatif-tool-view.tsx` | 1,035 | Contains: main view, `RunProgressOverlay`, `StatusBadge`, `ScenarioSidebar`, `ConfigureRunTab`, `HistoryTab`, `ResultsPanel`, `ComparePanel`, `useSeedMockHistory` — all inline. |
-| `home-view.tsx` | 848 | Contains 6 feature modules plus 5 helper sub-components, all inline. No files are split. |
-| `sidebar.tsx` | 653 | Contains `ModuleRail`, `ContextualPanel`, `HomePanel`, `PortfolioPanel`, `WorkspacePanel`, `InsightsPanel`, `CommsPanel`, `SettingsPanel`, `PanelNavItem`, `PanelSearchInput` — 10 components in one file. |
+| `equipment-dashboard.tsx` | 903 | Reduced and split. Widget/layout-heavy sections moved to `views/equipment-dashboard/widget-view-resolver.tsx` and `views/equipment-dashboard/layouts.ts`; main container is still large and should be further decomposed. |
+| `whatif-tool-view.tsx` | 980 | Slightly reduced. Shared run/seed/status helpers moved to `views/whatif-tool/shared.tsx`; main view still contains many inline panels. |
+| `home-view.tsx` | 705 | Reduced. Search/AI/file constants extracted to `views/home/constants.tsx`; still contains many inline module components. |
+| `sidebar.tsx` | 622 | Slightly reduced. Rail/search config moved to `components/sidebar/config.tsx`; panel components remain concentrated in one file. |
 
 ### 6d. Structural Problems
 
 | Problem | Location | Severity |
 |---|---|---|
 | `equipmentKPIs` is a single global constant — all equipment shows DMG 201%, Re-Life 40yrs, etc. No per-equipment KPI data exists. | `lib/data.ts`, `equipment-dashboard.tsx` | High |
-| `WhatIfScenarioModal` + `WhatIfResultModal` are still mounted in `page.tsx` despite the WIS tool view (`WhatifToolView`) being the canonical flow. The old modal flow still works and creates real sessions. | `app/page.tsx`, `components/modals/what-if-scenario.tsx` | Medium |
+| `WhatIfScenarioModal` + `WhatIfResultModal` are still mounted in `page.tsx` despite the WIS tool view (`WhatIfToolView`) being the canonical flow. The old modal flow still works and creates real sessions. | `app/page.tsx`, `components/modals/what-if-scenario.tsx` | Medium |
 | `sidebarCollapsed: boolean` is kept in the store "for backward compat" but no code sets or reads it functionally. Dead state. | `lib/store.ts` | Low |
 | `styles/globals.css` exists alongside `app/globals.css`. Next.js App Router only processes `app/globals.css`. The `styles/` file is silently ignored. | repo root | Low |
 | `components/ui/sidebar.tsx` (shadcn Sidebar primitive) clashes in name with `components/sidebar.tsx` (the app's actual Sidebar). Risky when auto-importing. | both files | Medium |
@@ -395,7 +391,7 @@ Everything in `lib/data.ts` is mock data. Specifically:
 | `@dnd-kit` trio of packages is installed but never imported — `react-grid-layout` handles all DnD. | `package.json` | Low |
 | Several shadcn component packages (`embla-carousel-react`, `date-fns`, `react-day-picker`, `input-otp`, `cmdk`) are installed but no view file imports them. | `package.json` | Low |
 | All navigation is URL-less (`currentView` string in Zustand). There is no back button, no shareable link to any view, and hard-refresh always resets to Home. | `lib/store.ts`, `app/page.tsx` | High (when real users arrive) |
-| `recentDashboardIds` and `favouriteDashboardIds` live only in Zustand (no localStorage/cookie). Hard-refresh clears them. | `lib/store.ts` | High (when real users arrive) |
+| `recentDashboardIds` and `favoriteDashboardIds` live only in Zustand (no localStorage/cookie). Hard-refresh clears them. | `lib/store.ts` | High (when real users arrive) |
 
 ---
 
@@ -411,14 +407,14 @@ Everything in `lib/data.ts` is mock data. Specifically:
 | `"use client"` properly scoped | all interactive files | No accidental RSC/client boundary violations. |
 | Component file grouping | `views/`, `modals/`, `ai/`, `ui/` | Clear intent: where to add things, where to find things. |
 | AI feature isolation | `components/ai/feature{N}-*.tsx` | Each feature is self-contained with file-level comments on how to remove it. Feature 1 comment explicitly says "To remove: delete this file and remove the import." |
-| `WidgetErrorBoundary` class component | `equipment-dashboard.tsx` | Prevents a single widget crash from taking down the entire dashboard. This is the correct pattern. |
-| Seed hook pattern (`useSeedDocuments`, `useSeedMockHistory`) | `documents-view.tsx`, `whatif-tool-view.tsx` | Cleanly initialises Zustand from static data on first mount using a `ref` guard — no double-seeding. |
+| `WidgetErrorBoundary` class component | `components/views/equipment-dashboard/widget-view-resolver.tsx` | Prevents a single widget crash from taking down the entire dashboard. This is the correct pattern. |
+| Seed hook pattern (`useSeedDocuments`, `useSeedMockHistory`) | `documents-view.tsx`, `components/views/whatif-tool/shared.tsx` | Cleanly initialises Zustand from static data on first mount using a `ref` guard — no double-seeding. |
 | Two-layer sidebar (Rail + Panel) | `sidebar.tsx` | The 56px always-visible icon rail + sliding 220px panel is a proven pattern for complex tools. It scales to many modules without crowding. |
 | Design token usage | `app/globals.css` + all Tailwind classes | All colours reference `hsl(var(--card))`, `hsl(var(--foreground))` etc., not hardcoded hex. Dark/light mode works for free. |
 | `DashboardCard` reuse | 5 different locations | Same component used correctly in Home recents, Home favourites, SiteOverview, PlantOverview, and EquipmentDashboard tab strip. Props handle display variants cleanly. |
-| `WidgetViewResolver` switch dispatch | `equipment-dashboard.tsx` | Clean single entry point for all widget types. Adding a new widget = one new `case`. No conditional component trees scattered across files. |
-| `buildDefaultGrid` + `DEFAULT_WIDGET_SETS` | `equipment-dashboard.tsx` | Declarative widget layout specifications. Each tab's contents and positions are described as plain data, not imperative code. |
-| `findAssetPathForEquipment` utility | `whatif-tool-view.tsx` | Encapsulates the hierarchical lookup (site → plant from equipment id) rather than inlining it. |
+| `WidgetViewResolver` switch dispatch | `components/views/equipment-dashboard/widget-view-resolver.tsx` | Clean single entry point for all widget types. Adding a new widget = one new `case`. No conditional component trees scattered across files. |
+| `buildDefaultGrid` + `DEFAULT_WIDGET_SETS` | `components/views/equipment-dashboard/layouts.ts` | Declarative widget layout specifications. Each tab's contents and positions are described as plain data, not imperative code. |
+| `findAssetPathForEquipment` utility | `components/views/whatif-tool/shared.tsx` | Encapsulates the hierarchical lookup (site → plant from equipment id) rather than inlining it. |
 | `ResponsiveGridLayout` breakpoints | `equipment-dashboard.tsx` | 5-tier responsive grid (lg/md/sm/xs/xxs) with a `ResizeObserver` measuring container width correctly — avoids RGL's known width-calculation bugs. |
 
 ---

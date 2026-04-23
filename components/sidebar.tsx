@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { useAppStore } from "@/lib/store"
 import type { ActiveModule } from "@/lib/store"
 import { sites } from "@/lib/data"
+import { MODULES, NAV_SEARCH_PLACEHOLDERS, navMatches } from "@/components/sidebar/config"
 import {
   Building2,
   Factory,
@@ -67,31 +68,6 @@ function PanelSearchInput({
       ) : null}
     </div>
   )
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   MODULE RAIL CONFIG
-   ═══════════════════════════════════════════════════════════════════════════ */
-const MODULES: {
-  key: ActiveModule
-  icon: React.ReactNode
-  label: string
-}[] = [
-  { key: "home",      icon: <Home className="w-5 h-5" />,           label: "Home"       },
-  { key: "portfolio",  icon: <Building2 className="w-5 h-5" />,      label: "Assets"  },
-  { key: "workspace",  icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard"  },
-  { key: "insights",   icon: <BarChart3 className="w-5 h-5" />,       label: "Tools"   },
-  { key: "comms",      icon: <MessageSquare className="w-5 h-5" />,   label: "Comms"      },
-  { key: "settings",   icon: <Settings className="w-5 h-5" />,        label: "Settings"   },
-]
-
-const NAV_SEARCH_PLACEHOLDERS: Record<ActiveModule, string> = {
-  home: "Search home…",
-  portfolio: "Search assets…",
-  workspace: "Search dashboards…",
-  insights: "Search tools…",
-  comms: "Search messages…",
-  settings: "Search settings…",
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -192,8 +168,8 @@ function ContextualPanel() {
 
   const MODULE_LABELS: Record<ActiveModule, string> = {
     home:      "Home",
-    portfolio: "Assets",
-    workspace: "Dashboard",
+    assets: "Assets",
+    workspace: "Workspace",
     insights:  "Tools",
     comms:     "Comms",
     settings:  "Settings",
@@ -241,7 +217,7 @@ function ContextualPanel() {
       {/* Panel body — scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
         {activeModule === "home"      && <HomePanel />}
-        {activeModule === "portfolio"  && <PortfolioPanel searchQuery={searchQuery} />}
+        {activeModule === "assets"     && <AssetsPanel searchQuery={searchQuery} />}
         {activeModule === "workspace"  && <WorkspacePanel searchQuery={searchQuery} />}
         {activeModule === "insights"   && <InsightsPanel searchQuery={searchQuery} />}
         {activeModule === "comms"      && <CommsPanel searchQuery={searchQuery} />}
@@ -273,7 +249,7 @@ function HomePanel() {
 /* ═══════════════════════════════════════════════════════════════════════════
    PORTFOLIO PANEL — hierarchical asset tree with search
    ═══════════════════════════════════════════════════════════════════════════ */
-function PortfolioPanel({ searchQuery }: { searchQuery: string }) {
+function AssetsPanel({ searchQuery }: { searchQuery: string }) {
   const {
     currentPath,
     setCurrentPath,
@@ -473,12 +449,6 @@ function PortfolioPanel({ searchQuery }: { searchQuery: string }) {
 /* ═══════════════════════════════════════════════════════════════════════════
    WORKSPACE PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
-function navMatches(label: string, q: string) {
-  const s = q.trim().toLowerCase()
-  if (!s) return true
-  return label.toLowerCase().includes(s)
-}
-
 function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
   const q = searchQuery
   const items = [
@@ -505,7 +475,7 @@ function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
    INSIGHTS PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
 function InsightsPanel({ searchQuery }: { searchQuery: string }) {
-  const { currentView, setCurrentView, setViewMode, setWhatifSelectedScenarioId } = useAppStore()
+  const { currentView, setCurrentView, setViewMode, setWhatIfSelectedScenarioId } = useAppStore()
   const q = searchQuery
 
   const handleDataSyncClick = () => {
@@ -514,8 +484,8 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
   }
 
   const handleWhatIfClick = () => {
-    setWhatifSelectedScenarioId("scenario-coke-drum")
-    setCurrentView("whatif-tool")
+    setWhatIfSelectedScenarioId("scenario-coke-drum")
+    setCurrentView("whatIfTool")
     setViewMode("view")
   }
 
@@ -540,11 +510,11 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
       active: currentView === "documents-tool",
     },
     {
-      key: "whatif",
-      label: "What-If Scenarios",
+      key: "what-if-scenarios",
+      label: "What-If Scenario",
       icon: <BarChart3 className="w-4 h-4 flex-shrink-0" />,
       onClick: handleWhatIfClick,
-      active: currentView === "whatif-tool",
+      active: currentView === "whatIfTool",
     },
   ].filter((row) => navMatches(row.label, q))
 

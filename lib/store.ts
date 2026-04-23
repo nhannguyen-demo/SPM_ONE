@@ -2,7 +2,7 @@
 
 import { create } from "zustand"
 import type { UserDocument } from "@/lib/data"
-import { mockWhatifRunSessions } from "@/lib/data"
+import { mockWhatIfRunSessions } from "@/lib/data"
 
 /* ─── What-If Run Session ─────────────────────────────────────────────────── */
 export type WhatIfRunStatus = "queued" | "running" | "success" | "failed"
@@ -39,7 +39,7 @@ export type NavigationPath = {
 
 export type ViewMode = "view" | "edit" | "modules"
 
-export type ActiveModule = 'home' | 'portfolio' | 'workspace' | 'insights' | 'comms' | 'settings'
+export type ActiveModule = "home" | "assets" | "workspace" | "insights" | "comms" | "settings"
 
 interface AppState {
   // Navigation
@@ -71,8 +71,8 @@ interface AppState {
   // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
-  currentView: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatif-tool" | "documents-tool"
-  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatif-tool" | "documents-tool") => void
+  currentView: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatIfTool" | "documents-tool"
+  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatIfTool" | "documents-tool") => void
 
   // ── DOCUMENTS TOOL STATE ─────────────────────────────────────────────────
   /** All user-managed documents (seeded from data.ts + any generated reports) */
@@ -81,32 +81,32 @@ interface AppState {
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── WHAT-IF TOOL STATE ────────────────────────────────────────────────────
-  whatifRunSessions: WhatIfRunSession[]
-  addWhatifRunSession: (session: WhatIfRunSession) => void
-  updateWhatifRunSession: (id: string, updates: Partial<WhatIfRunSession>) => void
-  whatifSelectedScenarioId: string | null
-  setWhatifSelectedScenarioId: (id: string | null) => void
-  whatifActiveRunId: string | null
-  setWhatifActiveRunId: (id: string | null) => void
+  whatIfRunSessions: WhatIfRunSession[]
+  addWhatIfRunSession: (session: WhatIfRunSession) => void
+  updateWhatIfRunSession: (id: string, updates: Partial<WhatIfRunSession>) => void
+  whatIfSelectedScenarioId: string | null
+  setWhatIfSelectedScenarioId: (id: string | null) => void
+  whatIfActiveRunId: string | null
+  setWhatIfActiveRunId: (id: string | null) => void
   /** Tab to open when navigating into What-If tool externally (e.g. from equipment dashboard) */
-  whatifInitialTab: "overview" | "run" | "history" | null
-  setWhatifInitialTab: (tab: "overview" | "run" | "history" | null) => void
+  whatIfInitialTab: "overview" | "run" | "history" | null
+  setWhatIfInitialTab: (tab: "overview" | "run" | "history" | null) => void
   /** When set, equipment dashboard shows full-screen explore workspace for this successful run id. */
-  whatifExploreRunId: string | null
-  setWhatifExploreRunId: (id: string | null) => void
+  whatIfExploreRunId: string | null
+  setWhatIfExploreRunId: (id: string | null) => void
   /** One-shot: when navigating from What-If results to dashboard, auto-select this run in Viewed Data. */
-  whatifDashboardAutoSelectRunId: string | null
-  setWhatifDashboardAutoSelectRunId: (id: string | null) => void
-  removeWhatifRunSession: (id: string) => void
+  whatIfDashboardAutoSelectRunId: string | null
+  setWhatIfDashboardAutoSelectRunId: (id: string | null) => void
+  removeWhatIfRunSession: (id: string) => void
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── HOME PAGE STATE ───────────────────────────────────────────────────────
   /** Recently visited dashboard card IDs — newest first, max 6 (LRU). */
   recentDashboardIds: string[]
   addRecentDashboard: (cardId: string) => void
-  /** Favourited dashboard card IDs. */
-  favouriteDashboardIds: string[]
-  toggleFavouriteDashboard: (cardId: string) => void
+  /** Favorited dashboard card IDs. */
+  favoriteDashboardIds: string[]
+  toggleFavoriteDashboard: (cardId: string) => void
   // ─────────────────────────────────────────────────────────────────────────
   
   // Dashboard edit mode
@@ -173,7 +173,7 @@ export const useAppStore = create<AppState>((set) => ({
   togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
   navPanelSearch: {
     home: "",
-    portfolio: "",
+    assets: "",
     workspace: "",
     insights: "",
     comms: "",
@@ -195,9 +195,9 @@ export const useAppStore = create<AppState>((set) => ({
         activeModule = "home"
         isPanelOpen = false
       } else if (view === "site" || view === "plant" || view === "equipment") {
-        activeModule = "portfolio"
+        activeModule = "assets"
         isPanelOpen = true
-      } else if (view === "data-sync" || view === "whatif-tool" || view === "documents-tool") {
+      } else if (view === "data-sync" || view === "whatIfTool" || view === "documents-tool") {
         activeModule = "insights"
         isPanelOpen = true
       }
@@ -210,32 +210,32 @@ export const useAppStore = create<AppState>((set) => ({
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── WHAT-IF TOOL STATE ────────────────────────────────────────────────────
-  whatifRunSessions: [...mockWhatifRunSessions] as unknown as WhatIfRunSession[],
-  addWhatifRunSession: (session) =>
-    set((state) => ({ whatifRunSessions: [session, ...state.whatifRunSessions] })),
-  updateWhatifRunSession: (id, updates) =>
+  whatIfRunSessions: [...mockWhatIfRunSessions] as unknown as WhatIfRunSession[],
+  addWhatIfRunSession: (session) =>
+    set((state) => ({ whatIfRunSessions: [session, ...state.whatIfRunSessions] })),
+  updateWhatIfRunSession: (id, updates) =>
     set((state) => ({
-      whatifRunSessions: state.whatifRunSessions.map((s) =>
+      whatIfRunSessions: state.whatIfRunSessions.map((s) =>
         s.id === id ? { ...s, ...updates } : s
       ),
     })),
-  whatifSelectedScenarioId: "scenario-coke-drum",
-  setWhatifSelectedScenarioId: (id) => set({ whatifSelectedScenarioId: id }),
-  whatifActiveRunId: null,
-  setWhatifActiveRunId: (id) => set({ whatifActiveRunId: id }),
-  whatifInitialTab: null,
-  setWhatifInitialTab: (tab) => set({ whatifInitialTab: tab }),
-  whatifExploreRunId: null,
-  setWhatifExploreRunId: (id) => set({ whatifExploreRunId: id }),
-  whatifDashboardAutoSelectRunId: null,
-  setWhatifDashboardAutoSelectRunId: (id) => set({ whatifDashboardAutoSelectRunId: id }),
-  removeWhatifRunSession: (id) =>
+  whatIfSelectedScenarioId: "scenario-coke-drum",
+  setWhatIfSelectedScenarioId: (id) => set({ whatIfSelectedScenarioId: id }),
+  whatIfActiveRunId: null,
+  setWhatIfActiveRunId: (id) => set({ whatIfActiveRunId: id }),
+  whatIfInitialTab: null,
+  setWhatIfInitialTab: (tab) => set({ whatIfInitialTab: tab }),
+  whatIfExploreRunId: null,
+  setWhatIfExploreRunId: (id) => set({ whatIfExploreRunId: id }),
+  whatIfDashboardAutoSelectRunId: null,
+  setWhatIfDashboardAutoSelectRunId: (id) => set({ whatIfDashboardAutoSelectRunId: id }),
+  removeWhatIfRunSession: (id) =>
     set((state) => ({
-      whatifRunSessions: state.whatifRunSessions.filter((s) => s.id !== id),
-      whatifExploreRunId: state.whatifExploreRunId === id ? null : state.whatifExploreRunId,
-      whatifActiveRunId: state.whatifActiveRunId === id ? null : state.whatifActiveRunId,
-      whatifDashboardAutoSelectRunId:
-        state.whatifDashboardAutoSelectRunId === id ? null : state.whatifDashboardAutoSelectRunId,
+      whatIfRunSessions: state.whatIfRunSessions.filter((s) => s.id !== id),
+      whatIfExploreRunId: state.whatIfExploreRunId === id ? null : state.whatIfExploreRunId,
+      whatIfActiveRunId: state.whatIfActiveRunId === id ? null : state.whatIfActiveRunId,
+      whatIfDashboardAutoSelectRunId:
+        state.whatIfDashboardAutoSelectRunId === id ? null : state.whatIfDashboardAutoSelectRunId,
     })),
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -246,12 +246,12 @@ export const useAppStore = create<AppState>((set) => ({
       const filtered = state.recentDashboardIds.filter((id) => id !== cardId)
       return { recentDashboardIds: [cardId, ...filtered].slice(0, 6) }
     }),
-  favouriteDashboardIds: [],
-  toggleFavouriteDashboard: (cardId) =>
+  favoriteDashboardIds: [],
+  toggleFavoriteDashboard: (cardId) =>
     set((state) => ({
-      favouriteDashboardIds: state.favouriteDashboardIds.includes(cardId)
-        ? state.favouriteDashboardIds.filter((id) => id !== cardId)
-        : [...state.favouriteDashboardIds, cardId],
+      favoriteDashboardIds: state.favoriteDashboardIds.includes(cardId)
+        ? state.favoriteDashboardIds.filter((id) => id !== cardId)
+        : [...state.favoriteDashboardIds, cardId],
     })),
   // ─────────────────────────────────────────────────────────────────────────
   

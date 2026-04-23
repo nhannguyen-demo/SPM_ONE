@@ -455,7 +455,7 @@ export const whatIfScenarios: WhatIfScenarioDefinition[] = [
    MOCK WHAT-IF RUN HISTORY  (pre-populated so tool is not empty on first load)
 ───────────────────────────────────────────────────────────────────────────── */
 
-export const mockWhatifRunSessions = [
+export const mockWhatIfRunSessions = [
   {
     id: "wir-001",
     scenarioId: "scenario-coke-drum",

@@ -7,7 +7,7 @@ import { PlantOverview } from "@/components/views/plant-overview"
 import { EquipmentDashboard } from "@/components/views/equipment-dashboard"
 import { DataSyncView } from "@/components/views/data-sync"
 import { HomeView } from "@/components/views/home-view"
-import { WhatifToolView } from "@/components/views/whatif-tool-view"
+import { WhatIfToolView } from "@/components/views/whatif-tool-view"
 import { DocumentsView } from "@/components/views/documents-view"
 import { WhatIfScenarioModal, WhatIfResultModal } from "@/components/modals/what-if-scenario"
 import { useAppStore } from "@/lib/store"
@@ -28,7 +28,7 @@ export default function Home() {
           {currentView === "plant"          && <PlantOverview />}
           {currentView === "equipment"      && <EquipmentDashboard />}
           {currentView === "data-sync"      && <DataSyncView />}
-          {currentView === "whatif-tool"    && <WhatifToolView />}
+          {currentView === "whatIfTool"     && <WhatIfToolView />}
           {currentView === "documents-tool" && <DocumentsView />}
         </main>
       </div>

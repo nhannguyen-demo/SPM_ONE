@@ -10,6 +10,7 @@ import { useState, useEffect, useRef, useMemo } from "react"
 import { useAppStore } from "@/lib/store"
 import { sites, userDocuments } from "@/lib/data"
 import type { UserDocument, DocumentCategory } from "@/lib/data"
+import { buildAssetOptions, filterDocuments } from "@/lib/documents"
 import { cn } from "@/lib/utils"
 import {
   File, FileText, FileSpreadsheet, Link,
@@ -364,33 +365,12 @@ export function DocumentsView() {
   const [shareTarget, setShareTarget] = useState<UserDocument | null>(null)
 
   // Asset filter options
-  const assetOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [{ value: "All", label: "All Assets" }]
-    for (const site of sites) {
-      opts.push({ value: `site-${site.id}`, label: site.name })
-      for (const plant of site.plants) {
-        opts.push({ value: `plant-${plant.id}`, label: `  ${plant.name}` })
-        for (const eq of plant.equipment) {
-          opts.push({ value: `equip-${eq.id}`, label: `    ${eq.name}` })
-        }
-      }
-    }
-    return opts
-  }, [])
+  const assetOptions = useMemo(() => buildAssetOptions(), [])
 
-  const filtered = useMemo(() => {
-    return savedDocuments.filter((doc) => {
-      if (categoryFilter !== "All" && doc.category !== categoryFilter) return false
-      if (typeFilter !== "All" && doc.fileType !== typeFilter) return false
-      if (assetFilter !== "All") {
-        if (assetFilter.startsWith("site-") && doc.siteId !== assetFilter.slice(5)) return false
-        if (assetFilter.startsWith("plant-") && doc.plantId !== assetFilter.slice(6)) return false
-        if (assetFilter.startsWith("equip-") && doc.equipmentId !== assetFilter.slice(6)) return false
-      }
-      if (docSearch && !doc.name.toLowerCase().includes(docSearch.toLowerCase())) return false
-      return true
-    })
-  }, [savedDocuments, categoryFilter, typeFilter, assetFilter, docSearch])
+  const filtered = useMemo(
+    () => filterDocuments(savedDocuments, { categoryFilter, typeFilter, assetFilter, docSearch }),
+    [savedDocuments, categoryFilter, typeFilter, assetFilter, docSearch]
+  )
 
   const whatIfCount = savedDocuments.filter((d) => isWhatIfDocument(d.name)).length
 
