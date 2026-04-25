@@ -162,15 +162,15 @@ export const DEFAULT_WIDGET_SETS: Record<string, WidgetData[]> = {
     { id: "w-hcu-8", viewType: "fatigue-rem", title: "Remaining Life" },
     { id: "w-hcu-9", viewType: "fatigue-cycle", title: "Cycle Count" },
   ],
-  "Pump Performance": [
-    { id: "w-pump-kpi-1", viewType: "kpi-dmg", title: "Damage KPI" },
-    { id: "w-pump-kpi-2", viewType: "kpi-relife", title: "Re-Life KPI" },
-    { id: "w-pump-kpi-3", viewType: "kpi-date", title: "Install Date" },
-    { id: "w-pump-kpi-4", viewType: "kpi-id", title: "Equipment ID" },
-    { id: "w-pump-3d-1", viewType: "equipment-3d", title: "3D Viewer" },
-    { id: "w-pump-1", viewType: "demo-bar", title: "Performance" },
-    { id: "w-pump-2", viewType: "mon-sensor-1", title: "Vibration" },
-    { id: "w-pump-3", viewType: "demo-summary", title: "Summary" },
+  "SMR Pigtail Integrity": [
+    { id: "w-smr-kpi-1", viewType: "kpi-dmg", title: "Creep Damage KPI" },
+    { id: "w-smr-kpi-2", viewType: "kpi-relife", title: "Remaining Life KPI" },
+    { id: "w-smr-kpi-3", viewType: "kpi-date", title: "Last Inspection Date" },
+    { id: "w-smr-kpi-4", viewType: "kpi-id", title: "Pigtail Circuit ID" },
+    { id: "w-smr-3d-1", viewType: "equipment-3d", title: "SMR 3D Viewer" },
+    { id: "w-smr-1", viewType: "demo-bar", title: "Tube-Skin Temperature Profile" },
+    { id: "w-smr-2", viewType: "mon-sensor-1", title: "Pigtail Stress Trend" },
+    { id: "w-smr-3", viewType: "demo-summary", title: "Integrity Summary" },
   ],
 }
 

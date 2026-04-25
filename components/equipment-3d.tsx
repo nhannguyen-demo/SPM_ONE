@@ -2,12 +2,12 @@
 
 export function Equipment3DViewer({ equipmentId }: { equipmentId?: string }) {
   const isHCU = equipmentId === "equipment-b"
-  const isPump = equipmentId === "equipment-c"
+  const isSMR = equipmentId === "equipment-c"
 
   return (
     <div className="h-full flex flex-col items-center justify-center bg-gradient-to-b from-slate-100 to-slate-200 p-4">
       {/* 3D Equipment Render */}
-      {isPump ? <PumpSVG /> : isHCU ? <HCUSVG /> : <CokeDrumSVG />}
+      {isSMR ? <SMRSVG /> : isHCU ? <HCUSVG /> : <CokeDrumSVG />}
 
       <p className="text-xs text-muted-foreground mt-4 text-center font-medium">
         3D DIGITAL TWIN VIEWER
@@ -107,52 +107,47 @@ function HCUSVG() {
   )
 }
 
-function PumpSVG() {
+function SMRSVG() {
   return (
     <svg viewBox="0 0 100 160" className="w-full h-full max-h-48 object-contain">
       <defs>
-        <linearGradient id="pumpMotor" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#1d4ed8" />
+        <linearGradient id="reformerBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#475569" />
+          <stop offset="100%" stopColor="#1e293b" />
         </linearGradient>
-        <radialGradient id="pumpVolute" cx="50%" cy="50%" r="50%">
+        <radialGradient id="furnaceGlow" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stopColor="#fb923c" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#b45309" stopOpacity="0.4" />
+        </radialGradient>
+        <linearGradient id="coilGradient" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#94a3b8" />
           <stop offset="100%" stopColor="#64748b" />
-        </radialGradient>
+        </linearGradient>
       </defs>
 
-      {/* Baseplate */}
-      <rect x="10" y="110" width="80" height="8" fill="#475569" rx="1" />
-      
-      {/* Motor */}
-      <rect x="15" y="70" width="30" height="30" fill="url(#pumpMotor)" rx="4" />
-      {/* Motor fins */}
-      {[72, 77, 82, 87, 92].map((y) => (
-        <line key={y} x1="15" y1={y} x2="45" y2={y} stroke="#1e3a8a" strokeWidth="1" />
+      {/* Reformer furnace body */}
+      <rect x="18" y="20" width="64" height="112" fill="url(#reformerBody)" rx="4" />
+      <rect x="22" y="28" width="56" height="84" fill="url(#furnaceGlow)" rx="2" />
+
+      {/* Coil bank / pigtail region */}
+      {[30, 38, 46, 54, 62, 70].map((x) => (
+        <line key={x} x1={x} y1="34" x2={x} y2="108" stroke="url(#coilGradient)" strokeWidth="3" />
       ))}
-      <rect x="20" y="65" width="20" height="5" fill="#3b82f6" rx="1" />
 
-      {/* Coupling */}
-      <rect x="45" y="78" width="10" height="14" fill="#94a3b8" />
-      
-      {/* Pump Volute */}
-      <circle cx="70" cy="85" r="18" fill="url(#pumpVolute)" />
-      
-      {/* Discharge flange */}
-      <rect x="64" y="55" width="12" height="15" fill="#64748b" />
-      <rect x="62" y="50" width="16" height="5" fill="#475569" />
+      {/* Header manifold and outlet lines */}
+      <rect x="20" y="14" width="60" height="6" fill="#64748b" rx="1" />
+      <line x1="30" y1="14" x2="30" y2="6" stroke="#94a3b8" strokeWidth="3" />
+      <line x1="70" y1="14" x2="70" y2="6" stroke="#94a3b8" strokeWidth="3" />
 
-      {/* Suction flange */}
-      <rect x="85" y="79" width="10" height="12" fill="#64748b" />
-      <rect x="95" y="77" width="5" height="16" fill="#475569" />
+      {/* Burners and support base */}
+      {[24, 36, 48, 60, 72].map((x) => (
+        <circle key={x} cx={x} cy={120} r="2.2" fill="#f59e0b" />
+      ))}
+      <rect x="16" y="132" width="68" height="8" fill="#334155" rx="1" />
+      <rect x="12" y="140" width="76" height="6" fill="#1f2937" rx="1" />
 
-      {/* Piping connected to discharge */}
-      <path d="M70 50 L70 30" stroke="#94a3b8" strokeWidth="8" fill="none" />
-      <path d="M70 30 Q70 20 80 20" stroke="#94a3b8" strokeWidth="8" fill="none" />
-      <line x1="80" y1="20" x2="95" y2="20" stroke="#94a3b8" strokeWidth="8" />
-
-      {/* Status LED */}
-      <circle cx="70" cy="85" r="3" fill="#22c55e" />
+      {/* Integrity hotspot marker */}
+      <circle cx="62" cy="56" r="4" fill="#ef4444" />
     </svg>
   )
 }

@@ -36,13 +36,13 @@ export const SEARCH_INDEX = buildSearchIndex()
 
 export const AI_NOTICES = [
   { severity: "warning" as const, title: "Coke Drum thermal cycling variance", body: "Thermal cycling variance is trending 12% above the 3-month rolling average. Review the Fatigue dashboard for detailed cycle count data.", location: "Coke Drum › Fatigue" },
-  { severity: "warning" as const, title: "Pump ND.1X02 ΔP anomaly", body: "Differential pressure readings have been intermittently elevated over the past 72 hours. Inspection of the performance trend is recommended.", location: "Pump ND.1X02 › Pump Performance" },
+  { severity: "warning" as const, title: "SMR Unit A pigtail hotspot anomaly", body: "Tube-skin temperature has intermittently exceeded the alert envelope in the last 72 hours. Review pigtail integrity trends for creep-risk escalation.", location: "SMR Unit A › SMR Pigtail Integrity" },
   { severity: "info" as const, title: "HCU Maintenance window approaching", body: "Scheduled maintenance for the HCU is due in approximately 8 days based on last service records in the Maintenance dashboard.", location: "HCU › Maintenance" },
 ]
 
 export const AI_ACTIONS = [
   { icon: <Activity className="w-4 h-4 text-amber-500" />, action: "Check Coke Drum Fatigue dashboard", reason: "Thermal cycling variance trending above threshold.", dashboardKind: "Coke Drum — Fatigue" },
-  { icon: <Activity className="w-4 h-4 text-rose-500" />, action: "Review Pump ND.1X02 performance trends", reason: "Elevated ΔP detected in recent sensor data.", dashboardKind: "Pump ND.1X02 — Pump Performance" },
+  { icon: <Activity className="w-4 h-4 text-rose-500" />, action: "Review SMR Unit A pigtail integrity trends", reason: "Tube-skin temperature excursions detected in recent sensor data.", dashboardKind: "SMR Unit A — SMR Pigtail Integrity" },
   { icon: <Activity className="w-4 h-4 text-blue-500" />, action: "Inspect HCU Maintenance schedule", reason: "Service window approaching based on last recorded date.", dashboardKind: "HCU — Maintenance" },
 ]
 

@@ -99,7 +99,7 @@ function GlobalSearchBar() {
         break
       case "equipment":
         setCurrentPath({ site: result.siteId, plant: result.plantId, equipment: result.equipmentId })
-        setCurrentView("equipment")
+        setCurrentView("equipment-home")
         break
       case "dashboard": {
         const card = dashboardCards.find(
@@ -112,7 +112,7 @@ function GlobalSearchBar() {
           equipment: result.equipmentId,
           tab: result.tab,
         })
-        setCurrentView("equipment")
+        setCurrentView("equipment-home")
         break
       }
     }
@@ -341,7 +341,7 @@ function navigateToDashboardFromCard(
     equipment: card.equipId,
     tab: card.tag,
   })
-  setCurrentView("equipment")
+  setCurrentView("equipment-home")
   setViewMode("view")
 }
 

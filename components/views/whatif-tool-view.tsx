@@ -693,6 +693,7 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
     setCurrentView,
     setViewMode,
     setWhatIfDashboardAutoSelectRunId,
+    setEquipmentHomeAutoOpenTab,
     removeWhatIfRunSession,
   } = useAppStore()
 
@@ -709,9 +710,10 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
     }
   }, [whatIfInitialTab, setWhatIfInitialTab])
 
-  // Also reset panel when scenario changes
+  // Reset panel when scenario changes, but preserve an externally requested initial tab.
   useEffect(() => {
-    setPanel({ mode: "overview" })
+    const init = useAppStore.getState().whatIfInitialTab
+    setPanel({ mode: init ?? "overview" })
   }, [scenarioId])
 
   if (!scenario) return null
@@ -747,7 +749,8 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
           const { site, plant, tab } = findAssetPathForEquipment(panel.session.equipmentId)
           setCurrentPath({ site, plant, equipment: panel.session.equipmentId, tab })
           setWhatIfDashboardAutoSelectRunId(panel.session.id)
-          setCurrentView("equipment")
+          setEquipmentHomeAutoOpenTab(tab)
+          setCurrentView("equipment-home")
           setViewMode("view")
         }}
       />

@@ -71,8 +71,14 @@ interface AppState {
   // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
-  currentView: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatIfTool" | "documents-tool"
-  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "data-sync" | "whatIfTool" | "documents-tool") => void
+  currentView: "home" | "site" | "plant" | "equipment" | "equipment-home" | "workspace" | "data-sync" | "whatIfTool" | "documents-tool"
+  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "equipment-home" | "workspace" | "data-sync" | "whatIfTool" | "documents-tool") => void
+
+  // ── EQUIPMENT HOME PAGE STATE ─────────────────────────────────────────────
+  /** Equipment ID to pre-apply as filter when navigating into a tool from Equipment Home Page. Consumed on mount by the target tool view. */
+  preFilterEquipmentId: string | null
+  setPreFilterEquipmentId: (id: string | null) => void
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── DOCUMENTS TOOL STATE ─────────────────────────────────────────────────
   /** All user-managed documents (seeded from data.ts + any generated reports) */
@@ -97,6 +103,9 @@ interface AppState {
   /** One-shot: when navigating from What-If results to dashboard, auto-select this run in Viewed Data. */
   whatIfDashboardAutoSelectRunId: string | null
   setWhatIfDashboardAutoSelectRunId: (id: string | null) => void
+  /** One-shot: dashboard tab to auto-open as popup on Equipment Home after navigation from What-If. */
+  equipmentHomeAutoOpenTab: string | null
+  setEquipmentHomeAutoOpenTab: (tab: string | null) => void
   removeWhatIfRunSession: (id: string) => void
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -194,8 +203,11 @@ export const useAppStore = create<AppState>((set) => ({
       if (view === "home") {
         activeModule = "home"
         isPanelOpen = false
-      } else if (view === "site" || view === "plant" || view === "equipment") {
+      } else if (view === "site" || view === "plant" || view === "equipment" || view === "equipment-home") {
         activeModule = "assets"
+        isPanelOpen = true
+      } else if (view === "workspace") {
+        activeModule = "workspace"
         isPanelOpen = true
       } else if (view === "data-sync" || view === "whatIfTool" || view === "documents-tool") {
         activeModule = "insights"
@@ -229,6 +241,8 @@ export const useAppStore = create<AppState>((set) => ({
   setWhatIfExploreRunId: (id) => set({ whatIfExploreRunId: id }),
   whatIfDashboardAutoSelectRunId: null,
   setWhatIfDashboardAutoSelectRunId: (id) => set({ whatIfDashboardAutoSelectRunId: id }),
+  equipmentHomeAutoOpenTab: null,
+  setEquipmentHomeAutoOpenTab: (tab) => set({ equipmentHomeAutoOpenTab: tab }),
   removeWhatIfRunSession: (id) =>
     set((state) => ({
       whatIfRunSessions: state.whatIfRunSessions.filter((s) => s.id !== id),
@@ -236,7 +250,13 @@ export const useAppStore = create<AppState>((set) => ({
       whatIfActiveRunId: state.whatIfActiveRunId === id ? null : state.whatIfActiveRunId,
       whatIfDashboardAutoSelectRunId:
         state.whatIfDashboardAutoSelectRunId === id ? null : state.whatIfDashboardAutoSelectRunId,
+      equipmentHomeAutoOpenTab: state.equipmentHomeAutoOpenTab,
     })),
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── EQUIPMENT HOME PAGE STATE ─────────────────────────────────────────────
+  preFilterEquipmentId: null,
+  setPreFilterEquipmentId: (id) => set({ preFilterEquipmentId: id }),
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── HOME PAGE STATE ───────────────────────────────────────────────────────

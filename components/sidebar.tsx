@@ -284,16 +284,16 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
     const plant = site?.plants.find(p => p.id === plantId)
     const equipment = plant?.equipment.find(e => e.id === equipmentId)
     const firstTab = equipment?.tabs?.[0] || "Overview"
-    
+
     setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: firstTab })
-    setCurrentView("equipment")
+    setCurrentView("equipment-home")
     setViewMode("view")
     if (!expandedEquipment.includes(equipmentId)) toggleEquipmentExpanded(equipmentId)
   }
 
   const handleTabClick = (siteId: string, plantId: string, equipmentId: string, tab: string) => {
     setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab })
-    setCurrentView("equipment")
+    setCurrentView("equipment-home")
     setViewMode("view")
   }
 
@@ -419,7 +419,7 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
                                     onClick={() => handleEquipmentClick(site.id, plant.id, equipment.id)}
                                     className={cn(
                                       "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
-                                      isEquipActive && currentView === "equipment"
+                                      isEquipActive && (currentView === "equipment" || currentView === "equipment-home" || currentView === "workspace")
                                         ? "bg-sidebar-active text-white"
                                         : "hover:bg-sidebar-hover text-sidebar-foreground"
                                     )}

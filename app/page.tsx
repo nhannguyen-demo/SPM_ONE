@@ -5,6 +5,8 @@ import { Header } from "@/components/header"
 import { SiteOverview } from "@/components/views/site-overview"
 import { PlantOverview } from "@/components/views/plant-overview"
 import { EquipmentDashboard } from "@/components/views/equipment-dashboard"
+import { EquipmentHomeView } from "@/components/views/equipment-home"
+import { WorkspaceView } from "@/components/views/workspace-view"
 import { DataSyncView } from "@/components/views/data-sync"
 import { HomeView } from "@/components/views/home-view"
 import { WhatIfToolView } from "@/components/views/whatif-tool-view"
@@ -23,13 +25,15 @@ export default function Home() {
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <Header />
         <main className="flex-1 min-w-0 flex overflow-hidden">
-          {currentView === "home"           && <HomeView />}
-          {currentView === "site"           && <SiteOverview />}
-          {currentView === "plant"          && <PlantOverview />}
-          {currentView === "equipment"      && <EquipmentDashboard />}
-          {currentView === "data-sync"      && <DataSyncView />}
-          {currentView === "whatIfTool"     && <WhatIfToolView />}
-          {currentView === "documents-tool" && <DocumentsView />}
+          {currentView === "home"            && <HomeView />}
+          {currentView === "site"            && <SiteOverview />}
+          {currentView === "plant"           && <PlantOverview />}
+          {currentView === "equipment-home"  && <EquipmentHomeView />}
+          {currentView === "equipment"       && <EquipmentDashboard />}
+          {currentView === "workspace"       && <WorkspaceView />}
+          {currentView === "data-sync"       && <DataSyncView />}
+          {currentView === "whatIfTool"      && <WhatIfToolView />}
+          {currentView === "documents-tool"  && <DocumentsView />}
         </main>
       </div>
       

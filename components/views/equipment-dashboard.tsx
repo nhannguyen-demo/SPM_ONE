@@ -50,6 +50,78 @@ import { WidgetErrorBoundary, WidgetViewResolver } from "@/components/views/equi
    TYPES & DEFAULT LAYOUTS
    ═══════════════════════════════════════════════════════════════════════════ */
 
+type DashboardCardData = {
+  id: string
+  tag: string
+  equipId: string
+  equipment: string
+  metrics: { value1: string; value2: string }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD TAB STRIP
+   Defined at module level so React sees a stable component type across
+   re-renders. Defining it inside the render function causes React to unmount
+   and remount it on every render, swallowing click events.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function DashboardTabsStrip({
+  cards,
+  activeTab,
+  thumbnailSrc,
+  isEditMode,
+  canDelete,
+  onTabChange,
+  onDeleteDashboard,
+  onOpenCreate,
+  expanded,
+}: {
+  cards: DashboardCardData[]
+  activeTab: string
+  thumbnailSrc: string | undefined
+  isEditMode: boolean
+  canDelete: boolean
+  onTabChange: (tag: string) => void
+  onDeleteDashboard: (tag: string) => void
+  onOpenCreate: () => void
+  expanded: boolean
+}) {
+  return (
+    <div className={expanded ? "flex gap-3 overflow-x-auto pb-2" : "flex gap-3 overflow-x-auto pb-2 overflow-y-visible pt-2"}>
+      {cards.map((card, idx) => (
+        <div key={card.id} className="relative flex-shrink-0">
+          <button
+            onClick={() => onTabChange(card.tag)}
+            className={cn(
+              "text-left transition-all rounded-xl border-2 border-transparent",
+              activeTab === card.tag && "border-primary shadow-md"
+            )}
+          >
+            <DashboardCard card={card} cardIndex={idx} thumbnailSrc={thumbnailSrc} showEquipmentName={false} />
+          </button>
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={() => onDeleteDashboard(card.tag)}
+              disabled={!canDelete}
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-bold shadow hover:bg-rose-600 disabled:opacity-40"
+              title="Delete dashboard"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={onOpenCreate}
+        className="flex-shrink-0 w-16 h-[min(100%,130px)] my-auto border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors"
+      >
+        <Plus className="w-6 h-6 text-muted-foreground" />
+      </button>
+    </div>
+  )
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN DASHBOARD EXPORT
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -86,6 +158,7 @@ export function EquipmentDashboard() {
   const [visualReportGenerated, setVisualReportGenerated] = useState(false)
   const [shareNowOpen, setShareNowOpen] = useState(false)
   const [shareRecipient, setShareRecipient] = useState("")
+  const [createDashError, setCreateDashError] = useState("")
   // Container width for RGL (measured via ResizeObserver or default)
   const [gridWidth, setGridWidth] = useState(900)
   /** Active library module during HTML5 drag (for drop preview size). */
@@ -126,12 +199,11 @@ export function EquipmentDashboard() {
   )
   const isBookmarked = activeCard ? favoriteDashboardIds.includes(activeCard.id) : false
 
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = useCallback((tab: string) => {
     setCurrentPath({ ...currentPath, tab })
-    // Track recent dashboards when user switches tab
     const card = equipmentDashboardCards.find((c) => c.equipId === equipment.id && c.tag === tab)
     if (card) addRecentDashboard(card.id)
-  }
+  }, [currentPath, equipmentDashboardCards, equipment.id, setCurrentPath, addRecentDashboard])
 
   // Current tab's grid widgets
   const currentGrid: GridWidget[] = grids[activeTab] || buildDefaultGrid(DEFAULT_WIDGET_SETS[activeTab] || [])
@@ -283,7 +355,11 @@ export function EquipmentDashboard() {
   const createDashboard = () => {
     const trimmed = newDashName.trim()
     if (!trimmed) return
-    if (equipmentDashboardCards.some((c) => c.tag.toLowerCase() === trimmed.toLowerCase())) return
+    if (equipmentDashboardCards.some((c) => c.tag.toLowerCase() === trimmed.toLowerCase())) {
+      setCreateDashError("A dashboard with this name already exists for this equipment.")
+      return
+    }
+    setCreateDashError("")
 
     const newCard = {
       id: `dash-${equipment.id}-${Date.now()}`,
@@ -309,8 +385,11 @@ export function EquipmentDashboard() {
 
     setCurrentPath({ ...currentPath, tab: trimmed })
     addRecentDashboard(newCard.id)
+    // Reset and close modal
     setCreateDashOpen(false)
     setNewDashName("")
+    setCreateMode("existing")
+    setCreateDashError("")
   }
 
   const generateViewedDataReport = () => {
@@ -364,51 +443,21 @@ export function EquipmentDashboard() {
     }
   }
 
-  useEffect(() => {
-    if (currentPath.tab !== activeTab) {
-      setCurrentPath({ ...currentPath, tab: activeTab })
-    }
-  }, [activeTab, currentPath, setCurrentPath])
+  // Stable modal open/close callbacks — reset all modal state on open/close
+  const openCreateModal = useCallback(() => {
+    setNewDashName("")
+    setCreateMode("existing")
+    setCreateDashError("")
+    setTemplateTag(resolvedDefaultTab)
+    setCreateDashOpen(true)
+  }, [resolvedDefaultTab])
 
-  const DashboardTabsStrip = ({ expanded }: { expanded: boolean }) => (
-    <div className={expanded ? "flex gap-3 overflow-x-auto pb-2" : "flex gap-3 overflow-x-auto pb-2 overflow-y-visible pt-2"}>
-      {equipmentDashboardCards.map((card, idx) => (
-        <div key={card.id} className="relative flex-shrink-0">
-          <button
-            onClick={() => handleTabChange(card.tag)}
-            className={cn(
-              "text-left transition-all rounded-xl border-2 border-transparent",
-              activeTab === card.tag && "border-primary shadow-md"
-            )}
-          >
-            <DashboardCard card={card} cardIndex={idx} thumbnailSrc={tabThumbnailSrc} showEquipmentName={false} />
-          </button>
-          {isEditMode && (
-            <button
-              type="button"
-              onClick={() => deleteDashboard(card.tag)}
-              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-bold shadow hover:bg-rose-600 disabled:opacity-40"
-              disabled={equipmentDashboardCards.length <= 1}
-              title="Delete dashboard"
-            >
-              ×
-            </button>
-          )}
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={() => {
-          setTemplateTag(resolvedDefaultTab)
-          setCreateMode("existing")
-          setCreateDashOpen(true)
-        }}
-        className="flex-shrink-0 w-16 h-[min(100%,130px)] my-auto border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors"
-      >
-        <Plus className="w-6 h-6 text-muted-foreground" />
-      </button>
-    </div>
-  )
+  const closeCreateModal = useCallback(() => {
+    setCreateDashOpen(false)
+    setNewDashName("")
+    setCreateMode("existing")
+    setCreateDashError("")
+  }, [])
 
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden relative">
@@ -580,7 +629,17 @@ export function EquipmentDashboard() {
 
         {/* Regular bottom tab strip — hidden when expanded */}
         {!dashboardExpanded && (
-          <DashboardTabsStrip expanded={false} />
+          <DashboardTabsStrip
+            cards={equipmentDashboardCards}
+            activeTab={activeTab}
+            thumbnailSrc={tabThumbnailSrc}
+            isEditMode={isEditMode}
+            canDelete={equipmentDashboardCards.length > 1}
+            onTabChange={handleTabChange}
+            onDeleteDashboard={deleteDashboard}
+            onOpenCreate={openCreateModal}
+            expanded={false}
+          />
         )}
 
         {/* Slide-up expanded panel */}
@@ -600,7 +659,17 @@ export function EquipmentDashboard() {
               </button>
             </div>
 
-            <DashboardTabsStrip expanded />
+            <DashboardTabsStrip
+              cards={equipmentDashboardCards}
+              activeTab={activeTab}
+              thumbnailSrc={tabThumbnailSrc}
+              isEditMode={isEditMode}
+              canDelete={equipmentDashboardCards.length > 1}
+              onTabChange={handleTabChange}
+              onDeleteDashboard={deleteDashboard}
+              onOpenCreate={openCreateModal}
+              expanded
+            />
           </div>
         )}
       </div>
@@ -830,10 +899,16 @@ export function EquipmentDashboard() {
                 <label className="block text-sm font-medium text-foreground mb-1.5">Dashboard name</label>
                 <input
                   value={newDashName}
-                  onChange={(e) => setNewDashName(e.target.value)}
+                  onChange={(e) => { setNewDashName(e.target.value); setCreateDashError("") }}
                   placeholder="e.g. Reliability Comparison"
-                  className="w-full h-10 px-3 bg-secondary border border-border rounded-lg text-sm"
+                  className={cn(
+                    "w-full h-10 px-3 bg-secondary border rounded-lg text-sm",
+                    createDashError ? "border-rose-400 focus:outline-rose-400" : "border-border"
+                  )}
                 />
+                {createDashError && (
+                  <p className="mt-1.5 text-xs text-rose-500">{createDashError}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">Creation mode</label>
@@ -880,7 +955,7 @@ export function EquipmentDashboard() {
             <div className="flex justify-end gap-2 mt-6">
               <button
                 type="button"
-                onClick={() => setCreateDashOpen(false)}
+                onClick={closeCreateModal}
                 className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary"
               >
                 Cancel

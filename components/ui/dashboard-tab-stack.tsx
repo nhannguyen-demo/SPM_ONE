@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, ArrowUpRight } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { getEquipmentDashboardThumbnail } from "@/lib/data"
 
@@ -10,34 +10,61 @@ interface DashboardTabStackProps {
   equipmentName: string;
   cards: any[];
   isExpanded: boolean;
-  autoExpand?: boolean;   // When only one group exists, expand automatically
+  autoExpand?: boolean;
   onExpand: () => void;
-  /** Collapse back to fan stack (only shown when user has expanded this stack). */
   onCollapse?: () => void;
   onCardClick: (card: any) => void;
+  /** When provided, the equipment name label becomes a clickable link to the Equipment Home Page. */
+  onEquipmentNameClick?: (equipId: string) => void;
 }
 
 function EquipmentStackLabel({
+  equipId,
   equipmentName,
   tabCount,
   showCollapse,
   onCollapse,
+  onEquipmentNameClick,
 }: {
+  equipId: string
   equipmentName: string
   tabCount: number
   showCollapse: boolean
   onCollapse?: () => void
+  onEquipmentNameClick?: (equipId: string) => void
 }) {
   return (
-    <div className="absolute -top-5 left-0 z-30 flex items-center gap-0.5">
-      <span className="text-xs font-bold text-primary/80 uppercase tracking-wider whitespace-nowrap">
-        {equipmentName}
-        {tabCount > 1 && (
-          <span className="ml-1 text-muted-foreground font-medium normal-case tracking-normal">
-            ({tabCount})
+    <div className="absolute -top-6 left-0 z-30 flex items-center gap-1">
+      {onEquipmentNameClick ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onEquipmentNameClick(equipId)
+          }}
+          className="group/label flex items-center gap-0.5 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 hover:bg-primary/10 transition-colors"
+          title={`Go to ${equipmentName} home page`}
+        >
+          <span className="text-xs font-bold text-primary uppercase tracking-wider whitespace-nowrap group-hover/label:underline underline-offset-2">
+            {equipmentName}
           </span>
-        )}
-      </span>
+          <ArrowUpRight className="w-3 h-3 text-primary opacity-60 group-hover/label:opacity-100 transition-opacity flex-shrink-0" />
+          {tabCount > 1 && (
+            <span className="ml-0.5 text-muted-foreground text-xs font-medium normal-case tracking-normal">
+              ({tabCount})
+            </span>
+          )}
+        </button>
+      ) : (
+        <span className="text-xs font-bold text-primary/80 uppercase tracking-wider whitespace-nowrap px-1.5 py-0.5">
+          {equipmentName}
+          {tabCount > 1 && (
+            <span className="ml-1 text-muted-foreground font-medium normal-case tracking-normal">
+              ({tabCount})
+            </span>
+          )}
+        </span>
+      )}
       {showCollapse && onCollapse && (
         <button
           type="button"
@@ -45,7 +72,7 @@ function EquipmentStackLabel({
             e.stopPropagation()
             onCollapse()
           }}
-          className="p-0.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors -mt-0.5"
+          className="p-0.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           aria-label="Collapse dashboard tabs"
         >
           <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.25} />
@@ -64,6 +91,7 @@ export function DashboardTabStack({
   onExpand,
   onCollapse,
   onCardClick,
+  onEquipmentNameClick,
 }: DashboardTabStackProps) {
   const [isHovered, setIsHovered] = useState(false)
 
@@ -71,18 +99,19 @@ export function DashboardTabStack({
 
   const thumbnailSrc = getEquipmentDashboardThumbnail(equipId)
 
-  // Single card or auto-expand: show without stacking
   const shouldExpand = isExpanded || autoExpand || cards.length === 1
 
   if (shouldExpand) {
     const showCollapse = Boolean(isExpanded && cards.length > 1 && onCollapse)
     return (
-      <div className="flex gap-3 flex-shrink-0 relative pl-0 py-1">
+      <div className="flex gap-3 flex-shrink-0 relative pl-0 py-1 mt-2">
         <EquipmentStackLabel
+          equipId={equipId}
           equipmentName={equipmentName}
           tabCount={cards.length}
           showCollapse={showCollapse}
           onCollapse={onCollapse}
+          onEquipmentNameClick={onEquipmentNameClick}
         />
         {cards.map((card, idx) => (
           <div key={card.id} className="cursor-pointer flex-shrink-0" onClick={() => onCardClick(card)}>
@@ -93,14 +122,13 @@ export function DashboardTabStack({
     )
   }
 
-  // Collapsed: fan of real tab cards (back = next tabs), not empty rectangles
   const stackDepth = Math.min(cards.length - 1, 2)
   const fanSpread = isHovered ? 1.25 : 1
   const containerW = 192 + stackDepth * 18 * fanSpread
 
   return (
     <div
-      className="relative flex-shrink-0 cursor-pointer group pt-1 pb-2"
+      className="relative flex-shrink-0 cursor-pointer group pt-1 pb-2 mt-2"
       style={{
         width: containerW,
         marginRight: Math.max(12, stackDepth * 10 + 8),
@@ -110,9 +138,11 @@ export function DashboardTabStack({
       onClick={onExpand}
     >
       <EquipmentStackLabel
+        equipId={equipId}
         equipmentName={equipmentName}
         tabCount={cards.length}
         showCollapse={false}
+        onEquipmentNameClick={onEquipmentNameClick}
       />
 
       {/* Fan back layers — next tab(s), rotated around bottom edge like a hand of cards */}
