@@ -7,9 +7,10 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useAppStore, type WhatIfRunSession, type WhatIfParameterInputMode } from "@/lib/store"
-import { whatIfScenarios, mockWhatifRunSessions, sites } from "@/lib/data"
+import { whatIfScenarios } from "@/lib/data"
 import type { UserDocument } from "@/lib/data"
 import { cn } from "@/lib/utils"
+import { RUN_STEPS, StatusBadge, findAssetPathForEquipment, useSeedMockHistory } from "@/components/views/whatif-tool/shared"
 import {
   Play, History, ChevronRight, GitCompareArrows,
   Upload, CheckCircle2, Loader2,
@@ -20,61 +21,6 @@ import {
 /* ═══════════════════════════════════════════════════════════════════════════
    CONSTANTS
    ═══════════════════════════════════════════════════════════════════════════ */
-
-const RUN_STEPS = [
-  "Ingesting parameter files and typed values",
-  "Validating parameter inputs",
-  "Running scenario engine",
-  "Computing dashboard-quality datasets",
-  "Finalising results",
-]
-
-function findAssetPathForEquipment(equipmentId: string): { site: string; plant: string; tab: string } {
-  for (const site of sites) {
-    for (const plant of site.plants) {
-      const eq = plant.equipment.find((e) => e.id === equipmentId)
-      if (eq) {
-        return { site: site.id, plant: plant.id, tab: eq.tabs?.[0] ?? "Overview" }
-      }
-    }
-  }
-  return { site: "site-x", plant: "plant-1", tab: "Overview" }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SEED MOCK HISTORY
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-function useSeedMockHistory() {
-  const { whatifRunSessions, addWhatifRunSession } = useAppStore()
-  const seeded = useRef(false)
-  useEffect(() => {
-    if (seeded.current || whatifRunSessions.length > 0) return
-    seeded.current = true
-      ;[...mockWhatifRunSessions].reverse().forEach((s) =>
-        addWhatifRunSession(s as unknown as WhatIfRunSession)
-      )
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   STATUS BADGE
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-function StatusBadge({ status }: { status: WhatIfRunSession["status"] }) {
-  const map = {
-    success: { label: "Success", cls: "bg-emerald-500/10 text-emerald-600" },
-    failed: { label: "Failed", cls: "bg-rose-500/10 text-rose-600" },
-    running: { label: "Running", cls: "bg-blue-500/10 text-blue-600 animate-pulse" },
-    queued: { label: "Queued", cls: "bg-amber-500/10 text-amber-600" },
-  }
-  const { label, cls } = map[status]
-  return (
-    <span className={cn("px-2.5 py-0.5 rounded-full text-[11px] font-semibold", cls)}>
-      {label}
-    </span>
-  )
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    RUN PROGRESS OVERLAY
@@ -87,8 +33,8 @@ function RunProgressOverlay({
   sessionId: string
   onComplete: (session: WhatIfRunSession) => void
 }) {
-  const { whatifRunSessions, updateWhatifRunSession } = useAppStore()
-  const session = whatifRunSessions.find((s) => s.id === sessionId)
+  const { whatIfRunSessions, updateWhatIfRunSession } = useAppStore()
+  const session = whatIfRunSessions.find((s) => s.id === sessionId)
   const [localStep, setLocalStep] = useState(0)
 
   useEffect(() => {
@@ -97,7 +43,7 @@ function RunProgressOverlay({
     const iv = setInterval(() => {
       step += 1
       setLocalStep(step)
-      updateWhatifRunSession(sessionId, { progressStep: step })
+      updateWhatIfRunSession(sessionId, { progressStep: step })
       if (step >= RUN_STEPS.length) {
         clearInterval(iv)
         setTimeout(() => {
@@ -114,7 +60,7 @@ function RunProgressOverlay({
               { checked: true, col1: "Cycle Count Delta", col2: `+${Math.floor(Math.random() * 20 + 5)}`, col3: "Pass" },
             ],
           }
-          updateWhatifRunSession(sessionId, finishedSession)
+          updateWhatIfRunSession(sessionId, finishedSession)
           const updated = { ...session, ...finishedSession } as WhatIfRunSession
           onComplete(updated)
         }, 600)
@@ -356,7 +302,7 @@ function ConfigureRunPanel({
   scenario: (typeof whatIfScenarios)[0]
   onRunStarted: (sessionId: string) => void
 }) {
-  const { addWhatifRunSession, setWhatifActiveRunId } = useAppStore()
+  const { addWhatIfRunSession, setWhatIfActiveRunId } = useAppStore()
   const [runName, setRunName] = useState("")
   const [csvFile, setCsvFile] = useState<string | null>(null)
   const [paramInputMode, setParamInputMode] = useState<WhatIfParameterInputMode>("typed")
@@ -395,8 +341,8 @@ function ConfigureRunPanel({
       source: "tool",
       parameterInputMode: paramInputMode,
     }
-    addWhatifRunSession(session)
-    setWhatifActiveRunId(id)
+    addWhatIfRunSession(session)
+    setWhatIfActiveRunId(id)
     onRunStarted(id)
   }
 
@@ -616,7 +562,7 @@ function ConfigureRunPanel({
         {/* Run */}
         <section className="pb-8">
           <button
-            id={`run-whatif-${scenario.id}`}
+            id={`run-what-if-${scenario.id}`}
             type="button"
             onClick={handleRun}
             className={cn(
@@ -649,8 +595,8 @@ function HistoryPanel({
   scenarioId: string
   onViewRun: (session: WhatIfRunSession) => void
 }) {
-  const { whatifRunSessions } = useAppStore()
-  const sessions = whatifRunSessions.filter((s) => s.scenarioId === scenarioId)
+  const { whatIfRunSessions } = useAppStore()
+  const sessions = whatIfRunSessions.filter((s) => s.scenarioId === scenarioId)
   const [filterStatus, setFilterStatus] = useState<"all" | WhatIfRunSession["status"]>("all")
   const [search, setSearch] = useState("")
 
@@ -729,7 +675,7 @@ function HistoryPanel({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN CONTENT — tabbed scenario panel, reads whatifInitialTab from store
+   MAIN CONTENT — tabbed scenario panel, reads whatIfInitialTab from store
    ═══════════════════════════════════════════════════════════════════════════ */
 
 type MainPanelMode =
@@ -740,38 +686,40 @@ type MainPanelMode =
 function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
   const scenario = whatIfScenarios.find((s) => s.id === scenarioId)
   const {
-    whatifRunSessions,
-    whatifInitialTab,
-    setWhatifInitialTab,
+    whatIfRunSessions,
+    whatIfInitialTab,
+    setWhatIfInitialTab,
     setCurrentPath,
     setCurrentView,
     setViewMode,
-    setWhatifDashboardAutoSelectRunId,
-    removeWhatifRunSession,
+    setWhatIfDashboardAutoSelectRunId,
+    setEquipmentHomeAutoOpenTab,
+    removeWhatIfRunSession,
   } = useAppStore()
 
   // Consume the initial tab set by external navigation (e.g. equipment dashboard)
   const [panel, setPanel] = useState<MainPanelMode>(() => {
-    const init = useAppStore.getState().whatifInitialTab
+    const init = useAppStore.getState().whatIfInitialTab
     return { mode: init ?? "overview" }
   })
 
   useEffect(() => {
-    if (whatifInitialTab) {
-      setPanel({ mode: whatifInitialTab })
-      setWhatifInitialTab(null) // consume once
+    if (whatIfInitialTab) {
+      setPanel({ mode: whatIfInitialTab })
+      setWhatIfInitialTab(null) // consume once
     }
-  }, [whatifInitialTab, setWhatifInitialTab])
+  }, [whatIfInitialTab, setWhatIfInitialTab])
 
-  // Also reset panel when scenario changes
+  // Reset panel when scenario changes, but preserve an externally requested initial tab.
   useEffect(() => {
-    setPanel({ mode: "overview" })
+    const init = useAppStore.getState().whatIfInitialTab
+    setPanel({ mode: init ?? "overview" })
   }, [scenarioId])
 
   if (!scenario) return null
 
-  const sessionCount = whatifRunSessions.filter((s) => s.scenarioId === scenarioId).length
-  const lastSuccess = whatifRunSessions.find((s) => s.scenarioId === scenarioId && s.status === "success")
+  const sessionCount = whatIfRunSessions.filter((s) => s.scenarioId === scenarioId).length
+  const lastSuccess = whatIfRunSessions.find((s) => s.scenarioId === scenarioId && s.status === "success")
 
   const tabs: { id: "overview" | "run" | "history"; label: string; icon: React.ReactNode }[] = [
     { id: "overview", label: "Overview", icon: <Info className="w-3.5 h-3.5" /> },
@@ -794,14 +742,15 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
         session={panel.session}
         onSaveBack={() => setPanel({ mode: "history" })}
         onDiscard={() => {
-          removeWhatifRunSession(panel.session.id)
+          removeWhatIfRunSession(panel.session.id)
           setPanel({ mode: "history" })
         }}
         onCompareData={() => {
           const { site, plant, tab } = findAssetPathForEquipment(panel.session.equipmentId)
           setCurrentPath({ site, plant, equipment: panel.session.equipmentId, tab })
-          setWhatifDashboardAutoSelectRunId(panel.session.id)
-          setCurrentView("equipment")
+          setWhatIfDashboardAutoSelectRunId(panel.session.id)
+          setEquipmentHomeAutoOpenTab(tab)
+          setCurrentView("equipment-home")
           setViewMode("view")
         }}
       />
@@ -866,7 +815,7 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
             <div className="grid grid-cols-3 gap-4">
               {[
                 { label: "Total Runs", value: sessionCount.toString() },
-                { label: "Successful", value: whatifRunSessions.filter((s) => s.scenarioId === scenarioId && s.status === "success").length.toString() },
+                { label: "Successful", value: whatIfRunSessions.filter((s) => s.scenarioId === scenarioId && s.status === "success").length.toString() },
                 { label: "Dashboards Available", value: scenario.availableDashboards.length.toString() },
               ].map((s) => (
                 <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
@@ -929,7 +878,7 @@ function ScenarioSidebarList({
   selectedId: string | null
   onSelect: (id: string) => void
 }) {
-  const { whatifRunSessions } = useAppStore()
+  const { whatIfRunSessions } = useAppStore()
   const [search, setSearch] = useState("")
 
   const filtered = whatIfScenarios.filter((s) =>
@@ -950,7 +899,7 @@ function ScenarioSidebarList({
       </div>
       <div className="flex-1 overflow-y-auto py-2">
         {filtered.map((scenario) => {
-          const runs = whatifRunSessions.filter((s) => s.scenarioId === scenario.id)
+          const runs = whatIfRunSessions.filter((s) => s.scenarioId === scenario.id)
           const lastRun = runs[0]
           const hasRunning = runs.some((s) => s.status === "running")
           const selected = selectedId === scenario.id
@@ -995,15 +944,15 @@ function ScenarioSidebarList({
    ROOT EXPORT
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export function WhatifToolView() {
+export function WhatIfToolView() {
   useSeedMockHistory()
-  const { whatifSelectedScenarioId, setWhatifSelectedScenarioId, setCurrentView, setViewMode } = useAppStore()
+  const { whatIfSelectedScenarioId, setWhatIfSelectedScenarioId, setCurrentView, setViewMode } = useAppStore()
 
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">
       <ScenarioSidebarList
-        selectedId={whatifSelectedScenarioId}
-        onSelect={setWhatifSelectedScenarioId}
+        selectedId={whatIfSelectedScenarioId}
+        onSelect={setWhatIfSelectedScenarioId}
       />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-background">
         {/* Breadcrumb */}
@@ -1012,14 +961,14 @@ export function WhatifToolView() {
             Tools
           </button>
           <ChevronRight className="w-3 h-3" />
-          <span className="text-foreground font-medium">What-If Scenarios</span>
-          {whatifSelectedScenarioId && (
-            <><ChevronRight className="w-3 h-3" /><span className="text-foreground">{whatIfScenarios.find((s) => s.id === whatifSelectedScenarioId)?.equipmentName}</span></>
+          <span className="text-foreground font-medium">What-If Scenario</span>
+          {whatIfSelectedScenarioId && (
+            <><ChevronRight className="w-3 h-3" /><span className="text-foreground">{whatIfScenarios.find((s) => s.id === whatIfSelectedScenarioId)?.equipmentName}</span></>
           )}
         </div>
 
-        {whatifSelectedScenarioId ? (
-          <ScenarioMainPanel scenarioId={whatifSelectedScenarioId} />
+        {whatIfSelectedScenarioId ? (
+          <ScenarioMainPanel scenarioId={whatIfSelectedScenarioId} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">

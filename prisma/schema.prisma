@@ -1,0 +1,378 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  integrity_engineer
+  process_engineer
+  admin
+}
+
+enum EquipmentType {
+  vessel
+  reactor
+  pump
+  other
+}
+
+enum WidgetKind {
+  kpi
+  chart
+  table
+  model_view
+  summary
+  generic
+}
+
+enum WidgetDataSourceType {
+  live_equipment
+  whatif_result
+  mixed
+  static_mock
+}
+
+enum AppModuleKey {
+  home
+  assets
+  workspace
+  insights
+  comms
+  settings
+}
+
+enum WhatIfRunStatus {
+  queued
+  running
+  success
+  failed
+  cancelled
+}
+
+enum WhatIfRunSource {
+  tool
+  dashboard
+}
+
+enum WhatIfParameterInputMode {
+  full_csv
+  per_parameter_csv
+  typed
+  mixed
+}
+
+enum WhatIfRunInputSourceType {
+  typed
+  full_csv
+  per_parameter_csv
+  mixed
+}
+
+enum WhatIfRunResultStatus {
+  pass
+  warning
+  fail
+}
+
+enum UserDocumentFileType {
+  pdf
+  docx
+  xlsx
+  link
+}
+
+enum UserDocumentCategory {
+  uploaded
+  shared
+}
+
+enum UserDocumentSubType {
+  general
+  whatif_parameter_report
+  whatif_visual_report
+}
+
+enum ChangeLogType {
+  dashboard
+  operation
+}
+
+enum SyncJobStatus {
+  queued
+  running
+  success
+  failed
+  cancelled
+}
+
+model User {
+  id          String             @id @default(uuid())
+  name        String
+  email       String             @unique
+  role        UserRole
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  runSessions WhatIfRunSession[] @relation("RunSessionRequestedBy")
+  changeLogs  ChangeLogEntry[]
+  syncJobs    SyncJob[]
+}
+
+model Site {
+  id        String         @id @default(uuid())
+  name      String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  plants    Plant[]
+  documents UserDocument[]
+}
+
+model Plant {
+  id        String         @id @default(uuid())
+  siteId    String
+  name      String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  site      Site           @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  equipment Equipment[]
+  documents UserDocument[]
+}
+
+model Equipment {
+  id              String           @id @default(uuid())
+  plantId         String
+  name            String
+  type            EquipmentType
+  hasWhatIfTool   Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  plant           Plant            @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  dashboards      Dashboard[]
+  whatIfScenarios WhatIfScenario[]
+  runSessions     WhatIfRunSession[]
+  documents       UserDocument[]
+  dataSyncStatus  DataSyncStatus[]
+  syncJobs        SyncJob[]
+}
+
+model Dashboard {
+  id                String            @id @default(uuid())
+  equipmentId       String
+  name              String
+  orderIndex        Int
+  sourceDashboardId String?
+  isSystemDashboard Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  equipment         Equipment         @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  sourceDashboard   Dashboard?        @relation("DashboardClone", fields: [sourceDashboardId], references: [id], onDelete: SetNull)
+  clonedDashboards  Dashboard[]       @relation("DashboardClone")
+  dashboardWidgets  DashboardWidget[]
+
+  @@unique([equipmentId, name])
+}
+
+model Widget {
+  id               String              @id @default(uuid())
+  key              String              @unique
+  name             String
+  kind             WidgetKind
+  dataSourceType   WidgetDataSourceType
+  defaultConfig    Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  dashboardWidgets DashboardWidget[]
+  libraryItems     WidgetLibraryItem[]
+}
+
+model DashboardWidget {
+  id             String    @id @default(uuid())
+  dashboardId    String
+  widgetId       String
+  x              Int
+  y              Int
+  w              Int
+  h              Int
+  minW           Int       @default(2)
+  minH           Int       @default(2)
+  configOverride Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  dashboard      Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  widget         Widget    @relation(fields: [widgetId], references: [id], onDelete: Restrict)
+}
+
+model WidgetLibraryItem {
+  id          String   @id @default(uuid())
+  widgetId    String
+  displayName String
+  category    String
+  defaultW    Int
+  defaultH    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  widget      Widget   @relation(fields: [widgetId], references: [id], onDelete: Restrict)
+}
+
+model AppModule {
+  id          String       @id @default(uuid())
+  key         AppModuleKey @unique
+  displayName String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tools       Tool[]
+}
+
+model Tool {
+  id        String           @id @default(uuid())
+  moduleId  String
+  key       String
+  name      String
+  isEnabled Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  module    AppModule        @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  scenarios WhatIfScenario[]
+}
+
+model WhatIfScenario {
+  id          String                   @id @default(uuid())
+  toolId      String
+  equipmentId String
+  name        String
+  description String
+  details     String?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  tool        Tool                     @relation(fields: [toolId], references: [id], onDelete: Restrict)
+  equipment   Equipment                @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  parameters  WhatIfScenarioParameter[]
+  runSessions WhatIfRunSession[]
+}
+
+model WhatIfScenarioParameter {
+  id           String         @id @default(uuid())
+  scenarioId   String
+  name         String
+  unit         String?
+  defaultValue String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  scenario     WhatIfScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  runInputs    WhatIfRunInput[]
+}
+
+model WhatIfRunSession {
+  id                 String                   @id @default(uuid())
+  scenarioId         String
+  equipmentId        String
+  requestedById      String?
+  runName            String
+  status             WhatIfRunStatus
+  progressStep       Int
+  source             WhatIfRunSource
+  parameterInputMode WhatIfParameterInputMode
+  startedAt          DateTime?
+  completedAt        DateTime?
+  durationSeconds    Int?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  scenario           WhatIfScenario           @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  equipment          Equipment                @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  requestedBy        User?                    @relation("RunSessionRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  inputs             WhatIfRunInput[]
+  results            WhatIfRunResult[]
+  documents          UserDocument[]
+}
+
+model WhatIfRunInput {
+  id                    String                  @id @default(uuid())
+  runSessionId          String
+  parameterId           String?
+  parameterNameSnapshot String
+  value                 String
+  sourceType            WhatIfRunInputSourceType
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  runSession            WhatIfRunSession        @relation(fields: [runSessionId], references: [id], onDelete: Cascade)
+  parameter             WhatIfScenarioParameter? @relation(fields: [parameterId], references: [id], onDelete: SetNull)
+}
+
+model WhatIfRunResult {
+  id          String               @id @default(uuid())
+  runSessionId String
+  metricName  String
+  value       String
+  status      WhatIfRunResultStatus
+  included    Boolean              @default(true)
+  orderIndex  Int
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  runSession  WhatIfRunSession     @relation(fields: [runSessionId], references: [id], onDelete: Cascade)
+}
+
+model UserDocument {
+  id                 String               @id @default(uuid())
+  name               String
+  fileType           UserDocumentFileType
+  category           UserDocumentCategory
+  subType            UserDocumentSubType  @default(general)
+  siteId             String?
+  plantId            String?
+  equipmentId        String?
+  sourceRunSessionId String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  site               Site?                @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  plant              Plant?               @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  equipment          Equipment?           @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  sourceRunSession   WhatIfRunSession?    @relation(fields: [sourceRunSessionId], references: [id], onDelete: SetNull)
+}
+
+model ChangeLogEntry {
+  id            String        @id @default(uuid())
+  type          ChangeLogType
+  action        String
+  locationLabel String
+  userId        String?
+  occurredAt    DateTime
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model DataSyncStatus {
+  id            String    @id @default(uuid())
+  equipmentId   String
+  totalFiles    Int
+  loadedFiles   Int
+  errorFiles    Int
+  lastUpdatedAt DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  equipment     Equipment @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+}
+
+model SyncJob {
+  id             String        @id @default(uuid())
+  equipmentId    String
+  userId         String?
+  description    String
+  status         SyncJobStatus
+  startedAt      DateTime?
+  completedAt    DateTime?
+  elapsedSeconds Int?
+  tokenCount     Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  equipment      Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+}

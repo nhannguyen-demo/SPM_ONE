@@ -7,7 +7,7 @@ export const sites = [
     plants: [
       {
         id: "plant-1",
-        name: "Plant 1",
+        name: "Unit CFR.101",
         equipment: [
           {
             id: "equipment-a",
@@ -21,14 +21,14 @@ export const sites = [
           },
           {
             id: "equipment-c",
-            name: "Pump ND.1X02",
-            tabs: ["Pump Performance"],
+            name: "SMR Unit A",
+            tabs: ["SMR Pigtail Integrity"],
           },
         ],
       },
       {
         id: "plant-2",
-        name: "Plant 2",
+        name: "Unit TFR.40",
         equipment: [],
       },
     ],
@@ -63,7 +63,7 @@ export const plantDocuments = [
 export const equipmentDashboardThumbnails: Record<string, string> = {
   "equipment-a": "/images/thumbnails/coke-drum.jpg",
   "equipment-b": "/images/thumbnails/hcu.png",
-  "equipment-c": "/images/thumbnails/pump.jpg",
+  "equipment-c": "/images/thumbnails/smr.png",
 }
 
 export function getEquipmentDashboardThumbnail(equipId: string | undefined): string | undefined {
@@ -144,10 +144,10 @@ export const dashboardCards = [
     metrics: { value1: "78%", value2: "0.020%" },
   },
   {
-    id: "dash-pump-1",
-    equipment: "Pump ND.1X02",
+    id: "dash-smr-1",
+    equipment: "SMR Unit A",
     equipId: "equipment-c",
-    tag: "Pump Performance",
+    tag: "SMR Pigtail Integrity",
     metrics: { value1: "99%", value2: "0.001%" },
   },
 ]
@@ -181,14 +181,14 @@ export const moduleLibrary = [
 export const dataStatusItems = [
   { asset: "Coke Drum", files: 10, loadStatus: "10/10", lastUpdate: "11/04/2026", error: "0/10" },
   { asset: "HCU", files: 7, loadStatus: "7/7", lastUpdate: "11/04/2026", error: "0/7" },
-  { asset: "Pump ND.1X02", files: 6, loadStatus: "5/6", lastUpdate: "09/04/2026", error: "0/5" },
+  { asset: "SMR Unit A", files: 6, loadStatus: "5/6", lastUpdate: "09/04/2026", error: "0/5" },
   { asset: "Pipe a", files: 3, loadStatus: "3/3", lastUpdate: "10/04/2026", error: "1/3" },
 ]
 
 export const syncJobs = [
   { asset: "Coke Drum", description: "fix pressure", state: "Success", startTime: "05/04/2026", elapsed: "4m 52s", user: "Ben - process en", tokens: 0 },
   { asset: "HCU", description: "what-if scenario", state: "Success", startTime: "28/03/2026", elapsed: "3m 50s", user: "Alex - process en", tokens: 0 },
-  { asset: "Pump ND.1X02", description: "virus scan", state: "Success", startTime: "09/03/2026", elapsed: "2s", user: "Alex - process en", tokens: 0 },
+  { asset: "SMR Unit A", description: "pigtail thermal scan", state: "Success", startTime: "09/03/2026", elapsed: "2s", user: "Alex - process en", tokens: 0 },
   { asset: "Pipe a", description: "fea solve", state: "Failed", startTime: "10/01/2026", elapsed: "58m 41s", user: "Simon - integrit...", tokens: 192 },
 ]
 
@@ -271,8 +271,8 @@ export const changeLogEntries: ChangeLogEntry[] = [
     id: "cl-7",
     timestamp: "2026-04-16 11:00",
     user: "Alex P.",
-    action: "Flagged high ΔP reading on Pump ND.1X02 for review",
-    location: "Site X › Plant 1 › Pump ND.1X02",
+    action: "Flagged high pigtail tube-skin temperature on SMR Unit A for review",
+    location: "Site X › Plant 1 › SMR Unit A",
     type: "operation",
   },
   {
@@ -337,7 +337,7 @@ export const userDocuments: UserDocument[] = [
   },
   {
     id: "doc-4",
-    name: "Pump ND.1X02 Vibration Logs Mar-26.xlsx",
+    name: "SMR Unit A Pigtail Tube Temperature Logs Mar-26.xlsx",
     fileType: "xlsx",
     category: "Uploaded",
     siteId: "site-x",
@@ -455,7 +455,7 @@ export const whatIfScenarios: WhatIfScenarioDefinition[] = [
    MOCK WHAT-IF RUN HISTORY  (pre-populated so tool is not empty on first load)
 ───────────────────────────────────────────────────────────────────────────── */
 
-export const mockWhatifRunSessions = [
+export const mockWhatIfRunSessions = [
   {
     id: "wir-001",
     scenarioId: "scenario-coke-drum",

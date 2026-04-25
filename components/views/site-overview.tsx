@@ -2,7 +2,7 @@
 
 import { useAppStore } from "@/lib/store"
 import { sites, siteDocuments, dashboardCards, getEquipmentDashboardThumbnail } from "@/lib/data"
-import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink, ChevronRight } from "lucide-react"
+import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink, ChevronRight, ArrowUpRight } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniLineChart, MiniPieChart, MiniBarChart } from "@/components/mini-charts"
 import { cn } from "@/lib/utils"
@@ -14,7 +14,7 @@ import { useState } from "react"
 import { DashboardTabStack } from "@/components/ui/dashboard-tab-stack"
 
 export function SiteOverview() {
-  const { currentPath, setCurrentPath, setCurrentView, togglePlantExpanded, dashboardExpanded, setDashboardExpanded, addRecentDashboard } = useAppStore()
+  const { currentPath, setCurrentPath, setCurrentView, togglePlantExpanded, dashboardExpanded, setDashboardExpanded, addRecentDashboard, setEquipmentHomeAutoOpenTab, toggleEquipmentExpanded, expandedEquipment } = useAppStore()
   const [selectedFilter, setSelectedFilter] = useState("All")
   const [expandedEquipStack, setExpandedEquipStack] = useState<string | null>(null)
   
@@ -28,18 +28,20 @@ export function SiteOverview() {
   }
 
   const handleDashboardClick = (card: any) => {
-    // Map "Equipment: a" -> "equipment-a" safely
     const equipId = card.equipId || card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
-    // Fallback plant
     const plantId = currentPath.plant || "plant-1"
     addRecentDashboard(card.id)
-    setCurrentPath({
-      ...currentPath,
-      plant: plantId,
-      equipment: equipId,
-      tab: card.tag
-    })
-    setCurrentView("equipment")
+    setCurrentPath({ ...currentPath, plant: plantId, equipment: equipId, tab: card.tag })
+    setEquipmentHomeAutoOpenTab(card.tag)
+    setCurrentView("equipment-home")
+    if (!expandedEquipment.includes(equipId)) toggleEquipmentExpanded(equipId)
+  }
+
+  const handleEquipmentNameClick = (equipId: string, card: any) => {
+    const plantId = currentPath.plant || "plant-1"
+    setCurrentPath({ ...currentPath, plant: plantId, equipment: equipId, tab: card.tag })
+    setCurrentView("equipment-home")
+    if (!expandedEquipment.includes(equipId)) toggleEquipmentExpanded(equipId)
   }
 
   // grouping cards
@@ -185,6 +187,7 @@ export function SiteOverview() {
                     onExpand={() => setExpandedEquipStack(equipId)}
                     onCollapse={() => setExpandedEquipStack(null)}
                     onCardClick={handleDashboardClick}
+                    onEquipmentNameClick={(id) => handleEquipmentNameClick(id, group.cards[0])}
                   />
                 ))
               ) : (
@@ -253,6 +256,7 @@ export function SiteOverview() {
                   onExpand={() => setExpandedEquipStack(equipId)}
                   onCollapse={() => setExpandedEquipStack(null)}
                   onCardClick={handleDashboardClick}
+                  onEquipmentNameClick={(id) => handleEquipmentNameClick(id, group.cards[0])}
                 />
               ))}
               <button className="flex-shrink-0 w-48 h-36 border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary/50 hover:bg-primary/5 transition-colors">

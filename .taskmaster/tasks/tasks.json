@@ -1,0 +1,409 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Align domain profile to Plant 1 SMR replacement",
+        "description": "Reflect the requirement that Plant 1 no longer has pump equipment and now uses SMR, with a single dashboard named SMR Pigtail Integrity.",
+        "details": "Update domain ontology and project specification so the mock profile clearly defines: Plant 1 equipment type/name as SMR-oriented, only one dashboard for this equipment, and SMR-specific dashboard content requirements.",
+        "testStrategy": "Review diffs in domain.ontology.yaml and PROJECT.md for requirement completeness and naming consistency.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": "2",
+        "title": "Replace Plant 1 equipment seed from pump to SMR",
+        "description": "Update mock data and equipment metadata so Plant 1 references SMR equipment instead of pump.",
+        "details": "Find the asset hierarchy seed/static data in lib/store initialization or mock data modules; replace pump entity labels/types/ids where needed while preserving references used by dashboard and what-if flows.",
+        "testStrategy": "Run typecheck and verify Plant 1 equipment card/list shows SMR and no residual pump entry.",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:32:24.267Z"
+      },
+      {
+        "id": "3",
+        "title": "Rename equipment dashboard to SMR Pigtail Integrity",
+        "description": "Ensure the equipment now has only one dashboard and its name is SMR Pigtail Integrity.",
+        "details": "Update default dashboard definitions, tab labels, and any constants or fallback naming logic to enforce a single dashboard for the SMR equipment profile.",
+        "testStrategy": "Open equipment dashboard and verify only one tab exists named SMR Pigtail Integrity.",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:32:28.602Z"
+      },
+      {
+        "id": "4",
+        "title": "Replace pump-oriented widgets with SMR-relevant widgets",
+        "description": "Rework widget set and content so dashboard cards reflect SMR pigtail integrity concerns.",
+        "details": "Update widget definitions, defaults, and resolver mappings to show SMR integrity KPIs/charts/tables (e.g., pigtail temperature profile, creep life consumption, tube skin temperature alarms) and remove pump-specific semantics.",
+        "testStrategy": "Verify each rendered widget title/content is SMR-related and no pump-specific labels remain.",
+        "status": "done",
+        "dependencies": [
+          "3"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:32:30.475Z"
+      },
+      {
+        "id": "5",
+        "title": "Swap 3D viewer mock model from pump to SMR",
+        "description": "Update model-view widget to render an SMR mockup model aligned to pigtail integrity context.",
+        "details": "Replace the current pump geometry/source used by the 3D widget with SMR geometry/scene composition, and revise any legends/annotations for reformer coils, pigtails, and relevant integrity hotspots.",
+        "testStrategy": "Visual check in equipment dashboard confirms 3D viewer no longer shows pump and now displays SMR-oriented model elements.",
+        "status": "done",
+        "dependencies": [
+          "4"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:32:33.634Z"
+      },
+      {
+        "id": "6",
+        "title": "Regression sweep for naming and domain consistency",
+        "description": "Run targeted validation to ensure all UI labels and docs consistently use SMR profile terms.",
+        "details": "Search for residual pump-specific labels in Plant 1 equipment and dashboard contexts; run lint/type checks; validate widget rendering and dashboard interactions remain stable.",
+        "testStrategy": "Pass lint/typecheck and manual smoke test of Plant -> Equipment -> Dashboard flow with SMR terms only.",
+        "status": "done",
+        "dependencies": [
+          "5"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:32:37.969Z"
+      },
+      {
+        "id": "7",
+        "title": "Restore bottom dashboard tab click navigation",
+        "description": "Fix equipment dashboard so clicking tabs in the bottom panel always switches active dashboard.",
+        "details": "Investigate event handling and clickable overlays in bottom tab strip and expanded slide-up panel. Ensure `handleTabChange` is triggered reliably for all tab cards and updates `currentPath.tab` without being blocked by layering or pointer-event regressions.",
+        "testStrategy": "Manual check: click each tab in collapsed and expanded tab panel; header and rendered widget grid must switch to the selected tab.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:50:41.029Z"
+      },
+      {
+        "id": "8",
+        "title": "Reinstate per-tab dashboard content binding",
+        "description": "Ensure each dashboard tab displays its own existing widget layout for the selected equipment.",
+        "details": "Verify the tab-keyed grid state and fallback logic (`grids[activeTab]`, default grid generation, and active-tab synchronization effect) do not overwrite selected tabs. Preserve saved per-tab layouts when switching tabs in view/edit modes.",
+        "testStrategy": "Edit widgets in one tab, switch to another tab and back, and confirm original tab-specific layout is preserved.",
+        "status": "done",
+        "dependencies": [
+          "7"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:50:43.432Z"
+      },
+      {
+        "id": "9",
+        "title": "Fix create-new-dashboard flow in equipment dashboard",
+        "description": "Repair create dashboard behavior so new tabs are reliably created and accessible.",
+        "details": "Validate modal submission conditions, uniqueness checks, template source selection, and post-create navigation to new tab. Confirm both clone-existing and blank creation modes initialize grid state correctly and do not conflict with active tab sync.",
+        "testStrategy": "Create one dashboard from template and one blank dashboard; both should appear in tab strip and open correctly with expected widgets.",
+        "status": "done",
+        "dependencies": [
+          "8"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:50:45.358Z"
+      },
+      {
+        "id": "10",
+        "title": "Add regression guardrails for dashboard tab UX",
+        "description": "Prevent future regressions in tab switching and dashboard creation behavior.",
+        "details": "Add focused component tests/integration checks (or deterministic manual test harness if no test stack exists) for: tab click switching, expanded panel switching, per-tab layout persistence, and create-dashboard success paths.",
+        "testStrategy": "Run tests/checklist and verify all dashboard-tab interaction scenarios pass before merge.",
+        "status": "done",
+        "dependencies": [
+          "9"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:50:47.297Z"
+      },
+      {
+        "id": "11",
+        "title": "Update docs and acceptance criteria for dashboard interactions",
+        "description": "Align product/domain docs with restored tab-navigation and create-dashboard expectations.",
+        "details": "Document expected equipment dashboard interaction model in PROJECT/domain docs and record acceptance criteria for QA/UAT (tab click behavior, per-tab content, create tab flows).",
+        "testStrategy": "Doc review verifies all stated requirements match implemented UX behavior and test checklist.",
+        "status": "done",
+        "dependencies": [
+          "10"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T09:50:49.182Z"
+      },
+      {
+        "id": "12",
+        "title": "Second-pass stabilize equipment dashboard active-tab state",
+        "description": "Decouple active dashboard tab from fragile sync loops that can override user tab selection.",
+        "details": "Introduce local active-tab state in equipment dashboard, sync from route when valid, and remove feedback-loop effect that forced tab changes after clicks.",
+        "testStrategy": "Click across multiple tabs repeatedly and confirm selected tab stays active and grid updates consistently.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:00:26.165Z"
+      },
+      {
+        "id": "13",
+        "title": "Second-pass fix create-dashboard immediate activation",
+        "description": "Ensure newly created dashboards are immediately selected and visible.",
+        "details": "Set active tab directly after create action and preserve path state updates for site/plant/equipment/tab; keep validation/error states user-visible.",
+        "testStrategy": "Create dashboard from template and blank; verify new tab appears selected immediately.",
+        "status": "done",
+        "dependencies": [
+          "12"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:00:17.011Z"
+      },
+      {
+        "id": "14",
+        "title": "Second-pass regression verification for dashboard interactions",
+        "description": "Validate tab switching and create-dashboard behavior after stabilization changes.",
+        "details": "Run typecheck/lint and manual interaction checklist to confirm no regression in collapsed/expanded tab panels and per-tab content persistence.",
+        "testStrategy": "tsc/lint clean; manual clicks and create flows succeed without state reversion.",
+        "status": "done",
+        "dependencies": [
+          "13"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-04-23T10:00:28.219Z"
+      },
+      {
+        "id": "15",
+        "title": "Fix tab navigation: extract DashboardTabsStrip out of render function",
+        "description": "Bottom dashboard tab strip is unclickable because it is defined as a const component inside the EquipmentDashboard render function, causing React to fully unmount and remount it on every render and swallow click events.",
+        "details": "Move the DashboardTabsStrip JSX into a proper standalone component defined outside EquipmentDashboard (or inline the JSX directly without a component wrapper). Pass equipmentDashboardCards, activeTab, handleTabChange, isEditMode, deleteDashboard, tabThumbnailSrc, resolvedDefaultTab, setTemplateTag, setCreateMode, setCreateDashOpen as props. Stabilize handleTabChange with useCallback. Verify clicking any tab card correctly calls handleTabChange(card.tag) and the active tab highlights change.",
+        "testStrategy": "Click each dashboard tab in the bottom strip and confirm the header label updates and the widget grid changes to show that tab's widgets. Confirm active tab border highlight is correct.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-24T03:57:57.622Z"
+      },
+      {
+        "id": "16",
+        "title": "Fix tab-path sync useEffect overwriting active tab after navigation",
+        "description": "The useEffect at lines 367-371 of equipment-dashboard.tsx fires on every currentPath or activeTab change and can overwrite a freshly-set tab back to the resolved default, breaking both manual tab clicks and post-creation navigation.",
+        "details": "Replace the broad useEffect (deps: [activeTab, currentPath, setCurrentPath]) with a scoped effect that ONLY resets to the default tab when the equipment changes (dep: [equipment.id]). Use a functional updater form of setCurrentPath to avoid stale closures. Ensure the effect does not run when the user explicitly selects a tab or when a new dashboard is created.",
+        "testStrategy": "Click tab B while on tab A — confirm the URL/path and header stay on B after next render. Create a new dashboard and confirm user lands on the new tab, not the original default.",
+        "status": "done",
+        "dependencies": [
+          "15"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-24T03:57:57.693Z"
+      },
+      {
+        "id": "17",
+        "title": "Fix create-dashboard flow: navigation, duplicate guard feedback, and modal reset",
+        "description": "After task 16 fixes the useEffect, verify and harden the createDashboard function end-to-end: ensure the new tab is navigated to, duplicate names show inline error, and the modal state (name, mode, template) resets cleanly on close.",
+        "details": "1. After calling setCurrentPath to the new tab, confirm useEffect no longer overrides it (covered by task 16). 2. Add inline error message in the modal when the entered name already exists for this equipment. 3. Reset newDashName, createMode (back to 'existing'), and templateTag on modal close (both Cancel and successful creation). 4. Ensure the '+' button also resets the state before opening the modal.",
+        "testStrategy": "Create a dashboard from existing — verify new tab appears and is selected with cloned widgets. Create blank — verify new tab opens in edit mode with empty grid. Try duplicate name — verify error message appears and creation is blocked. Cancel and reopen modal — verify fields are reset.",
+        "status": "done",
+        "dependencies": [
+          "16"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-24T03:57:57.709Z"
+      },
+      {
+        "id": "18",
+        "title": "Regression and smoke test: tab switch, widget grid isolation, and create dashboard",
+        "description": "End-to-end validation that tab switching and dashboard creation work correctly across all equipment (Coke Drum multi-tab, HCU multi-tab, SMR single-tab).",
+        "details": "1. For each equipment: click every tab and confirm widget grid changes to the correct widget set. 2. Confirm active tab card is highlighted (border-primary). 3. Create a dashboard from existing for Coke Drum — verify cloned widgets appear. 4. Create a blank dashboard for HCU — verify edit mode opens with empty grid. 5. Run lint and tsc --noEmit. 6. Verify no pump residual labels remain (already done, just confirm).",
+        "testStrategy": "Manual smoke test across Coke Drum, HCU, SMR Unit A. Pass pnpm exec tsc --noEmit and lint with no errors.",
+        "status": "done",
+        "dependencies": [
+          "17"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-04-24T03:57:57.723Z"
+      },
+      {
+        "id": 19,
+        "title": "Update Domain Models and Documentation",
+        "description": "Update the domain ontology to support Equipment Home Page requirements including dashboard favorites, recency tracking, and workspace module integration",
+        "details": "1. Add Dashboard.isFavorite boolean field to track favorite dashboards per equipment\n2. Add Dashboard.lastAccessedAt timestamp for recent dashboard tracking\n3. Update AppModule enum to include workspace module stub\n4. Define Tool entity scoping for equipment-level filtering\n5. Update PROJECT.md with new Equipment Home Page architecture\n6. Document navigation flow changes from direct dashboard editor to Equipment Home Page\n7. Define Zustand state structure for equipment-scoped dashboard grouping",
+        "testStrategy": "Verify TypeScript compilation passes with new domain models. Review documentation completeness for all new entities and navigation flows.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Create Equipment Home Page Shell Component",
+        "description": "Build the main EquipmentHomePage component with four distinct sections and responsive layout structure",
+        "details": "1. Create EquipmentHomePage.tsx component with TypeScript interfaces\n2. Implement responsive grid layout using Tailwind CSS classes\n3. Define four main sections: Dashboard Section, Equipment Information, Tools Section, Edit Dashboards CTA\n4. Use shadcn/ui Card components for section containers\n5. Add proper ARIA labels and semantic HTML structure\n6. Implement skeleton loading states for all sections\n7. Ensure 1440x900 viewport compatibility as specified\n8. Add proper TypeScript props interface for equipment context",
+        "testStrategy": "Test responsive layout across different viewport sizes. Verify accessibility with screen readers and keyboard navigation. Validate TypeScript compilation without errors.",
+        "priority": "high",
+        "dependencies": [
+          19
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Update Asset Module Routing Logic",
+        "description": "Modify the Asset module navigation to route to Equipment Home Page instead of direct dashboard editor when navigating from hierarchy",
+        "details": "1. Update asset module routing logic in the navigation handler\n2. Add conditional rendering: EquipmentHomePage vs EquipmentDashboard based on navigation context\n3. Preserve existing equipment-dashboard.tsx for edit mode access\n4. Update Zustand store actions to handle Equipment Home Page navigation\n5. Ensure equipment context (equipmentId) is properly passed to EquipmentHomePage\n6. Update sidebar asset hierarchy click handlers to navigate to Equipment Home Page\n7. Maintain backward compatibility for direct dashboard editor access when needed",
+        "testStrategy": "Test navigation from Site → Plant → Equipment hierarchy lands on Equipment Home Page. Verify equipment context is preserved. Test that existing dashboard edit functionality remains accessible.",
+        "priority": "high",
+        "dependencies": [
+          20
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Implement Dashboard Section with Recent/Favorites Grouping",
+        "description": "Build the Dashboard Section displaying equipment dashboards in Recent and Favourites groups using existing DashboardCard component",
+        "details": "1. Create DashboardSection component with Recent and Favourites subsections\n2. Reuse existing DashboardCard component from Home module\n3. Implement responsive grid layout matching Home module pattern\n4. Add dashboard grouping logic based on isFavorite and lastAccessedAt fields\n5. Handle empty states for both Recent and Favourites sections\n6. Add proper loading skeletons using shadcn/ui Skeleton component\n7. Implement click handlers to open Dashboard Popup (to be implemented in next task)\n8. Filter dashboards to show only those belonging to current equipment\n9. Sort Recent dashboards by lastAccessedAt descending",
+        "testStrategy": "Verify dashboard cards render with correct thumbnails and labels. Test responsive grid behavior. Validate Recent/Favourites grouping logic with mock data. Test empty state handling.",
+        "priority": "medium",
+        "dependencies": [
+          21
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "Create Read-Only Dashboard Popup Component",
+        "description": "Implement Dashboard Popup overlay that displays dashboards in read-only mode with Viewed Data controls and action buttons",
+        "details": "1. Create DashboardPopup component using shadcn/ui Dialog/Sheet\n2. Render full widget grid in read-only mode - hide all edit controls (drag, resize, add/remove)\n3. Implement Viewed Data control for What-If scenario overlay selection\n4. Add generate-report and share action buttons consistent with existing flow\n5. Include prominent close button with proper ARIA labels\n6. Ensure only one popup can be open at a time (close others when opening new)\n7. Handle popup state in Zustand store for proper state management\n8. Implement proper focus management and keyboard navigation\n9. Add loading states for dashboard content\n10. Ensure popup overlays Equipment Home Page correctly",
+        "testStrategy": "Test popup opens/closes correctly. Verify read-only mode hides all edit controls. Test Viewed Data functionality. Validate single popup constraint. Test keyboard navigation and accessibility.",
+        "priority": "medium",
+        "dependencies": [
+          22
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "Build Equipment Information Section",
+        "description": "Create Equipment Information Section displaying equipment metadata with ghost/skeleton loading UI matching existing dashboard right-panel pattern",
+        "details": "1. Create EquipmentInfoSection component with TypeScript interfaces\n2. Display equipment metadata: name, type, site, plant, status indicators\n3. Implement ghost/skeleton loading placeholders using shadcn/ui Skeleton\n4. Match the visual pattern from equipment dashboard right-panel info area\n5. Use Card component for consistent styling with other sections\n6. Add proper loading states that transition to actual content\n7. Handle equipment data fetching from Zustand store\n8. Implement responsive layout for different viewport sizes\n9. Add proper ARIA labels for accessibility",
+        "testStrategy": "Verify skeleton loading states display correctly. Test transition from loading to content. Validate equipment metadata displays accurately. Test responsive behavior.",
+        "priority": "medium",
+        "dependencies": [
+          20
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "Implement Tools Section with Four Tool Tiles",
+        "description": "Create Tools Section with modern grid layout displaying Data & Sync, Shift Log, Documents, and What-If Scenario tiles with preview data and navigation",
+        "details": "1. Create ToolsSection component with 4-tile grid layout using Tailwind CSS\n2. Implement ToolTile component with consistent styling using shadcn/ui Card\n3. Data & Sync tile: show sync status, loaded files count, error count, last updated timestamp\n4. Documents tile: display count of documents tagged to current equipment\n5. What-If Scenario tile: show scenario count and recent run result summary\n6. Shift Log tile: render as disabled placeholder with 'Coming Soon' label\n7. Add click handlers for navigation (except Shift Log)\n8. Ensure grid is visible without scrolling on 1440x900 viewport\n9. Implement loading states for tile preview data\n10. Add proper ARIA labels and keyboard navigation support",
+        "testStrategy": "Test grid layout displays all four tiles without scrolling on target viewport. Verify preview data loads correctly for each tile. Test navigation click handlers. Validate Shift Log disabled state.",
+        "priority": "medium",
+        "dependencies": [
+          24
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 26,
+        "title": "Add Equipment Filter to Data & Sync Tool",
+        "description": "Enhance the Data & Sync tool page with equipment-level filtering capability for both Data Status and Sync & FEA Jobs tables",
+        "details": "1. Update data-sync.tsx to add equipment filter dropdown/select control\n2. Use shadcn/ui Select component for equipment filter UI\n3. Filter Data Status table based on selected equipment\n4. Filter Sync & FEA Jobs table based on selected equipment\n5. Add equipment options populated from available equipment list\n6. Implement filter state management in component or Zustand store\n7. Add clear/reset filter functionality\n8. Handle pre-applied filter when navigating from Equipment Home Page\n9. Maintain filter state during user session\n10. Add loading states for filtered data",
+        "testStrategy": "Test equipment filter dropdown populates correctly. Verify both tables filter properly when equipment is selected. Test pre-applied filter from Equipment Home Page navigation. Validate filter reset functionality.",
+        "priority": "medium",
+        "dependencies": [
+          25
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Implement Cross-Module Navigation with Equipment Context",
+        "description": "Create navigation system that preserves equipment context when navigating between Equipment Home Page and tool modules",
+        "details": "1. Update Zustand store to handle equipment context passing between modules\n2. Implement setCurrentView actions with equipment pre-filter parameters\n3. Wire Data & Sync tile navigation to pre-apply equipment filter\n4. Wire Documents tile navigation with equipment name as asset filter\n5. Wire What-If Scenario tile navigation with equipment pre-selection\n6. Ensure equipment context is preserved when navigating back to Equipment Home Page\n7. Update store actions: setCurrentView, setCurrentPath with equipment context\n8. Handle navigation state persistence during user session\n9. Add error handling for invalid equipment context\n10. Test navigation flow between all connected modules",
+        "testStrategy": "Test navigation from each tool tile applies correct equipment filter. Verify equipment context persists when navigating back. Test navigation state management across different user flows.",
+        "priority": "medium",
+        "dependencies": [
+          26
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Create Workspace Module Navigation Stub",
+        "description": "Implement Edit Dashboards action and create placeholder Workspace module view as navigation target",
+        "details": "1. Add prominent Edit Dashboards button/action to Equipment Home Page\n2. Create WorkspaceView component as placeholder/stub\n3. Implement holding screen with 'Coming Soon' or 'Under Development' message\n4. Update AppModule enum to include workspace if not already present\n5. Wire Edit Dashboards button to navigate to workspace module\n6. Use shadcn/ui Button component with primary styling for prominence\n7. Add proper ARIA labels and keyboard accessibility\n8. Ensure navigation uses existing Zustand store actions\n9. Handle workspace navigation state in store\n10. Add equipment context to workspace navigation for future implementation",
+        "testStrategy": "Test Edit Dashboards button is prominently visible and accessible. Verify navigation to workspace stub works correctly. Test placeholder workspace view renders properly.",
+        "priority": "medium",
+        "dependencies": [
+          27
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 29,
+        "title": "Implement Dashboard Recency and Favorites Tracking",
+        "description": "Add functionality to track dashboard access recency and manage favorites for proper grouping in Dashboard Section",
+        "details": "1. Update Zustand store to track dashboard lastAccessedAt timestamps\n2. Implement dashboard favorite toggle functionality\n3. Add updateDashboardAccess action to store for recency tracking\n4. Implement toggleDashboardFavorite action for favorites management\n5. Update Dashboard Popup to trigger recency tracking when opened\n6. Add favorite/unfavorite controls to dashboard cards or popup\n7. Persist favorites and recency data in session/local storage if needed\n8. Handle equipment-scoped favorites (favorites per equipment vs global)\n9. Implement proper sorting logic for Recent dashboards\n10. Add visual indicators for favorite dashboards",
+        "testStrategy": "Test dashboard recency updates when dashboards are accessed. Verify favorite toggle functionality works correctly. Test Recent/Favorites grouping updates dynamically. Validate data persistence across sessions.",
+        "priority": "medium",
+        "dependencies": [
+          23
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 30,
+        "title": "Performance Optimization and Final Integration",
+        "description": "Optimize Equipment Home Page performance, ensure accessibility compliance, and complete final integration testing",
+        "details": "1. Optimize component rendering to meet 300ms interactive skeleton state requirement\n2. Implement efficient data loading to reach mock content within 1500ms\n3. Add proper loading states and skeleton UI transitions\n4. Conduct comprehensive accessibility audit with keyboard navigation testing\n5. Verify all ARIA labels and focus states are properly implemented\n6. Test Equipment Home Page integration with existing Asset module flows\n7. Validate TypeScript compilation with pnpm exec tsc --noEmit\n8. Perform cross-browser testing and responsive design validation\n9. Test all navigation flows and equipment context preservation\n10. Conduct final integration testing with all connected modules\n11. Optimize bundle size and eliminate any unused dependencies",
+        "testStrategy": "Performance testing to verify 300ms skeleton and 1500ms content loading targets. Comprehensive accessibility testing with screen readers and keyboard-only navigation. Full integration testing across all user flows and module interactions.",
+        "priority": "high",
+        "dependencies": [
+          28,
+          29
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-04-25T08:16:29.629Z",
+      "updated": "2026-04-25T08:16:29.629Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

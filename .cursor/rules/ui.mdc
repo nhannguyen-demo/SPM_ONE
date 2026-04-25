@@ -1,0 +1,18 @@
+---
+description: UI rules for React components and views
+globs: "components/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# UI Layer Rules
+
+- Prefer shadcn/ui primitives and existing shared components before creating new ones.
+- Use Tailwind for layout/spacing/visual states; keep styles token-based (`app/globals.css` theme vars).
+- Keep feature/domain language aligned with ontology (`Dashboard`, `Widget`, `WhatIfScenario`, `WhatIfRunSession`).
+- In equipment dashboards, model placement via reusable widget patterns (not one-off chart islands).
+- Preserve existing UX flows:
+  - Tools module contains What-If Scenarios.
+  - Viewed Data can overlay live + scenario run data.
+  - Dashboard editing supports drag/drop + resize + save/discard.
+- Keep client components focused; split very large files into smaller presentational/logic pieces when touching them.
+- Forms should use `react-hook-form` + `zod` when validating user inputs.

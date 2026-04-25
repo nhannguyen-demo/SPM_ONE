@@ -1,0 +1,338 @@
+# SPM ONE — Domain Ontology (Canonical)
+# Revised Apr 2026 from audit + product clarifications.
+# Updated Apr 2026: Equipment Home Page, Workspace module stub, Tools scoping,
+# Data & Sync filter, Dashboard popup read-only mode.
+
+entities:
+  User:
+    fields:
+      id: { type: uuid }
+      name: { type: string }
+      email: { type: string, format: email }
+      role:
+        type: enum
+        values: [integrity_engineer, process_engineer, admin]
+        comment: "# ASSUMPTION — verify role taxonomy with product owner."
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  Site:
+    fields:
+      id: { type: uuid }
+      name: { type: string }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  Plant:
+    fields:
+      id: { type: uuid }
+      siteId: { type: uuid, references: Site.id }
+      name: { type: string }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  Equipment:
+    fields:
+      id: { type: uuid }
+      plantId: { type: uuid, references: Plant.id }
+      name: { type: string }
+      type:
+        type: enum
+        values: [vessel, reactor, pump, smr, other]
+        comment: "# ASSUMPTION — inferred from UI naming; SMR added for Unit CFR.101 replacement scope."
+      hasWhatIfTool: { type: boolean, default: false }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  Dashboard:
+    fields:
+      id: { type: uuid }
+      equipmentId: { type: uuid, references: Equipment.id }
+      name: { type: string }
+      orderIndex: { type: integer }
+      sourceDashboardId:
+        type: uuid
+        nullable: true
+        references: Dashboard.id
+        comment: "Set when cloned from an existing dashboard."
+      isSystemDashboard: { type: boolean, default: false }
+      isFavorite:
+        type: boolean
+        default: false
+        comment: "User-scoped favourite flag; used by Equipment Home Page Favourites section."
+      lastAccessedAt:
+        type: datetime
+        nullable: true
+        comment: "Timestamp of last user access; used by Equipment Home Page Recent section."
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  Widget:
+    fields:
+      id: { type: uuid }
+      key: { type: string }
+      name: { type: string }
+      kind:
+        type: enum
+        values: [kpi, chart, table, model_view, summary, generic]
+      dataSourceType:
+        type: enum
+        values: [live_equipment, whatif_result, mixed, static_mock]
+        comment: "# ASSUMPTION — intended production source modes."
+      defaultConfig:
+        type: json
+        nullable: true
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  DashboardWidget:
+    fields:
+      id: { type: uuid }
+      dashboardId: { type: uuid, references: Dashboard.id }
+      widgetId: { type: uuid, references: Widget.id }
+      x: { type: integer }
+      y: { type: integer }
+      w: { type: integer }
+      h: { type: integer }
+      minW: { type: integer, default: 2 }
+      minH: { type: integer, default: 2 }
+      configOverride: { type: json, nullable: true }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  WidgetLibraryItem:
+    fields:
+      id: { type: uuid }
+      widgetId: { type: uuid, references: Widget.id }
+      displayName: { type: string }
+      category: { type: string }
+      defaultW: { type: integer }
+      defaultH: { type: integer }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  AppModule:
+    fields:
+      id: { type: uuid }
+      key:
+        type: enum
+        values: [home, assets, workspace, insights, comms, settings]
+        comment: "'workspace' is the Workspace module — a dedicated dashboard editing
+          environment. Full spec TBD; currently a navigation stub target from
+          the Equipment Home Page 'Edit Dashboards' action."
+      displayName: { type: string }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  Tool:
+    fields:
+      id: { type: uuid }
+      moduleId: { type: uuid, references: AppModule.id }
+      key:
+        type: enum
+        values: [data_sync, shift_log, documents, whatif]
+        comment: "Canonical tool keys. 'shift_log' is a placeholder — no
+          implementation built yet. All tools can be launched from the
+          Equipment Home Page with an equipment pre-filter context."
+      name: { type: string }
+      isEnabled: { type: boolean, default: true }
+      supportsEquipmentFilter:
+        type: boolean
+        default: false
+        comment: "When true, the tool accepts an equipmentId context that
+          pre-filters its content on entry (from Equipment Home Page tiles)."
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  EquipmentHomeView:
+    comment: "Not a persisted entity — represents the UI state/context for the
+      Equipment Home Page. Captured here for relationship traceability."
+    fields:
+      equipmentId: { type: uuid, references: Equipment.id }
+      activeDashboardPopupId:
+        type: uuid
+        nullable: true
+        references: Dashboard.id
+        comment: "ID of the dashboard currently open in the read-only popup overlay.
+          Null when no popup is open. At most one popup open at a time."
+      viewedDataScenarioId:
+        type: uuid
+        nullable: true
+        references: WhatIfRunSession.id
+        comment: "The What-If run session selected via Viewed Data inside the
+          Dashboard Popup. Null when no overlay is applied."
+
+  WhatIfScenario:
+    fields:
+      id: { type: uuid }
+      toolId: { type: uuid, references: Tool.id }
+      equipmentId: { type: uuid, references: Equipment.id }
+      name: { type: string }
+      description: { type: string }
+      details: { type: string, nullable: true }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  WhatIfScenarioParameter:
+    fields:
+      id: { type: uuid }
+      scenarioId: { type: uuid, references: WhatIfScenario.id }
+      name: { type: string }
+      unit: { type: string, nullable: true }
+      defaultValue: { type: string }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  WhatIfRunSession:
+    fields:
+      id: { type: uuid }
+      scenarioId: { type: uuid, references: WhatIfScenario.id }
+      equipmentId: { type: uuid, references: Equipment.id }
+      requestedById: { type: uuid, references: User.id, nullable: true }
+      runName: { type: string }
+      status: { type: enum, values: [queued, running, success, failed, cancelled] }
+      progressStep: { type: integer, min: 0, max: 5 }
+      source: { type: enum, values: [tool, dashboard] }
+      parameterInputMode: { type: enum, values: [full-csv, per-parameter-csv, typed, mixed] }
+      startedAt: { type: datetime, nullable: true }
+      completedAt: { type: datetime, nullable: true }
+      durationSeconds:
+        type: integer
+        nullable: true
+        comment: "# ASSUMPTION — UI currently stores formatted duration strings."
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  WhatIfRunInput:
+    fields:
+      id: { type: uuid }
+      runSessionId: { type: uuid, references: WhatIfRunSession.id }
+      parameterId: { type: uuid, references: WhatIfScenarioParameter.id, nullable: true }
+      parameterNameSnapshot: { type: string }
+      value: { type: string }
+      sourceType: { type: enum, values: [typed, full_csv, per_parameter_csv, mixed] }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  WhatIfRunResult:
+    fields:
+      id: { type: uuid }
+      runSessionId: { type: uuid, references: WhatIfRunSession.id }
+      metricName: { type: string }
+      value: { type: string }
+      status: { type: enum, values: [pass, warning, fail] }
+      included: { type: boolean, default: true }
+      orderIndex: { type: integer }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  UserDocument:
+    fields:
+      id: { type: uuid }
+      name: { type: string }
+      fileType: { type: enum, values: [pdf, docx, xlsx, link] }
+      category: { type: enum, values: [uploaded, shared] }
+      subType: { type: enum, values: [general, whatif_parameter_report, whatif_visual_report], default: general }
+      siteId: { type: uuid, nullable: true, references: Site.id }
+      plantId: { type: uuid, nullable: true, references: Plant.id }
+      equipmentId: { type: uuid, nullable: true, references: Equipment.id }
+      sourceRunSessionId: { type: uuid, nullable: true, references: WhatIfRunSession.id }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  ChangeLogEntry:
+    fields:
+      id: { type: uuid }
+      type: { type: enum, values: [dashboard, operation] }
+      action: { type: string }
+      locationLabel: { type: string }
+      userId: { type: uuid, nullable: true, references: User.id }
+      occurredAt: { type: datetime }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  DataSyncStatus:
+    fields:
+      id: { type: uuid }
+      equipmentId: { type: uuid, references: Equipment.id }
+      totalFiles: { type: integer }
+      loadedFiles: { type: integer }
+      errorFiles: { type: integer }
+      lastUpdatedAt: { type: datetime }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  SyncJob:
+    fields:
+      id: { type: uuid }
+      equipmentId: { type: uuid, references: Equipment.id }
+      userId: { type: uuid, nullable: true, references: User.id }
+      description: { type: string }
+      status: { type: enum, values: [queued, running, success, failed, cancelled] }
+      startedAt: { type: datetime, nullable: true }
+      completedAt: { type: datetime, nullable: true }
+      elapsedSeconds: { type: integer, nullable: true }
+      tokenCount: { type: integer, default: 0 }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+relationships:
+  - "A Site has many Plants; a Plant belongs to one Site."
+  - "A Plant has many Equipment; an Equipment belongs to one Plant."
+  - "An Equipment has zero or many Dashboards."
+  - "A Widget can appear in many Dashboards via DashboardWidget."
+  - "A Dashboard has many DashboardWidgets; each DashboardWidget references one Widget."
+  - "A Tool belongs to one AppModule; What-If Scenario is a Tool under the Tools module."
+  - "A WhatIfScenario belongs to one Equipment."
+  - "A WhatIfScenario has many parameters and many run sessions (history)."
+  - "A WhatIfRunSession has many inputs and many results."
+  - "A UserDocument can optionally reference Site, Plant, Equipment, and source WhatIfRunSession."
+  - "A DataSyncStatus belongs to one Equipment."
+  - "A SyncJob belongs to one Equipment and optionally one User."
+  - "An EquipmentHomeView is scoped to one Equipment and can show one Dashboard via popup at a time."
+  - "Navigating from an EquipmentHomeView tool tile to a Tool passes the Equipment context as a pre-filter; the Tool's supportsEquipmentFilter flag indicates this is supported."
+  - "The Workspace AppModule is the target for the Equipment Home Page 'Edit Dashboards' action."
+
+business_rules:
+  - "KPI is represented as a Widget subtype; there is no separate EquipmentKPI entity."
+  - "Users can create a dashboard from blank or clone an existing dashboard; name must be unique per equipment."
+  - "Users can drag/drop, resize, and remove widgets while editing dashboards."
+  - "Clicking a dashboard tab in the Equipment Dashboard must switch the active tab AND render that tab's widget grid."
+  - "Creating a new dashboard must navigate the user to the new tab immediately after creation."
+  - "Users can queue multiple What-If runs while another run is running."
+  - "The old rule requiring selected dashboards for a run is removed."
+  - "What-If results can be surfaced through Viewed Data on the Equipment Dashboard."
+  - "What-If Scenarios are accessed from the Tools module."
+  - "Documents generated from runs are stored in the same document library."
+  - "For the current mock profile, Unit CFR.101 replaces the previous pump equipment with an SMR equipment."
+  - "For the current mock profile, the SMR equipment has one dashboard named 'SMR Pigtail Integrity'."
+  - "For the current mock profile, dashboard widgets must be SMR-relevant, including a model_view widget showing an SMR mockup (not pump geometry)."
+  - "Navigating to an Equipment asset from the Asset module hierarchy now lands on the Equipment Home Page, not directly on the dashboard editor."
+  - "The Equipment Home Page groups the equipment's dashboards into Recent and Favourites sections; Dashboard.lastAccessedAt drives Recent; Dashboard.isFavorite drives Favourites."
+  - "The Dashboard Popup on the Equipment Home Page is strictly read-only; widget editing controls (drag, resize, add, remove) must be hidden."
+  - "At most one Dashboard Popup may be open at a time on the Equipment Home Page."
+  - "Viewed Data, generate-report, and share functions are available inside the Dashboard Popup, reusing the existing mechanism."
+  - "The Tools Section on the Equipment Home Page shows four fixed tiles: Data & Sync, Shift Log, Documents, What-If Scenario."
+  - "Shift Log tool tile is a non-interactive placeholder; clicking it has no effect."
+  - "Clicking Data & Sync, Documents, or What-If Scenario tiles navigates to the Tools module with equipmentId pre-applied as a filter via Zustand state."
+  - "The Data & Sync tool page must support equipment-level filtering; navigating from the Equipment Home Page pre-applies the source equipment filter."
+  - "The Edit Dashboards action on the Equipment Home Page navigates to the Workspace module (currently a stub; destination is the existing dashboard editor until full Workspace spec is delivered)."
+  - "The Workspace module key is 'workspace' in AppModule.key; it is not yet fully implemented."
+  - "From Site Overview and Plant Overview dashboard tab stacks, clicking a dashboard tab must navigate to Equipment Home Page and auto-open the matching read-only Dashboard Popup tab for that equipment."
+  - "From Site Overview and Plant Overview dashboard tab stacks, clicking the equipment-name label must navigate to that equipment's Equipment Home Page without auto-opening a dashboard popup."
+  - "Equipment-name labels in dashboard tab stacks are interactive link-style controls (explicit clickable affordance) and must not trigger tab expansion when clicked."
+
+invariants:
+  - "Every entity has id, createdAt, and updatedAt."
+  - "Dashboard name is unique within one Equipment."
+  - "DashboardWidget layout must satisfy x >= 0, y >= 0, w >= minW, h >= minH."
+  - "For 12-column layout, x + w <= 12."
+  - "WhatIfRunSession.progressStep is between 0 and 5."
+  - "Valid run state progression is queued -> running -> success|failed|cancelled."
+  - "If run status is success, completedAt is not null and at least one result exists."
+  - "If document category is shared, sharedBy semantics are required. # ASSUMPTION — sharedBy currently inferred from prototype fields."
+  - "If UserDocument.equipmentId is set with plant/site, asset hierarchy references must be consistent."
+  - "DataSyncStatus.loadedFiles + errorFiles <= totalFiles."
+  - "EquipmentHomeView.activeDashboardPopupId, if set, must reference a Dashboard that belongs to EquipmentHomeView.equipmentId."
+  - "EquipmentHomeView.viewedDataScenarioId, if set, must reference a WhatIfRunSession that belongs to the same Equipment."
+  - "Tool.key must be one of [data_sync, shift_log, documents, whatif]; shift_log tiles render in disabled state with no navigation."

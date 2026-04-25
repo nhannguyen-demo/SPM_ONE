@@ -17,8 +17,8 @@ export function WhatIfScenarioModal() {
     whatIfModalOpen,
     setWhatIfModalOpen,
     setWhatIfResultOpen,
-    addWhatifRunSession,
-    updateWhatifRunSession,
+    addWhatIfRunSession,
+    updateWhatIfRunSession,
     currentPath,
   } = useAppStore()
   
@@ -45,7 +45,7 @@ export function WhatIfScenarioModal() {
         params: Object.fromEntries(Object.entries(scenario.defaultParams).map(([k, v]) => [k, v.value])),
         source: "dashboard",
       }
-      addWhatifRunSession(session)
+      addWhatIfRunSession(session)
     }
     setWhatIfModalOpen(false)
     setWhatIfResultOpen(true)
