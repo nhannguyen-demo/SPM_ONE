@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useShallow } from "zustand/react/shallow"
 import {
   Link as LinkIcon,
   Users,
@@ -96,11 +97,17 @@ function PeopleTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
   const [message, setMessage] = useState("")
   const [notify, setNotify] = useState(false)
 
-  const shares = useWorkspaceStore((s) =>
-    s.shares.filter((sh) => sh.dashboardId === dashboard.id && !sh.revokedAt)
+  const { rawShares, shareWithUser, updateShare } = useWorkspaceStore(
+    useShallow((s) => ({
+      rawShares: s.shares,
+      shareWithUser: s.shareWithUser,
+      updateShare: s.updateShare,
+    }))
   )
-  const shareWithUser = useWorkspaceStore((s) => s.shareWithUser)
-  const updateShare = useWorkspaceStore((s) => s.updateShare)
+  const shares = useMemo(
+    () => rawShares.filter((sh) => sh.dashboardId === dashboard.id && !sh.revokedAt),
+    [rawShares, dashboard.id]
+  )
 
   const excludedIds = useMemo(
     () => [me, dashboard.ownerUserId, ...shares.map((s) => s.sharedWithUserId)],
@@ -321,12 +328,19 @@ function PermissionSelector({
 
 /* ─── Link tab ─────────────────────────────────────────────────────────────── */
 function LinkTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
-  const links = useWorkspaceStore((s) =>
-    s.shareLinks.filter((l) => l.dashboardId === dashboard.id && !l.revokedAt)
+  const { rawLinks, generateShareLink, revokeShareLink, regenerateShareLink } =
+    useWorkspaceStore(
+      useShallow((s) => ({
+        rawLinks: s.shareLinks,
+        generateShareLink: s.generateShareLink,
+        revokeShareLink: s.revokeShareLink,
+        regenerateShareLink: s.regenerateShareLink,
+      }))
+    )
+  const links = useMemo(
+    () => rawLinks.filter((l) => l.dashboardId === dashboard.id && !l.revokedAt),
+    [rawLinks, dashboard.id]
   )
-  const generateShareLink = useWorkspaceStore((s) => s.generateShareLink)
-  const revokeShareLink = useWorkspaceStore((s) => s.revokeShareLink)
-  const regenerateShareLink = useWorkspaceStore((s) => s.regenerateShareLink)
 
   const [linkPermission, setLinkPermission] = useState<SharePermission>("view")
 

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -30,12 +31,16 @@ export function CommentsPanel({
   myPermission: SharePermission | null
   onRequestPermission?: () => void
 }) {
-  const comments = useWorkspaceStore((s) =>
-    s.comments
-      .filter((c) => c.dashboardId === dashboardId)
-      .sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1))
+  const { rawComments, addComment } = useWorkspaceStore(
+    useShallow((s) => ({ rawComments: s.comments, addComment: s.addComment }))
   )
-  const addComment = useWorkspaceStore((s) => s.addComment)
+  const comments = useMemo(
+    () =>
+      rawComments
+        .filter((c) => c.dashboardId === dashboardId)
+        .sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1)),
+    [rawComments, dashboardId]
+  )
 
   const [body, setBody] = useState("")
   const canComment = permissionAtLeast(myPermission, "comment")
