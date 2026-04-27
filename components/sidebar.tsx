@@ -5,25 +5,29 @@ import { useAppStore } from "@/lib/store"
 import type { ActiveModule } from "@/lib/store"
 import { sites } from "@/lib/data"
 import { MODULES, NAV_SEARCH_PLACEHOLDERS, navMatches } from "@/components/sidebar/config"
+import { useWorkspaceStore, selectMyUnreadCount } from "@/lib/workspace/store"
+import { useRouter, usePathname } from "next/navigation"
 import {
   Building2,
   Factory,
   Box,
   ChevronRight,
   ChevronDown,
-  Star,
   FolderOpen,
   Database,
   FileText,
   MessageSquare,
   Bell,
-  LayoutDashboard,
   BarChart3,
   Settings,
   Search,
   X,
   PanelLeftClose,
   Home,
+  LayoutGrid,
+  Inbox,
+  Clock,
+  Trash2,
 } from "lucide-react"
 import {
   Tooltip,
@@ -71,24 +75,59 @@ function PanelSearchInput({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   Cross-routing helpers — bridge legacy `currentView` SPA with new App Router
+   surfaces (/workspace, /comms/alerts, etc.).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Modules that own dedicated App Router pages. Clicking the rail icon for one
+ *  of these performs a `router.push` instead of just toggling the legacy
+ *  in-page view. */
+const APP_ROUTER_MODULES: Partial<Record<ActiveModule, string>> = {
+  workspace: "/workspace",
+  comms: "/comms/alerts",
+}
+
+function useIsOnAppRouter() {
+  const pathname = usePathname() || "/"
+  return pathname !== "/"
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MODULE RAIL — narrow 56px strip always visible on the far left
    ═══════════════════════════════════════════════════════════════════════════ */
 function ModuleRail() {
   const { activeModule, setActiveModule, isPanelOpen, togglePanel, setCurrentView } = useAppStore()
+  const router = useRouter()
+  const onAppRouter = useIsOnAppRouter()
+  const unreadAlerts = useWorkspaceStore(selectMyUnreadCount)
 
   const handleModuleClick = (key: ActiveModule) => {
+    const targetRoute = APP_ROUTER_MODULES[key]
+
+    // Same module clicked again with panel open → just collapse the panel.
+    if (key === activeModule && isPanelOpen && !targetRoute) {
+      togglePanel()
+      return
+    }
+
+    if (targetRoute) {
+      setActiveModule(key)
+      router.push(targetRoute)
+      return
+    }
+
+    // Legacy module — must return to single-page shell first.
+    if (onAppRouter) {
+      router.push("/")
+    }
+
     if (key === "home") {
-      // Home always navigates directly, never opens panel
       setActiveModule(key)
       setCurrentView("home")
       return
     }
-    if (key === activeModule && isPanelOpen) {
-      // Same icon clicked again → collapse panel
-      togglePanel()
-    } else {
-      setActiveModule(key)   // opens panel + switches module
-    }
+
+    setActiveModule(key)
   }
 
   return (
@@ -110,6 +149,7 @@ function ModuleRail() {
         <nav className="flex flex-col items-center gap-1 flex-1 w-full px-1">
           {MODULES.map(({ key, icon, label }) => {
             const isActive = activeModule === key
+            const showBadge = key === "comms" && unreadAlerts > 0
             return (
               <Tooltip key={key}>
                 <TooltipTrigger asChild>
@@ -119,7 +159,7 @@ function ModuleRail() {
                     aria-pressed={isActive}
                     onClick={() => handleModuleClick(key)}
                     className={cn(
-                      "w-full flex flex-col items-center justify-center gap-0.5",
+                      "relative w-full flex flex-col items-center justify-center gap-0.5",
                       "rounded-lg py-2 px-1 transition-colors duration-150 cursor-pointer",
                       isActive
                         ? "bg-sidebar-active text-white"
@@ -130,9 +170,20 @@ function ModuleRail() {
                     <span className="text-[9px] font-medium leading-tight tracking-wide select-none">
                       {label}
                     </span>
+                    {showBadge && (
+                      <span
+                        className={cn(
+                          "absolute top-1 right-2 min-w-[16px] h-4 px-1 rounded-full",
+                          "bg-rose-500 text-white text-[9px] font-bold",
+                          "flex items-center justify-center leading-none"
+                        )}
+                        aria-label={`${unreadAlerts} unread alerts`}
+                      >
+                        {unreadAlerts > 99 ? "99+" : unreadAlerts}
+                      </span>
+                    )}
                   </button>
                 </TooltipTrigger>
-                {/* Tooltip only useful when panel is closed */}
                 {!isPanelOpen && (
                   <TooltipContent side="right" sideOffset={8}>
                     {label}
@@ -187,7 +238,6 @@ function ContextualPanel() {
         isPanelOpen ? "w-[220px]" : "w-0"
       )}
     >
-      {/* Panel header */}
       <div className="flex items-center justify-between px-3 py-4 border-b border-white/10 flex-shrink-0 min-h-[61px]">
         <span className="font-semibold text-base whitespace-nowrap text-sidebar-foreground">
           {MODULE_LABELS[activeModule]}
@@ -205,7 +255,6 @@ function ContextualPanel() {
         </button>
       </div>
 
-      {/* Per-module search (same pattern as former Assets search) */}
       <div className="px-2 pt-2 pb-2 border-b border-white/10 flex-shrink-0">
         <PanelSearchInput
           value={searchQuery}
@@ -214,7 +263,6 @@ function ContextualPanel() {
         />
       </div>
 
-      {/* Panel body — scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
         {activeModule === "home"      && <HomePanel />}
         {activeModule === "assets"     && <AssetsPanel searchQuery={searchQuery} />}
@@ -228,15 +276,20 @@ function ContextualPanel() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   HOME PANEL — shown when Home module is active (panel is closed; this is a
-   fallback in case the panel is somehow open)
+   HOME PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
 function HomePanel() {
   const { setCurrentView, setViewMode } = useAppStore()
+  const router = useRouter()
+  const onAppRouter = useIsOnAppRouter()
   return (
     <div className="px-3 py-2">
       <button
-        onClick={() => { setCurrentView("home"); setViewMode("view") }}
+        onClick={() => {
+          if (onAppRouter) router.push("/")
+          setCurrentView("home")
+          setViewMode("view")
+        }}
         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm bg-sidebar-active text-white"
       >
         <Home className="w-4 h-4 flex-shrink-0" />
@@ -247,7 +300,7 @@ function HomePanel() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   PORTFOLIO PANEL — hierarchical asset tree with search
+   ASSETS PANEL — hierarchical tree (unchanged)
    ═══════════════════════════════════════════════════════════════════════════ */
 function AssetsPanel({ searchQuery }: { searchQuery: string }) {
   const {
@@ -262,10 +315,16 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
     currentView,
     setCurrentView,
     setViewMode,
-    setWhatIfModalOpen,
   } = useAppStore()
+  const router = useRouter()
+  const onAppRouter = useIsOnAppRouter()
+
+  const ensureSpaShell = () => {
+    if (onAppRouter) router.push("/")
+  }
 
   const handleSiteClick = (siteId: string) => {
+    ensureSpaShell()
     setCurrentPath({ site: siteId })
     setCurrentView("site")
     setViewMode("view")
@@ -273,6 +332,7 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
   }
 
   const handlePlantClick = (siteId: string, plantId: string) => {
+    ensureSpaShell()
     setCurrentPath({ site: siteId, plant: plantId })
     setCurrentView("plant")
     setViewMode("view")
@@ -280,9 +340,10 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
   }
 
   const handleEquipmentClick = (siteId: string, plantId: string, equipmentId: string) => {
-    const site = sites.find(s => s.id === siteId)
-    const plant = site?.plants.find(p => p.id === plantId)
-    const equipment = plant?.equipment.find(e => e.id === equipmentId)
+    ensureSpaShell()
+    const site = sites.find((s) => s.id === siteId)
+    const plant = site?.plants.find((p) => p.id === plantId)
+    const equipment = plant?.equipment.find((e) => e.id === equipmentId)
     const firstTab = equipment?.tabs?.[0] || "Overview"
 
     setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: firstTab })
@@ -291,16 +352,8 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
     if (!expandedEquipment.includes(equipmentId)) toggleEquipmentExpanded(equipmentId)
   }
 
-  const handleTabClick = (siteId: string, plantId: string, equipmentId: string, tab: string) => {
-    setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab })
-    setCurrentView("equipment-home")
-    setViewMode("view")
-  }
-
-  /* ── Search / filter logic ── */
   const q = searchQuery.trim().toLowerCase()
 
-  // Determine which nodes are visible given the query
   const filteredSites = sites.flatMap((site) => {
     if (!q) return [{ site, visible: true, matchedPlants: site.plants }]
 
@@ -323,12 +376,10 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
     return []
   })
 
-  // Auto-expand parents when searching
   const autoExpand = q.length > 0
 
   return (
     <div className="px-2">
-      {/* Asset tree */}
       {filteredSites.length === 0 ? (
         <p className="text-xs text-sidebar-muted px-1 py-2">No assets match.</p>
       ) : (
@@ -338,7 +389,6 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
 
           return (
             <div key={site.id}>
-              {/* Site row */}
               <div className="relative group/site">
                 <div
                   onClick={() => handleSiteClick(site.id)}
@@ -367,7 +417,6 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
                 </div>
               </div>
 
-              {/* Plants */}
               {isSiteExpanded && site.plants.length > 0 && (
                 <div className="ml-4 mt-0.5">
                   {site.plants.map((plant) => {
@@ -406,11 +455,9 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
                           <span className="truncate">{plant.name}</span>
                         </div>
 
-                        {/* Equipment */}
                         {isPlantExpanded && plant.equipment.length > 0 && (
                           <div className="ml-4 mt-0.5">
                             {plant.equipment.map((equipment) => {
-                              const isEquipExpanded = autoExpand || expandedEquipment.includes(equipment.id)
                               const isEquipActive = currentPath.equipment === equipment.id
 
                               return (
@@ -447,13 +494,42 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   WORKSPACE PANEL
+   WORKSPACE PANEL — clean 4-entry submenu (per Task 24)
    ═══════════════════════════════════════════════════════════════════════════ */
 function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
+  const router = useRouter()
+  const pathname = usePathname() || "/"
   const q = searchQuery
+
   const items = [
-    { key: "fav", label: "Favorite", icon: <Star className="w-4 h-4 flex-shrink-0" />, trailing: <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" /> },
-    { key: "share", label: "Share with me", icon: <FolderOpen className="w-4 h-4 flex-shrink-0" />, trailing: <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" /> },
+    {
+      key: "all",
+      label: "All dashboards",
+      icon: <LayoutGrid className="w-4 h-4 flex-shrink-0" />,
+      href: "/workspace",
+      active: pathname === "/workspace" || pathname.startsWith("/workspace/folder/"),
+    },
+    {
+      key: "shared",
+      label: "Shared with me",
+      icon: <Inbox className="w-4 h-4 flex-shrink-0" />,
+      href: "/workspace/shared",
+      active: pathname === "/workspace/shared",
+    },
+    {
+      key: "recent",
+      label: "Recent",
+      icon: <Clock className="w-4 h-4 flex-shrink-0" />,
+      href: "/workspace/recent",
+      active: pathname === "/workspace/recent",
+    },
+    {
+      key: "trash",
+      label: "Trash",
+      icon: <Trash2 className="w-4 h-4 flex-shrink-0" />,
+      href: "/workspace/trash",
+      active: pathname === "/workspace/trash",
+    },
   ].filter((row) => navMatches(row.label, q))
 
   return (
@@ -462,9 +538,13 @@ function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
         <p className="text-xs text-sidebar-muted px-1 py-2">No items match.</p>
       ) : (
         items.map((row) => (
-          <PanelNavItem key={row.key} icon={row.icon} label={row.label}>
-            {row.trailing}
-          </PanelNavItem>
+          <PanelNavItem
+            key={row.key}
+            icon={row.icon}
+            label={row.label}
+            active={row.active}
+            onClick={() => router.push(row.href)}
+          />
         ))
       )}
     </div>
@@ -476,14 +556,22 @@ function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
    ═══════════════════════════════════════════════════════════════════════════ */
 function InsightsPanel({ searchQuery }: { searchQuery: string }) {
   const { currentView, setCurrentView, setViewMode, setWhatIfSelectedScenarioId } = useAppStore()
+  const router = useRouter()
+  const onAppRouter = useIsOnAppRouter()
   const q = searchQuery
 
+  const ensureSpaShell = () => {
+    if (onAppRouter) router.push("/")
+  }
+
   const handleDataSyncClick = () => {
+    ensureSpaShell()
     setCurrentView("data-sync")
     setViewMode("view")
   }
 
   const handleWhatIfClick = () => {
+    ensureSpaShell()
     setWhatIfSelectedScenarioId("scenario-coke-drum")
     setCurrentView("whatIfTool")
     setViewMode("view")
@@ -495,7 +583,7 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
       label: "Data & Sync",
       icon: <Database className="w-4 h-4 flex-shrink-0" />,
       onClick: handleDataSyncClick,
-      active: currentView === "data-sync",
+      active: !onAppRouter && currentView === "data-sync",
     },
     {
       key: "shift",
@@ -506,15 +594,15 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
       key: "documents",
       label: "Documents",
       icon: <FolderOpen className="w-4 h-4 flex-shrink-0" />,
-      onClick: () => { setCurrentView("documents-tool"); setViewMode("view") },
-      active: currentView === "documents-tool",
+      onClick: () => { ensureSpaShell(); setCurrentView("documents-tool"); setViewMode("view") },
+      active: !onAppRouter && currentView === "documents-tool",
     },
     {
       key: "what-if-scenarios",
       label: "What-If Scenario",
       icon: <BarChart3 className="w-4 h-4 flex-shrink-0" />,
       onClick: handleWhatIfClick,
-      active: currentView === "whatIfTool",
+      active: !onAppRouter && currentView === "whatIfTool",
     },
   ].filter((row) => navMatches(row.label, q))
 
@@ -541,10 +629,28 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
    COMMS PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
 function CommsPanel({ searchQuery }: { searchQuery: string }) {
+  const router = useRouter()
+  const pathname = usePathname() || "/"
+  const unread = useWorkspaceStore(selectMyUnreadCount)
   const q = searchQuery
+
   const items = [
-    { key: "chat", label: "Chat", icon: <MessageSquare className="w-4 h-4 flex-shrink-0" /> },
-    { key: "alerts", label: "Alerts", icon: <Bell className="w-4 h-4 flex-shrink-0" /> },
+    {
+      key: "chat",
+      label: "Chat",
+      icon: <MessageSquare className="w-4 h-4 flex-shrink-0" />,
+      onClick: () => {},
+      active: false,
+      badge: 0,
+    },
+    {
+      key: "alerts",
+      label: "Alerts",
+      icon: <Bell className="w-4 h-4 flex-shrink-0" />,
+      onClick: () => router.push("/comms/alerts"),
+      active: pathname === "/comms/alerts",
+      badge: unread,
+    },
   ].filter((row) => navMatches(row.label, q))
 
   return (
@@ -552,7 +658,27 @@ function CommsPanel({ searchQuery }: { searchQuery: string }) {
       {items.length === 0 ? (
         <p className="text-xs text-sidebar-muted px-1 py-2">No items match.</p>
       ) : (
-        items.map((row) => <PanelNavItem key={row.key} icon={row.icon} label={row.label} />)
+        items.map((row) => (
+          <PanelNavItem
+            key={row.key}
+            icon={row.icon}
+            label={row.label}
+            onClick={row.onClick}
+            active={row.active}
+          >
+            {row.badge > 0 && (
+              <span
+                className={cn(
+                  "ml-auto min-w-[18px] h-[18px] px-1.5 rounded-full",
+                  "bg-rose-500 text-white text-[10px] font-bold",
+                  "flex items-center justify-center leading-none"
+                )}
+              >
+                {row.badge > 99 ? "99+" : row.badge}
+              </span>
+            )}
+          </PanelNavItem>
+        ))
       )}
     </div>
   )

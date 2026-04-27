@@ -1,7 +1,10 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAppStore, type WhatIfRunSession } from "@/lib/store"
+import { useWorkspaceStore } from "@/lib/workspace/store"
+import { useDashboardOpenElsewhereCount } from "@/lib/workspace/use-viewer-tabs"
 import {
   sites,
   dashboardCards,
@@ -40,10 +43,54 @@ import {
   ArrowUpRight,
   BarChart3,
   Lock,
+  Users,
 } from "lucide-react"
 import { Responsive as ResponsiveGridLayout, type Layout } from "react-grid-layout/legacy"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OPEN-ELSEWHERE BADGE — shows on Equipment Home dashboard tabs/cards when
+   the same dashboard has at least one full-screen viewer open in another tab.
+   Per resolved open question: only rendered on the Equipment Home Page.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function getEquipmentDashboardPresenceKey(equipmentId: string, tag: string) {
+  return `equipment-${equipmentId}-${tag}`
+}
+
+function OpenElsewhereBadge({
+  equipmentId,
+  tag,
+  variant = "card",
+}: {
+  equipmentId: string
+  tag: string
+  variant?: "card" | "popup"
+}) {
+  const count = useDashboardOpenElsewhereCount(
+    getEquipmentDashboardPresenceKey(equipmentId, tag)
+  )
+  if (count <= 0) return null
+
+  if (variant === "popup") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 text-[10px] font-medium border border-amber-500/30">
+        <Users className="w-3 h-3" />
+        Open in {count} other tab{count > 1 ? "s" : ""}
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className="absolute top-2 left-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/90 text-white text-[10px] font-bold shadow-sm"
+      title={`Open in ${count} other tab${count > 1 ? "s" : ""}`}
+    >
+      <Users className="w-2.5 h-2.5" />
+      {count}
+    </span>
+  )
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SECTION HEADER — shared across all sections
@@ -194,6 +241,11 @@ function DashboardSection({
                   showEquipmentName={false}
                 />
               </button>
+              <OpenElsewhereBadge
+                equipmentId={card.equipId}
+                tag={card.tag}
+                variant="card"
+              />
               {/* Favorite toggle */}
               <button
                 onClick={(e) => {
@@ -371,18 +423,34 @@ function DashboardPopup({
       <div className="bg-background rounded-2xl border border-border shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Popup header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
               {equipment.name} — {cardTag}
             </span>
             <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
               View only
             </span>
+            <OpenElsewhereBadge
+              equipmentId={equipment.id}
+              tag={cardTag}
+              variant="popup"
+            />
           </div>
           <div className="flex items-center gap-2">
             {visualReportGenerated && (
               <span className="text-xs text-emerald-600">Report saved to Documents</span>
             )}
+            <button
+              onClick={() => {
+                const url = `/equipment-dashboard/${encodeURIComponent(equipment.id)}/${encodeURIComponent(cardTag)}/full`
+                window.open(url, "_blank", "noopener,noreferrer")
+              }}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs text-foreground hover:bg-secondary flex items-center gap-1.5 transition-colors"
+              title="Open this dashboard full-screen in a new browser tab"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open in new tab
+            </button>
             <button
               onClick={generateReport}
               className="px-3 py-1.5 rounded-lg border border-border text-xs text-foreground hover:bg-secondary flex items-center gap-1.5 transition-colors"
@@ -761,6 +829,8 @@ export function EquipmentHomeView() {
     equipmentHomeAutoOpenTab,
     setEquipmentHomeAutoOpenTab,
   } = useAppStore()
+  const router = useRouter()
+  const setInitialEquipmentFilter = useWorkspaceStore((s) => s.setInitialEquipmentFilter)
 
   const site = sites.find((s) => s.id === currentPath.site)
   const plant = site?.plants.find((p) => p.id === currentPath.plant)
@@ -804,8 +874,8 @@ export function EquipmentHomeView() {
           </div>
           <button
             onClick={() => {
-              setCurrentView("workspace")
-              setViewMode("view")
+              setInitialEquipmentFilter(equipment.id)
+              router.push("/workspace")
             }}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-all shadow-sm"
           >

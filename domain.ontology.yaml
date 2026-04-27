@@ -2,6 +2,10 @@
 # Revised Apr 2026 from audit + product clarifications.
 # Updated Apr 2026: Equipment Home Page, Workspace module stub, Tools scoping,
 # Data & Sync filter, Dashboard popup read-only mode.
+# Updated Apr 27 2026: Full Workspace Module spec — folders, dashboard
+# lifecycle (created/published), per-user ownership, shares, share links,
+# comments, in-app alerts, full-screen dashboard viewer route, cross-tab
+# open-state signalling.
 
 entities:
   User:
@@ -9,10 +13,20 @@ entities:
       id: { type: uuid }
       name: { type: string }
       email: { type: string, format: email }
+      avatarUrl:
+        type: string
+        nullable: true
+        comment: "Used for avatar chips in dashboard cards, share dialogs, alerts."
       role:
         type: enum
         values: [integrity_engineer, process_engineer, admin]
         comment: "# ASSUMPTION — verify role taxonomy with product owner."
+      isCurrentUser:
+        type: boolean
+        default: false
+        comment: "Mock-only flag indicating which User row represents the active
+          session. Persisted via localStorage. Exactly one User has this set at
+          any time. Replaces real auth in v1."
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
@@ -64,6 +78,52 @@ entities:
         type: datetime
         nullable: true
         comment: "Timestamp of last user access; used by Equipment Home Page Recent section."
+      lifecycleStatus:
+        type: enum
+        values: [created, published]
+        default: created
+        comment: "Workspace lifecycle: 'created' = draft visible only in owner's
+          (and shared collaborators') Workspace; 'published' = also visible in
+          Asset Module Equipment Home Page to users with Site/Plant/Equipment
+          access."
+      ownerUserId:
+        type: uuid
+        references: User.id
+        comment: "The dashboard creator; sole owner. Sharing grants other users
+          access without changing ownership."
+      contributorUserIds:
+        type: array
+        items: { type: uuid, references: User.id }
+        default: []
+        comment: "Users (other than the owner) who saved at least one edit while
+          holding edit permission. Derived/append-only."
+      folderId:
+        type: uuid
+        nullable: true
+        references: WorkspaceFolder.id
+        comment: "Workspace folder this dashboard lives in (null = workspace root).
+          Folder is owned by the same user as the dashboard."
+      thumbnailUrl:
+        type: string
+        nullable: true
+        comment: "Mock URL/path used in Workspace card grid and Recent."
+      lastChangeAt:
+        type: datetime
+        comment: "Timestamp of last save (any contributor or owner). Drives
+          Workspace 'date of change' filter and sort."
+      lastChangeByUserId:
+        type: uuid
+        nullable: true
+        references: User.id
+        comment: "User who last saved a change to this dashboard."
+      publishedAt:
+        type: datetime
+        nullable: true
+        comment: "Set when lifecycleStatus transitions to 'published'."
+      deletedAt:
+        type: datetime
+        nullable: true
+        comment: "Soft-delete timestamp for Workspace Trash; null = not deleted."
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
@@ -117,9 +177,11 @@ entities:
       key:
         type: enum
         values: [home, assets, workspace, insights, comms, settings]
-        comment: "'workspace' is the Workspace module — a dedicated dashboard editing
-          environment. Full spec TBD; currently a navigation stub target from
-          the Equipment Home Page 'Edit Dashboards' action."
+        comment: "'workspace' is the Workspace Module — the per-user dashboard
+          content management system (folders, drafts, sharing, comments,
+          publishing, Workspace-native editor). 'comms' hosts the Alerts page
+          for in-app notifications about dashboard sharing and permission
+          requests."
       displayName: { type: string }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
@@ -161,6 +223,190 @@ entities:
         references: WhatIfRunSession.id
         comment: "The What-If run session selected via Viewed Data inside the
           Dashboard Popup. Null when no overlay is applied."
+      externalOpenTabCounts:
+        type: map
+        keyType: { type: uuid, references: Dashboard.id }
+        valueType: { type: integer, min: 0 }
+        comment: "Per-dashboard count of Full-Screen Viewer tabs currently open
+          elsewhere (other browser tabs/windows). Maintained via cross-tab
+          BroadcastChannel/storage signalling. Drives the 'open elsewhere'
+          indicator on dashboard tabs / cards. A dashboard may be open in
+          multiple tabs simultaneously."
+
+  WorkspaceFolder:
+    comment: "Per-user folder in the Workspace Module's Canva-like folder system.
+      Folders form a nested tree owned by a single User. Dashboards live in
+      exactly zero or one Folder (root = no folder)."
+    fields:
+      id: { type: uuid }
+      ownerUserId: { type: uuid, references: User.id }
+      parentFolderId:
+        type: uuid
+        nullable: true
+        references: WorkspaceFolder.id
+        comment: "Null = top-level folder under workspace root."
+      name: { type: string }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  DashboardShare:
+    comment: "A direct share grant from a dashboard owner to a specific User by
+      name/email. Independent of ShareLink (link-based sharing)."
+    fields:
+      id: { type: uuid }
+      dashboardId: { type: uuid, references: Dashboard.id }
+      sharedByUserId: { type: uuid, references: User.id }
+      sharedWithUserId: { type: uuid, references: User.id }
+      permission:
+        type: enum
+        values: [view, comment, edit]
+        comment: "Granted permission level for the shared-with user."
+      message:
+        type: string
+        nullable: true
+        maxLength: 500
+        comment: "Optional plain-text note included with the share; surfaced in
+          the recipient's Alert."
+      notifyOnFirstView:
+        type: boolean
+        default: false
+        comment: "If true, the sharer receives an Alert the first time the
+          recipient opens this dashboard's popup."
+      firstViewedAt:
+        type: datetime
+        nullable: true
+        comment: "Timestamp when sharedWithUser first viewed the dashboard.
+          Once set, do not retrigger the first-view Alert."
+      revokedAt:
+        type: datetime
+        nullable: true
+        comment: "Set when the sharer revokes access; revoked shares no longer
+          grant permission and are hidden from recipient's 'Shared with me'."
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  ShareLink:
+    comment: "A copyable shareable link for a dashboard. Anyone with the link
+      and a signed-in identity gets the link's permission level."
+    fields:
+      id: { type: uuid }
+      dashboardId: { type: uuid, references: Dashboard.id }
+      createdByUserId: { type: uuid, references: User.id }
+      token:
+        type: string
+        comment: "Unique opaque token used in the /share/[token] URL. Mock-generated."
+      permission:
+        type: enum
+        values: [view, comment, edit]
+      revokedAt:
+        type: datetime
+        nullable: true
+        comment: "When set, the link refuses access (UI shows 'no longer valid')."
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  DashboardComment:
+    comment: "A single comment on a dashboard, displayed in the Workspace popup's
+      Comments side panel. Not threaded in v1."
+    fields:
+      id: { type: uuid }
+      dashboardId: { type: uuid, references: Dashboard.id }
+      authorUserId: { type: uuid, references: User.id }
+      body:
+        type: string
+        maxLength: 2000
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  PermissionRequest:
+    comment: "A request from a shared-with user asking for elevated permission
+      (comment or edit) on a dashboard. Resolved by the sharer via Alert action."
+    fields:
+      id: { type: uuid }
+      dashboardId: { type: uuid, references: Dashboard.id }
+      requestedByUserId: { type: uuid, references: User.id }
+      requestedToUserId:
+        type: uuid
+        references: User.id
+        comment: "Typically the dashboard owner, or the original sharer."
+      requestedPermission:
+        type: enum
+        values: [comment, edit]
+      status:
+        type: enum
+        values: [pending, granted, denied, cancelled]
+        default: pending
+      resolvedAt:
+        type: datetime
+        nullable: true
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  Notification:
+    comment: "An in-app alert displayed on the Comms Module Alerts page for the
+      current user. All sharing-related events become Notifications."
+    fields:
+      id: { type: uuid }
+      userId:
+        type: uuid
+        references: User.id
+        comment: "Recipient — the user this alert appears for."
+      category:
+        type: enum
+        values:
+          - dashboard_shared_with_you
+          - dashboard_first_view
+          - permission_request_received
+          - permission_request_resolved
+        comment: "v1 categories. dashboard_shared_with_you: someone shared a
+          dashboard with you. dashboard_first_view: a recipient opened a
+          dashboard you shared (when notifyOnFirstView=true).
+          permission_request_received: someone asked for higher permission on
+          your dashboard. permission_request_resolved: your permission request
+          was granted or denied."
+      dashboardId:
+        type: uuid
+        nullable: true
+        references: Dashboard.id
+      relatedShareId:
+        type: uuid
+        nullable: true
+        references: DashboardShare.id
+      relatedRequestId:
+        type: uuid
+        nullable: true
+        references: PermissionRequest.id
+      actorUserId:
+        type: uuid
+        nullable: true
+        references: User.id
+        comment: "The user whose action produced this Notification (sharer,
+          recipient, requester, resolver)."
+      title: { type: string }
+      body: { type: string, nullable: true }
+      readAt:
+        type: datetime
+        nullable: true
+        comment: "Null = unread. Set when user opens or marks the alert read."
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  DashboardViewerTabSession:
+    comment: "Not a persisted entity — represents one browser tab currently
+      rendering the Full-Screen Dashboard Viewer route. Maintained in-memory
+      and broadcast cross-tab via BroadcastChannel/storage events. Used to
+      compute EquipmentHomeView.externalOpenTabCounts."
+    fields:
+      sessionId:
+        type: string
+        comment: "Per-tab UUID generated on viewer mount."
+      dashboardId: { type: uuid, references: Dashboard.id }
+      userId:
+        type: uuid
+        nullable: true
+        references: User.id
+      openedAt: { type: datetime }
+      lastHeartbeatAt: { type: datetime }
 
   WhatIfScenario:
     fields:
@@ -291,7 +537,14 @@ relationships:
   - "A SyncJob belongs to one Equipment and optionally one User."
   - "An EquipmentHomeView is scoped to one Equipment and can show one Dashboard via popup at a time."
   - "Navigating from an EquipmentHomeView tool tile to a Tool passes the Equipment context as a pre-filter; the Tool's supportsEquipmentFilter flag indicates this is supported."
-  - "The Workspace AppModule is the target for the Equipment Home Page 'Edit Dashboards' action."
+  - "The Workspace AppModule is the target for the Equipment Home Page 'Edit Dashboards' action; the equipment context is forwarded so the Workspace pre-filters on that equipment."
+  - "A Dashboard has exactly one owner User (Dashboard.ownerUserId) and zero or many contributor Users."
+  - "A Dashboard belongs to zero or one WorkspaceFolder; a WorkspaceFolder belongs to exactly one User and may have a parent WorkspaceFolder (nested tree)."
+  - "A Dashboard has zero or many DashboardShares (one per shared-with User) and zero or many ShareLinks."
+  - "A Dashboard has zero or many DashboardComments authored by Users with comment or edit permission (or by the owner)."
+  - "A PermissionRequest references one Dashboard, the requester User, and the resolver User (typically the owner)."
+  - "A Notification references one recipient User and optionally a Dashboard, DashboardShare, PermissionRequest, and actor User."
+  - "A DashboardViewerTabSession is scoped to one Dashboard and is signalled cross-tab; the EquipmentHomeView aggregates active sessions into externalOpenTabCounts per dashboard."
 
 business_rules:
   - "KPI is represented as a Widget subtype; there is no separate EquipmentKPI entity."
@@ -321,6 +574,43 @@ business_rules:
   - "From Site Overview and Plant Overview dashboard tab stacks, clicking a dashboard tab must navigate to Equipment Home Page and auto-open the matching read-only Dashboard Popup tab for that equipment."
   - "From Site Overview and Plant Overview dashboard tab stacks, clicking the equipment-name label must navigate to that equipment's Equipment Home Page without auto-opening a dashboard popup."
   - "Equipment-name labels in dashboard tab stacks are interactive link-style controls (explicit clickable affordance) and must not trigger tab expansion when clicked."
+  # ── Workspace Module ────────────────────────────────────────────────────────
+  - "The Workspace Module is per-user: a user sees only their own dashboards, their own folders, and dashboards explicitly shared with them. Other users' workspaces are not visible."
+  - "Each Dashboard has exactly one owner User; ownership is set at creation and does not change via sharing or publishing."
+  - "Dashboard.lifecycleStatus transitions are: created -> published (publish action) and published -> created (unpublish action), both performed only by the owner."
+  - "A 'created' dashboard is visible only to its owner and to users it has been shared with (DashboardShare or ShareLink); it never appears in the Asset Module."
+  - "A 'published' dashboard is visible in the Asset Module Equipment Home Page to users with access to its Site/Plant/Equipment, AND remains in the owner's Workspace (publishing does not remove it)."
+  - "The Asset Module Equipment Home Page shows only published dashboards for the equipment; created/draft dashboards are hidden from Asset Module."
+  - "WorkspaceFolders are user-owned and form a nested tree rooted at workspace root (parentFolderId = null); UI must support at least 5 levels of nesting."
+  - "A Dashboard belongs to zero or one WorkspaceFolder owned by the same User as the dashboard owner; moving a dashboard updates only Dashboard.folderId."
+  - "Deleting a WorkspaceFolder requires the user to choose 'move contents to root' or 'delete contents' (cascade soft-delete)."
+  - "Users can search and filter dashboards in their Workspace by equipment, lifecycleStatus, owner (creator), contributor, and lastChangeAt date range."
+  - "Users can create, duplicate, rename, move, and soft-delete their own dashboards from the Workspace; soft-deleted dashboards live in Trash with deletedAt set."
+  - "Duplicating a dashboard creates a new Dashboard with a new id, lifecycleStatus='created', sourceDashboardId set to the original, name prefixed 'Copy of ', folderId copied from the original, and ownerUserId set to the duplicating user."
+  - "The Workspace Dashboard Popup exposes three independent actions: expand-to-fullscreen (within the same tab), toggle Comments side panel, and Edit dashboard."
+  - "The Workspace Dashboard Popup additionally exposes 'Open in new tab', which navigates a new browser tab to the Full-Screen Dashboard Viewer route and closes the popup in the originating tab."
+  - "Edit and Comment in the Workspace Dashboard Popup are always enabled for the dashboard owner. For shared-with users they are enabled iff the active DashboardShare or ShareLink grants edit/comment permission, respectively."
+  - "Saving a dashboard edit by a non-owner with edit permission appends that user to Dashboard.contributorUserIds (idempotent) and updates lastChangeAt and lastChangeByUserId."
+  - "The Workspace-native Dashboard Editor is a NEW component that reuses the existing Widget Library catalog without modification; it does not import the legacy Equipment Dashboard editor and does not render dashboard tabs at the bottom."
+  - "DashboardShare grants are per-recipient and may be revoked; revoked shares no longer grant access and are hidden from the recipient's 'Shared with me'."
+  - "ShareLink grants permission to any signed-in user that opens the link; if revoked, the link refuses access."
+  - "A user with view permission may not comment or edit; comment permission implies view; edit permission implies comment+view."
+  - "Users without comment/edit permission on a shared dashboard may submit a PermissionRequest from the Dashboard Popup; this generates a 'permission_request_received' Notification for the dashboard owner."
+  - "Resolving a PermissionRequest (granted/denied) generates a 'permission_request_resolved' Notification for the requester; granting also creates or upgrades the corresponding DashboardShare."
+  - "When DashboardShare.notifyOnFirstView is true, the first time the recipient opens the dashboard popup sets DashboardShare.firstViewedAt and produces a 'dashboard_first_view' Notification for the sharer; this fires at most once per share."
+  - "Comments on owner-owned dashboards do NOT generate Notifications; only sharing-related events do."
+  - "The Comms Module Alerts page lists all Notifications for the current user in reverse-chronological order; each item exposes a 'View' action that deep-links into the Workspace and marks the Notification read."
+  - "The Comms module rail icon shows an unread-count badge equal to count(Notification where readAt is null)."
+  # ── Asset Module — Full-Screen Viewer & Multi-Tab ──────────────────────────
+  - "The Equipment Home Page Dashboard Popup includes 'Open in new tab', which opens /dashboards/[dashboardId]/full in a new browser tab and closes the popup in the originating tab."
+  - "The Full-Screen Dashboard Viewer route renders the dashboard widget grid with no app sidebar and no header, in read-only mode."
+  - "A dashboard may be open simultaneously in multiple Full-Screen Viewer tabs; each tab maintains a DashboardViewerTabSession."
+  - "Cross-tab open-state signalling uses BroadcastChannel with a localStorage 'storage'-event fallback; on viewer mount a tab broadcasts JOIN, on pagehide/beforeunload it broadcasts LEAVE; periodic heartbeat reconciles stale sessions."
+  - "When a dashboard is open in any browser tab other than the current Equipment Home Page tab, an indicator icon (with optional count) appears on that dashboard's tab/card on the Equipment Home Page; the indicator updates live."
+  # ── App Routing ────────────────────────────────────────────────────────────
+  - "New surfaces are URL-driven via Next.js App Router routes: /workspace, /workspace/folder/[folderId], /workspace/shared, /workspace/dashboard/[dashboardId]/edit, /dashboards/[dashboardId]/full, /share/[token]."
+  - "Legacy surfaces (Home, Site Overview, Plant Overview, Equipment Home, Tools) continue to use the in-store currentView router during the transitional phase."
+  - "The Workspace module rail submenu is a single-level list containing exactly: 'All Dashboards', 'Shared with me', 'Recent', 'Trash'. No nested submenu is permitted."
 
 invariants:
   - "Every entity has id, createdAt, and updatedAt."
@@ -336,3 +626,26 @@ invariants:
   - "EquipmentHomeView.activeDashboardPopupId, if set, must reference a Dashboard that belongs to EquipmentHomeView.equipmentId."
   - "EquipmentHomeView.viewedDataScenarioId, if set, must reference a WhatIfRunSession that belongs to the same Equipment."
   - "Tool.key must be one of [data_sync, shift_log, documents, whatif]; shift_log tiles render in disabled state with no navigation."
+  - "Exactly one User has User.isCurrentUser = true at any given time."
+  - "Dashboard.ownerUserId is non-null for every dashboard."
+  - "Dashboard.folderId, when non-null, references a WorkspaceFolder whose ownerUserId equals Dashboard.ownerUserId."
+  - "WorkspaceFolder.parentFolderId, when non-null, references a WorkspaceFolder owned by the same User."
+  - "WorkspaceFolder names are unique among siblings under the same parentFolderId for the same owner."
+  - "Dashboard.lifecycleStatus = 'published' implies Dashboard.publishedAt is non-null."
+  - "Dashboard.lifecycleStatus = 'created' implies the dashboard does not appear in any Asset Module surface."
+  - "DashboardShare is unique on (dashboardId, sharedWithUserId) excluding revoked rows."
+  - "DashboardShare.permission ordering is view < comment < edit; raising the permission via PermissionRequest grant must not lower it."
+  - "ShareLink.token is globally unique."
+  - "PermissionRequest.requestedPermission is one of [comment, edit] (view is the implicit baseline)."
+  - "PermissionRequest.status transitions: pending -> granted | denied | cancelled; resolved (granted/denied) requires resolvedAt non-null."
+  - "Notification.readAt, when set, is >= Notification.createdAt."
+  - "Notification.category 'dashboard_first_view' fires at most once per DashboardShare (enforced via DashboardShare.firstViewedAt)."
+  - "DashboardComment.authorUserId must have at least comment permission on the Dashboard at the time of creation (owner trivially satisfies this)."
+  - "DashboardViewerTabSession.lastHeartbeatAt is updated at most every 5 seconds; sessions older than 15 seconds without heartbeat are considered stale and pruned."
+  # ── Locked open-question resolutions (Apr 27 2026) ─────────────────────────
+  - "Organization users are a fixed mock list; no invite-new-user flow exists."
+  - "ShareLink access is restricted to users who exist in the organization directory; opening a link as anyone outside the directory blocks access with a 'not authorised' state. On save with edit permission via a link, the user is appended to Dashboard.contributorUserIds."
+  - "Unpublishing a Dashboard does NOT revoke any DashboardShare or ShareLink. Asset Module is treated as a read-only 'qualified dashboards' surface; publish/unpublish only toggles Asset Module visibility — sharing grants persist."
+  - "The 'open elsewhere' indicator is rendered ONLY on the Equipment Home Page (dashboard tabs and dashboard cards). Workspace dashboard cards do NOT show it."
+  - "Only one Dashboard Editor session may be active per Dashboard at a time across the whole app. Opening the editor acquires a cross-tab edit lock keyed by dashboardId; if another tab already holds the lock, the new tab is denied entry and a 'This dashboard is being edited at the moment' notification/toast is shown. The lock is released on editor unmount, save, or pagehide."
+  - "Dashboard.thumbnailUrl is populated by capturing a generated screenshot of the rendered dashboard widget grid (e.g. via html2canvas-style mock or a deterministic SVG/canvas mock); thumbnails refresh on save. v1 may use a deterministic placeholder image generator if a real screenshot library is not yet wired."
