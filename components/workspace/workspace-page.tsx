@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { useRouter } from "next/navigation"
 import { Inbox, Clock, Trash2, Folder as FolderIcon, Home as HomeIcon, FolderOpen as FolderOpenIcon } from "lucide-react"
-import { FolderTree } from "./folder-tree"
 import { WorkspaceToolbar } from "./workspace-toolbar"
 import { DashboardCard } from "./dashboard-card"
 import { CreateDashboardDialog } from "./create-dashboard-dialog"
@@ -63,6 +62,9 @@ export function WorkspacePage({ initial }: WorkspacePageProps) {
   }, [setActiveModule])
 
   const [selected, setSelected] = useState(initial)
+  useEffect(() => {
+    setSelected(initial)
+  }, [initial])
 
   // Pre-applied equipment filter (set by Equipment Home → Workspace deep link).
   const initialEquipmentFilter = useWorkspaceStore((s) => s.initialEquipmentFilter)
@@ -248,65 +250,48 @@ export function WorkspacePage({ initial }: WorkspacePageProps) {
   const isShared = selected.kind === "virtual" && selected.location === "shared"
 
   return (
-    <div className="flex-1 min-w-0 flex bg-background">
-      <FolderTree
-        selected={selected}
-        onSelect={(s) => {
-          setSelected(s)
-          if (s.kind === "virtual") {
-            const path =
-              s.location === "all"
-                ? "/workspace"
-                : `/workspace/${s.location}`
-            router.replace(path)
-          } else {
-            router.replace(`/workspace/folder/${s.folderId}`)
-          }
-        }}
+    <div className="flex-1 min-w-0 flex flex-col bg-background">
+      <WorkspaceToolbar
+        title={title}
+        subtitle={subtitle}
+        breadcrumb={breadcrumb}
+        hideNew={isTrash || isShared}
+        onCreateDashboard={() => setCreateOpen(true)}
       />
-      <div className="flex-1 min-w-0 flex flex-col">
-        <WorkspaceToolbar
-          title={title}
-          subtitle={subtitle}
-          breadcrumb={breadcrumb}
-          hideNew={isTrash || isShared}
-          onCreateDashboard={() => setCreateOpen(true)}
-        />
-        <div className="flex-1 min-h-0 overflow-y-auto p-6">
-          {filteredAndSorted.length === 0 ? (
-            <EmptyState
-              location={selected}
-              onCreate={() => setCreateOpen(true)}
-            />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredAndSorted.map((d) => {
-                const sharedRecord =
-                  isShared && sharedWithMe.find((x) => x.dashboard.id === d.id)
-                return (
-                  <DashboardCard
-                    key={d.id}
-                    dashboard={d}
-                    onOpen={() => setPopupDashboardId(d.id)}
-                    onEdit={() => router.push(`/workspace/dashboard/${d.id}/edit`)}
-                    onShare={() => setShareDashboardId(d.id)}
-                    onMoveTo={
-                      isShared || isTrash
-                        ? undefined
-                        : (folderId) => moveDashboard(d.id, folderId)
-                    }
-                    variant={isTrash ? "trash" : "default"}
-                    badgeOverride={
-                      sharedRecord
-                        ? `Shared (${sharedRecord.share.permission})`
-                        : undefined
-                    }
-                  />
-                )
-              })}
-            </div>
-          )}
-        </div>
+      <div className="flex-1 min-h-0 overflow-y-auto p-6">
+        {filteredAndSorted.length === 0 ? (
+          <EmptyState
+            location={selected}
+            onCreate={() => setCreateOpen(true)}
+          />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filteredAndSorted.map((d) => {
+              const sharedRecord =
+                isShared && sharedWithMe.find((x) => x.dashboard.id === d.id)
+              return (
+                <DashboardCard
+                  key={d.id}
+                  dashboard={d}
+                  onOpen={() => setPopupDashboardId(d.id)}
+                  onEdit={() => router.push(`/workspace/dashboard/${d.id}/edit`)}
+                  onShare={() => setShareDashboardId(d.id)}
+                  onMoveTo={
+                    isShared || isTrash
+                      ? undefined
+                      : (folderId) => moveDashboard(d.id, folderId)
+                  }
+                  variant={isTrash ? "trash" : "default"}
+                  badgeOverride={
+                    sharedRecord
+                      ? `Shared (${sharedRecord.share.permission})`
+                      : undefined
+                  }
+                />
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Modals */}

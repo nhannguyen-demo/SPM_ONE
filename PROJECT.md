@@ -147,6 +147,7 @@ Routing principles:
 - **Cross-tab open-state signalling**: `BroadcastChannel('spm-one:viewer-tabs')` with `localStorage` `storage`-event fallback; viewer tab broadcasts JOIN on mount, LEAVE on `pagehide`, heartbeat every 5s. Equipment Home Page derives `externalOpenTabCounts` from these signals and renders an indicator on each dashboard tab/card.
 - **Routing strategy (phased)**: new Workspace, Full-Screen Viewer, and Share-link surfaces are URL-driven via App Router; legacy surfaces continue to use `currentView`. Cross-module navigation that must survive reload (folder, dashboard popup target, full-screen viewer, share-link landing) goes through real URLs.
 - **Workspace module rail submenu**: cleaned to a single-level list — "All Dashboards", "Shared with me", "Recent", "Trash". No nested submenu permitted. Replaces previous "Favorite" / "Share with me" stubs.
+- **Workspace submenu presentation (requirement delta)**: only one Workspace submenu surface is allowed; it must use the left blue module-panel style consistent with other modules. Any duplicate right-side white submenu must be removed, while preserving existing submenu functionality.
 
 ## Known Tech Debt
 Prioritized from audit:
