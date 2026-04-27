@@ -420,50 +420,75 @@
       },
       {
         "id": "29",
-        "title": "Unify Workspace submenu surface to a single source",
-        "description": "Remove duplicate Workspace submenu rendering and keep only one canonical submenu surface in Workspace module context.",
-        "details": "Audit Workspace navigation composition (module rail panel, workspace page side panel, and any route-level wrappers) and identify where duplicate submenu UIs are rendered. Keep only one submenu instance mounted at runtime for Workspace views. The canonical visual style must match the left blue module-panel pattern used by other module submenus. Preserve existing menu entries and click behavior: All Dashboards, Shared with me, Recent, Trash.",
-        "testStrategy": "Manual verification: in Workspace routes, only one submenu is visible; all four entries remain available and functional; no duplicate white submenu appears.",
-        "status": "done",
+        "title": "Unify Workspace navigation into one menu panel",
+        "description": "Remove duplicate in-page Workspace navigation so only one menu surface remains.",
+        "details": "Refactor Workspace layout composition so the current white navigation panel is not rendered in parallel with the blue menu. Keep route/state wiring unchanged for current locations (all/shared/recent/trash/folder). Ensure no behavior regression in selected state transitions.",
+        "testStrategy": "Open /workspace, /workspace/shared, /workspace/recent, /workspace/trash, and /workspace/folder/[id]. Verify only one in-page navigation menu is visible and location switching still works.",
+        "status": "pending",
         "dependencies": [],
         "priority": "high",
-        "subtasks": [],
-        "updatedAt": "2026-04-27T12:20:37.826Z"
+        "subtasks": []
       },
       {
         "id": "30",
-        "title": "Preserve Workspace submenu behavior after layout unification",
-        "description": "Ensure submenu state, routing, badges, and active styling remain unchanged after removing duplicate rendering.",
-        "details": "Refactor the surviving submenu container so it still drives the same navigation destinations and active-state highlighting. Keep counts/badges and interactions intact (e.g., Shared with me and Trash badges, selected destination highlighting). Ensure no changes to underlying filtering/sorting behavior are introduced by the layout change. Wire any displaced actions from removed panel into the canonical panel if needed.",
-        "testStrategy": "Route test: clicking each submenu entry lands on expected route/view. State test: active item styling and badges/counts still update correctly. Behavior parity: dashboard lists and filters remain unchanged.",
+        "title": "Apply blue submenu visual system to unified Workspace menu",
+        "description": "Restyle unified Workspace menu to match existing dark-blue module submenu design language.",
+        "details": "Port typography, spacing, hover/active states, icon treatment, and panel chrome from the left blue Workspace submenu style into the unified in-page menu container. Preserve accessibility contrast and focus-visible behavior.",
+        "testStrategy": "Visual check against existing blue submenu style; verify active item and hover states match module conventions in both light/dark themes.",
+        "status": "pending",
+        "dependencies": [
+          "29"
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": "31",
+        "title": "Preserve full white-menu functional parity in unified menu",
+        "description": "Carry over every existing functional element from the white Workspace menu into the unified blue-styled menu.",
+        "details": "Ensure unified menu still exposes location links (All/Shared/Recent/Trash), folder tree render, nested folder expansion, selection handling, count badges, and drag/drop affordances where currently supported. No feature should be removed during visual merge.",
+        "testStrategy": "Regression checklist covering folder tree interactions, counters, selected state persistence, and route transitions before/after merge.",
         "status": "done",
         "dependencies": [
           "29"
         ],
         "priority": "high",
         "subtasks": [],
-        "updatedAt": "2026-04-27T12:20:37.877Z"
+        "updatedAt": "2026-04-27T13:07:25.730Z"
       },
       {
-        "id": "31",
-        "title": "Workspace submenu visual consistency and regression sweep",
-        "description": "Align Workspace submenu visuals with module-panel design system and run a focused regression check across Workspace navigation.",
-        "details": "Apply final styling checks so Workspace submenu matches blue module-panel look-and-feel used by other module submenus (spacing, contrast, selected state, icon treatment). Validate responsiveness and ensure no duplicated rail section appears in common viewport sizes. Run a smoke pass on Workspace pages (/workspace, /workspace/shared, /workspace/recent, /workspace/trash, folder view) for layout regressions.",
-        "testStrategy": "Visual QA at key breakpoints; smoke navigation across all Workspace routes; verify no duplicate submenu container appears and no console/render-loop errors are introduced.",
-        "status": "done",
+        "id": "32",
+        "title": "Update Workspace component boundaries after menu merge",
+        "description": "Adjust component responsibilities so navigation rendering lives in one source of truth.",
+        "details": "Consolidate duplicated nav rendering logic across sidebar/workspace components. Extract or reuse shared menu item model to avoid drift between style and behavior. Keep existing store contracts intact unless minor extensions are required.",
+        "testStrategy": "Code-level verification that only one component path renders Workspace in-page navigation; smoke test navigation interactions.",
+        "status": "pending",
         "dependencies": [
-          "30"
+          "30",
+          "31"
         ],
         "priority": "medium",
-        "subtasks": [],
-        "updatedAt": "2026-04-27T12:20:37.886Z"
+        "subtasks": []
+      },
+      {
+        "id": "33",
+        "title": "Workspace menu-merge QA and regression hardening",
+        "description": "Validate merged Workspace menu for UX consistency and no behavior changes.",
+        "details": "Add/adjust targeted tests or deterministic manual QA steps for menu rendering, badge counts, folder interactions, and keyboard navigation. Confirm no duplicate menu appears in any Workspace route.",
+        "testStrategy": "Run typecheck/lint plus route-by-route manual QA matrix; verify no layout regressions at common breakpoints.",
+        "status": "pending",
+        "dependencies": [
+          "32"
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-04-27T12:20:37.886Z",
-      "taskCount": 31,
-      "completedCount": 31,
+      "lastModified": "2026-04-27T13:07:25.733Z",
+      "taskCount": 33,
+      "completedCount": 29,
       "tags": [
         "master"
       ]

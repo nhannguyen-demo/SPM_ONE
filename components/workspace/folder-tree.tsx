@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useShallow } from "zustand/react/shallow"
+import { usePathname, useRouter } from "next/navigation"
 import {
   ChevronDown,
   ChevronRight,
@@ -29,13 +30,16 @@ import type { WorkspaceVirtualLocation } from "@/lib/workspace/types"
 export const FOLDER_DRAG_TYPE = "application/x-spm-folder"
 export const DASHBOARD_DRAG_TYPE = "application/x-spm-dashboard"
 
+type WorkspaceSelection =
+  | { kind: "virtual"; location: WorkspaceVirtualLocation }
+  | { kind: "folder"; folderId: string }
+
 interface FolderTreeProps {
-  selected: { kind: "virtual"; location: WorkspaceVirtualLocation } | { kind: "folder"; folderId: string }
-  onSelect: (
-    sel:
-      | { kind: "virtual"; location: WorkspaceVirtualLocation }
-      | { kind: "folder"; folderId: string }
-  ) => void
+  selected?: WorkspaceSelection
+  onSelect?: (sel: WorkspaceSelection) => void
+  tone?: "default" | "sidebar"
+  inline?: boolean
+  searchQuery?: string
 }
 
 interface FolderNode {
@@ -105,15 +109,17 @@ function FolderRow({
   toggleExpanded,
   renameId,
   setRenameId,
+  tone,
 }: {
   node: FolderNode
   depth: number
-  selected: FolderTreeProps["selected"]
-  onSelect: FolderTreeProps["onSelect"]
+  selected: WorkspaceSelection
+  onSelect: (sel: WorkspaceSelection) => void
   expanded: Set<string>
   toggleExpanded: (id: string) => void
   renameId: string | null
   setRenameId: (id: string | null) => void
+  tone: "default" | "sidebar"
 }) {
   const isOpen = expanded.has(node.id)
   const isSelected = selected.kind === "folder" && selected.folderId === node.id
@@ -178,8 +184,14 @@ function FolderRow({
         onClick={() => onSelect({ kind: "folder", folderId: node.id })}
         className={cn(
           "group/row flex items-center gap-1 pr-1 rounded-md text-sm cursor-pointer transition-colors",
-          isSelected ? "bg-primary/10 text-foreground" : "hover:bg-muted/50 text-foreground/90",
-          dropOver && "ring-2 ring-primary/60 bg-primary/10"
+          tone === "sidebar"
+            ? isSelected
+              ? "bg-sidebar-active text-white"
+              : "hover:bg-sidebar-hover text-sidebar-foreground"
+            : isSelected
+              ? "bg-primary/10 text-foreground"
+              : "hover:bg-muted/50 text-foreground/90",
+          dropOver && (tone === "sidebar" ? "ring-2 ring-sidebar-active/70 bg-sidebar-hover" : "ring-2 ring-primary/60 bg-primary/10")
         )}
         style={{ paddingLeft: 4 + depth * 14 }}
       >
@@ -189,7 +201,12 @@ function FolderRow({
             e.stopPropagation()
             toggleExpanded(node.id)
           }}
-          className="p-0.5 text-muted-foreground hover:text-foreground"
+          className={cn(
+            "p-0.5",
+            tone === "sidebar"
+              ? "text-sidebar-muted hover:text-sidebar-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
           aria-label={isOpen ? "Collapse folder" : "Expand folder"}
         >
           {node.children.length > 0 ? (
@@ -219,7 +236,12 @@ function FolderRow({
           <DropdownMenuTrigger asChild>
             <button
               onClick={(e) => e.stopPropagation()}
-              className="opacity-0 group-hover/row:opacity-100 p-1 rounded hover:bg-muted text-muted-foreground"
+              className={cn(
+                "opacity-0 group-hover/row:opacity-100 p-1 rounded",
+                tone === "sidebar"
+                  ? "hover:bg-sidebar-hover text-sidebar-muted"
+                  : "hover:bg-muted text-muted-foreground"
+              )}
               aria-label="Folder actions"
             >
               <MoreVertical className="w-3.5 h-3.5" />
@@ -268,6 +290,7 @@ function FolderRow({
             toggleExpanded={toggleExpanded}
             renameId={renameId}
             setRenameId={setRenameId}
+            tone={tone}
           />
         ))}
     </>
@@ -282,6 +305,7 @@ function VirtualRow({
   onClick,
   badge,
   acceptsDashboard,
+  tone,
 }: {
   label: string
   icon: React.ReactNode
@@ -289,6 +313,7 @@ function VirtualRow({
   onClick: () => void
   badge?: number
   acceptsDashboard?: boolean
+  tone: "default" | "sidebar"
 }) {
   const moveDashboard = useWorkspaceStore((s) => s.moveDashboard)
   const [dropOver, setDropOver] = useState(false)
@@ -310,14 +335,25 @@ function VirtualRow({
       }}
       className={cn(
         "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm cursor-pointer transition-colors",
-        active ? "bg-primary/10 text-foreground" : "hover:bg-muted/50 text-foreground/90",
-        dropOver && "ring-2 ring-primary/60 bg-primary/10"
+        tone === "sidebar"
+          ? active
+            ? "bg-sidebar-active text-white"
+            : "hover:bg-sidebar-hover text-sidebar-foreground"
+          : active
+            ? "bg-primary/10 text-foreground"
+            : "hover:bg-muted/50 text-foreground/90",
+        dropOver && (tone === "sidebar" ? "ring-2 ring-sidebar-active/70 bg-sidebar-hover" : "ring-2 ring-primary/60 bg-primary/10")
       )}
     >
       {icon}
       <span className="flex-1 truncate">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/15 text-primary">
+        <span
+          className={cn(
+            "text-[10px] font-medium px-1.5 py-0.5 rounded",
+            tone === "sidebar" ? "bg-sidebar-hover text-sidebar-foreground" : "bg-primary/15 text-primary"
+          )}
+        >
           {badge}
         </span>
       )}
@@ -326,7 +362,15 @@ function VirtualRow({
 }
 
 /* ─── Folder tree (top-level export) ───────────────────────────────────────── */
-export function FolderTree({ selected, onSelect }: FolderTreeProps) {
+export function FolderTree({
+  selected,
+  onSelect,
+  tone = "default",
+  inline = false,
+  searchQuery = "",
+}: FolderTreeProps) {
+  const router = useRouter()
+  const pathname = usePathname() || "/workspace"
   // useShallow prevents new-array-on-every-call from triggering infinite renders.
   const { rawFolders, shares, dashboards } = useWorkspaceStore(
     useShallow((s) => ({
@@ -357,6 +401,17 @@ export function FolderTree({ selected, onSelect }: FolderTreeProps) {
   )
 
   const tree = useMemo(() => buildTree(folders), [folders])
+  const selectedFromRoute = useMemo<WorkspaceSelection>(() => {
+    if (pathname === "/workspace/shared") return { kind: "virtual", location: "shared" }
+    if (pathname === "/workspace/recent") return { kind: "virtual", location: "recent" }
+    if (pathname === "/workspace/trash") return { kind: "virtual", location: "trash" }
+    const folderPrefix = "/workspace/folder/"
+    if (pathname.startsWith(folderPrefix)) {
+      return { kind: "folder", folderId: pathname.slice(folderPrefix.length) }
+    }
+    return { kind: "virtual", location: "all" }
+  }, [pathname])
+  const selectedState: WorkspaceSelection = selected ?? selectedFromRoute
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(folders.map((f) => f.id)))
   const [renameId, setRenameId] = useState<string | null>(null)
@@ -372,9 +427,50 @@ export function FolderTree({ selected, onSelect }: FolderTreeProps) {
       return ns
     })
 
+  const handleSelect = (sel: WorkspaceSelection) => {
+    onSelect?.(sel)
+    if (!onSelect) {
+      if (sel.kind === "virtual") {
+        router.push(sel.location === "all" ? "/workspace" : `/workspace/${sel.location}`)
+      } else {
+        router.push(`/workspace/folder/${sel.folderId}`)
+      }
+    }
+  }
+
+  const q = searchQuery.trim().toLowerCase()
+  const virtualRows = useMemo(
+    () =>
+      [
+        { key: "all", label: "All dashboards" },
+        { key: "shared", label: "Shared with me" },
+        { key: "recent", label: "Recent" },
+        { key: "trash", label: "Trash" },
+      ].filter((row) => (q ? row.label.toLowerCase().includes(q) : true)),
+    [q]
+  )
+  const filteredTree = useMemo(() => {
+    if (!q) return tree
+    const filterNodes = (nodes: FolderNode[]): FolderNode[] =>
+      nodes
+        .map((n) => ({ ...n, children: filterNodes(n.children) }))
+        .filter((n) => n.name.toLowerCase().includes(q) || n.children.length > 0)
+    return filterNodes(tree)
+  }, [tree, q])
+
   return (
-    <aside className="w-64 flex-shrink-0 border-r border-border bg-card/30 flex flex-col">
-      <div className="px-3 py-3 border-b border-border flex items-center justify-between">
+    <aside
+      className={cn(
+        inline ? "w-full border-none bg-transparent" : "w-64 flex-shrink-0 border-r border-border bg-card/30",
+        "flex flex-col"
+      )}
+    >
+      <div
+        className={cn(
+          "px-3 py-3 flex items-center justify-between",
+          inline ? "border-b border-white/10" : "border-b border-border"
+        )}
+      >
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Workspace
         </span>
@@ -385,14 +481,20 @@ export function FolderTree({ selected, onSelect }: FolderTreeProps) {
             const folder = createFolder({ name: "New folder", parentFolderId: null })
             setRenameId(folder.id)
           }}
-          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+          className={cn(
+            "p-1 rounded",
+            tone === "sidebar"
+              ? "hover:bg-sidebar-hover text-sidebar-muted hover:text-sidebar-foreground"
+              : "hover:bg-muted text-muted-foreground hover:text-foreground"
+          )}
         >
           <FolderPlus className="w-4 h-4" />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-3">
         <div className="space-y-0.5">
-          <div
+          {virtualRows.some((r) => r.key === "all") && (
+            <div
             onDragOver={(e) => {
               if (e.dataTransfer.types.includes(DASHBOARD_DRAG_TYPE)) {
                 e.preventDefault()
@@ -407,58 +509,65 @@ export function FolderTree({ selected, onSelect }: FolderTreeProps) {
             }}
             className={cn(
               "rounded-md",
-              allRootDropOver && "ring-2 ring-primary/60 bg-primary/10"
+              allRootDropOver &&
+                (tone === "sidebar" ? "ring-2 ring-sidebar-active/70 bg-sidebar-hover" : "ring-2 ring-primary/60 bg-primary/10")
             )}
           >
             <VirtualRow
               label="All dashboards"
-              icon={<HomeIcon className="w-4 h-4 text-foreground/70" />}
-              active={selected.kind === "virtual" && selected.location === "all"}
-              onClick={() => onSelect({ kind: "virtual", location: "all" })}
+              icon={<HomeIcon className={cn("w-4 h-4", tone === "sidebar" ? "text-sidebar-foreground/90" : "text-foreground/70")} />}
+              active={selectedState.kind === "virtual" && selectedState.location === "all"}
+              onClick={() => handleSelect({ kind: "virtual", location: "all" })}
               acceptsDashboard
+              tone={tone}
             />
-          </div>
-          <VirtualRow
+            </div>
+          )}
+          {virtualRows.some((r) => r.key === "shared") && <VirtualRow
             label="Shared with me"
-            icon={<Inbox className="w-4 h-4 text-foreground/70" />}
-            active={selected.kind === "virtual" && selected.location === "shared"}
-            onClick={() => onSelect({ kind: "virtual", location: "shared" })}
+            icon={<Inbox className={cn("w-4 h-4", tone === "sidebar" ? "text-sidebar-foreground/90" : "text-foreground/70")} />}
+            active={selectedState.kind === "virtual" && selectedState.location === "shared"}
+            onClick={() => handleSelect({ kind: "virtual", location: "shared" })}
             badge={sharedCount}
-          />
-          <VirtualRow
+            tone={tone}
+          />}
+          {virtualRows.some((r) => r.key === "recent") && <VirtualRow
             label="Recent"
-            icon={<Clock className="w-4 h-4 text-foreground/70" />}
-            active={selected.kind === "virtual" && selected.location === "recent"}
-            onClick={() => onSelect({ kind: "virtual", location: "recent" })}
-          />
-          <VirtualRow
+            icon={<Clock className={cn("w-4 h-4", tone === "sidebar" ? "text-sidebar-foreground/90" : "text-foreground/70")} />}
+            active={selectedState.kind === "virtual" && selectedState.location === "recent"}
+            onClick={() => handleSelect({ kind: "virtual", location: "recent" })}
+            tone={tone}
+          />}
+          {virtualRows.some((r) => r.key === "trash") && <VirtualRow
             label="Trash"
-            icon={<Trash2 className="w-4 h-4 text-foreground/70" />}
-            active={selected.kind === "virtual" && selected.location === "trash"}
-            onClick={() => onSelect({ kind: "virtual", location: "trash" })}
+            icon={<Trash2 className={cn("w-4 h-4", tone === "sidebar" ? "text-sidebar-foreground/90" : "text-foreground/70")} />}
+            active={selectedState.kind === "virtual" && selectedState.location === "trash"}
+            onClick={() => handleSelect({ kind: "virtual", location: "trash" })}
             badge={trashCount}
-          />
+            tone={tone}
+          />}
         </div>
         <div className="space-y-0.5">
-          <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className={cn("px-2 py-1 text-[11px] font-semibold uppercase tracking-wider", tone === "sidebar" ? "text-sidebar-muted" : "text-muted-foreground")}>
             Folders
           </div>
-          {tree.length === 0 ? (
-            <p className="px-2 py-1 text-xs text-muted-foreground">
+          {filteredTree.length === 0 ? (
+            <p className={cn("px-2 py-1 text-xs", tone === "sidebar" ? "text-sidebar-muted" : "text-muted-foreground")}>
               No folders yet — drag dashboards onto a folder to organize.
             </p>
           ) : (
-            tree.map((node) => (
+            filteredTree.map((node) => (
               <FolderRow
                 key={node.id}
                 node={node}
                 depth={0}
-                selected={selected}
-                onSelect={onSelect}
+                selected={selectedState}
+                onSelect={handleSelect}
                 expanded={expanded}
                 toggleExpanded={toggleExpanded}
                 renameId={renameId}
                 setRenameId={setRenameId}
+                tone={tone}
               />
             ))
           )}

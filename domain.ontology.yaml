@@ -611,7 +611,9 @@ business_rules:
   - "New surfaces are URL-driven via Next.js App Router routes: /workspace, /workspace/folder/[folderId], /workspace/shared, /workspace/dashboard/[dashboardId]/edit, /dashboards/[dashboardId]/full, /share/[token]."
   - "Legacy surfaces (Home, Site Overview, Plant Overview, Equipment Home, Tools) continue to use the in-store currentView router during the transitional phase."
   - "The Workspace module rail submenu is a single-level list containing exactly: 'All Dashboards', 'Shared with me', 'Recent', 'Trash'. No nested submenu is permitted."
-  - "Workspace navigation must render exactly one submenu surface at a time. The canonical submenu uses the left blue module-panel visual pattern (consistent with other module submenus), and any duplicate right-side white submenu presentation is not permitted."
+  - "The Workspace Module renders exactly one in-module navigation menu surface. A second parallel menu panel is not allowed."
+  - "The single Workspace in-module menu must preserve all existing Workspace navigation and information functions: All Dashboards, Shared with me, Recent, Trash, folder tree expansion/collapse, folder selection, and dynamic badges/counters."
+  - "The single Workspace in-module menu must use the established module submenu visual language (dark-blue panel styling used by other module submenus) while preserving feature parity with the previous white Workspace menu."
 
 invariants:
   - "Every entity has id, createdAt, and updatedAt."
@@ -650,4 +652,3 @@ invariants:
   - "The 'open elsewhere' indicator is rendered ONLY on the Equipment Home Page (dashboard tabs and dashboard cards). Workspace dashboard cards do NOT show it."
   - "Only one Dashboard Editor session may be active per Dashboard at a time across the whole app. Opening the editor acquires a cross-tab edit lock keyed by dashboardId; if another tab already holds the lock, the new tab is denied entry and a 'This dashboard is being edited at the moment' notification/toast is shown. The lock is released on editor unmount, save, or pagehide."
   - "Dashboard.thumbnailUrl is populated by capturing a generated screenshot of the rendered dashboard widget grid (e.g. via html2canvas-style mock or a deterministic SVG/canvas mock); thumbnails refresh on save. v1 may use a deterministic placeholder image generator if a real screenshot library is not yet wired."
-  - "Exactly one Workspace submenu instance is rendered for the Workspace module context. Rendering both a left module-panel submenu and a right content-panel duplicate at the same time is invalid."

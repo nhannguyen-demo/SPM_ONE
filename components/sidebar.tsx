@@ -1,14 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { useShallow } from "zustand/react/shallow"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/lib/store"
 import type { ActiveModule } from "@/lib/store"
+import { FolderTree } from "@/components/workspace/folder-tree"
 import { sites } from "@/lib/data"
 import { MODULES, NAV_SEARCH_PLACEHOLDERS, navMatches } from "@/components/sidebar/config"
 import { useWorkspaceStore, selectMyUnreadCount } from "@/lib/workspace/store"
-import { getCurrentUserId } from "@/lib/workspace/identity"
 import { useRouter, usePathname } from "next/navigation"
 import {
   Building2,
@@ -31,7 +29,6 @@ import {
   Inbox,
   Clock,
   Trash2,
-  FolderPlus,
 } from "lucide-react"
 import {
   Tooltip,
@@ -501,187 +498,9 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
    WORKSPACE PANEL — clean 4-entry submenu (per Task 24)
    ═══════════════════════════════════════════════════════════════════════════ */
 function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
-  const router = useRouter()
-  const pathname = usePathname() || "/"
-  const me = getCurrentUserId()
-  const { rawFolders, shares, dashboards, createFolder } = useWorkspaceStore(
-    useShallow((s) => ({
-      rawFolders: s.folders,
-      shares: s.shares,
-      dashboards: s.dashboards,
-      createFolder: s.createFolder,
-    }))
-  )
-
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
-
-  const folders = useMemo(
-    () =>
-      rawFolders
-        .filter((f) => f.ownerUserId === me)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [rawFolders, me]
-  )
-  const childrenByParent = useMemo(() => {
-    const map = new Map<string | null, Array<{ id: string; name: string }>>()
-    for (const f of folders) {
-      const key = f.parentFolderId ?? null
-      const list = map.get(key) ?? []
-      list.push({ id: f.id, name: f.name })
-      map.set(key, list)
-    }
-    for (const list of map.values()) {
-      list.sort((a, b) => a.name.localeCompare(b.name))
-    }
-    return map
-  }, [folders])
-  const sharedCount = useMemo(
-    () => shares.filter((sh) => sh.sharedWithUserId === me && !sh.revokedAt).length,
-    [shares, me]
-  )
-  const trashCount = useMemo(
-    () => dashboards.filter((d) => d.ownerUserId === me && d.deletedAt !== null).length,
-    [dashboards, me]
-  )
-  const q = searchQuery.trim().toLowerCase()
-  const folderMatches = (name: string) => !q || name.toLowerCase().includes(q)
-
-  const virtualItems = [
-    {
-      key: "all",
-      label: "All dashboards",
-      icon: <LayoutGrid className="w-4 h-4 flex-shrink-0" />,
-      href: "/workspace",
-      active: pathname === "/workspace",
-    },
-    {
-      key: "shared",
-      label: "Shared with me",
-      icon: <Inbox className="w-4 h-4 flex-shrink-0" />,
-      href: "/workspace/shared",
-      active: pathname === "/workspace/shared",
-      badge: sharedCount,
-    },
-    {
-      key: "recent",
-      label: "Recent",
-      icon: <Clock className="w-4 h-4 flex-shrink-0" />,
-      href: "/workspace/recent",
-      active: pathname === "/workspace/recent",
-    },
-    {
-      key: "trash",
-      label: "Trash",
-      icon: <Trash2 className="w-4 h-4 flex-shrink-0" />,
-      href: "/workspace/trash",
-      active: pathname === "/workspace/trash",
-      badge: trashCount,
-    },
-  ].filter((row) => navMatches(row.label, searchQuery))
-
-  const toggleFolder = (id: string) =>
-    setExpandedFolders((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-
-  const renderFolderBranch = (parentId: string | null, depth = 0): React.ReactNode => {
-    const nodes = childrenByParent.get(parentId) ?? []
-    return nodes
-      .filter((f) => folderMatches(f.name))
-      .map((folder) => {
-        const children = childrenByParent.get(folder.id) ?? []
-        const hasChildren = children.length > 0
-        const isExpanded = expandedFolders.has(folder.id)
-        const isActive = pathname === `/workspace/folder/${folder.id}`
-        return (
-          <div key={folder.id}>
-            <button
-              onClick={() => router.push(`/workspace/folder/${folder.id}`)}
-              className={cn(
-                "w-full flex items-center gap-2 pr-2 py-1.5 rounded-md text-sm transition-colors",
-                isActive
-                  ? "bg-sidebar-active text-white"
-                  : "hover:bg-sidebar-hover text-sidebar-foreground"
-              )}
-              style={{ paddingLeft: `${8 + depth * 16}px` }}
-            >
-              {hasChildren ? (
-                <span
-                  className="p-0.5 rounded hover:bg-white/10"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleFolder(folder.id)
-                  }}
-                >
-                  {isExpanded ? (
-                    <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-                  )}
-                </span>
-              ) : (
-                <span className="w-4 flex-shrink-0" />
-              )}
-              <FolderOpen className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate text-left">{folder.name}</span>
-            </button>
-            {hasChildren && isExpanded ? renderFolderBranch(folder.id, depth + 1) : null}
-          </div>
-        )
-      })
-  }
-
   return (
-    <div className="px-2 flex flex-col gap-2">
-      <div className="flex flex-col gap-0.5">
-        {virtualItems.length === 0 ? (
-          <p className="text-xs text-sidebar-muted px-1 py-2">No items match.</p>
-        ) : (
-          virtualItems.map((row) => (
-            <PanelNavItem
-              key={row.key}
-              icon={row.icon}
-              label={row.label}
-              active={row.active}
-              onClick={() => router.push(row.href)}
-            >
-              {row.badge && row.badge > 0 ? (
-                <span
-                  className={cn(
-                    "ml-auto min-w-[18px] h-[18px] px-1.5 rounded-full",
-                    row.active
-                      ? "bg-white/25 text-white"
-                      : "bg-sidebar-hover text-sidebar-foreground text-[10px] font-semibold",
-                    "flex items-center justify-center leading-none"
-                  )}
-                >
-                  {row.badge}
-                </span>
-              ) : null}
-            </PanelNavItem>
-          ))
-        )}
-      </div>
-      <div className="px-2 py-1 flex items-center justify-between">
-        <span className="text-[11px] font-semibold tracking-wider uppercase text-sidebar-muted">
-          Folders
-        </span>
-        <button
-          type="button"
-          aria-label="New folder"
-          className="p-1 rounded hover:bg-sidebar-hover text-sidebar-muted hover:text-sidebar-foreground"
-          onClick={() => {
-            const f = createFolder({ name: "New folder", parentFolderId: null })
-            router.push(`/workspace/folder/${f.id}`)
-          }}
-        >
-          <FolderPlus className="w-4 h-4" />
-        </button>
-      </div>
-      <div className="flex flex-col gap-0.5">{renderFolderBranch(null)}</div>
+    <div className="px-2">
+      <FolderTree tone="sidebar" inline searchQuery={searchQuery} />
     </div>
   )
 }
