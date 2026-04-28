@@ -164,7 +164,7 @@ function GlobalSearchBar() {
           ref={inputRef}
           id="home-global-search"
           type="text"
-          placeholder="Search assets, plants, equipment, dashboards…"
+          placeholder="Search assets, units, equipment, dashboards…"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
@@ -296,8 +296,8 @@ function AISummaryModule() {
 function wsDashToCard(ws: WorkspaceDashboard): EquipmentHomeDashCard {
   const equipName = (() => {
     for (const site of sites) {
-      for (const plant of site.plants) {
-        const eq = plant.equipment.find((e) => e.id === ws.equipmentId)
+      for (const unit of site.units) {
+        const eq = unit.equipment.find((e) => e.id === ws.equipmentId)
         if (eq) return eq.name
       }
     }
@@ -371,11 +371,11 @@ function navigateToDashboardFromCard(
   setViewMode: ReturnType<typeof useAppStore.getState>["setViewMode"]
 ) {
   addRecentDashboard(card.id)
-  const site = sites.find((s) => s.plants.some((p) => p.equipment.some((e) => e.id === card.equipId)))
-  const plant = site?.plants.find((p) => p.equipment.some((e) => e.id === card.equipId))
+  const site = sites.find((s) => s.units.some((p) => p.equipment.some((e) => e.id === card.equipId)))
+  const unit = site?.units.find((p) => p.equipment.some((e) => e.id === card.equipId))
   setCurrentPath({
     site: site?.id ?? currentPath.site,
-    plant: plant?.id ?? currentPath.plant,
+    plant: unit?.id ?? currentPath.plant,
     equipment: card.equipId,
     tab: card.tag,
   })

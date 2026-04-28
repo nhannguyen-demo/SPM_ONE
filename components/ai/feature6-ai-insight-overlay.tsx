@@ -301,24 +301,32 @@ export function AIBarChartThreshold() {
 
 const MAP_BADGES = [
   {
-    id: "plant-1-badge",
-    // Position in top-right of Plant 1 bounding box (top-left quadrant of map)
-    style: { top: "8px", left: "calc(50% - 28px)" },
+    id: "unit-2006-dcu-badge",
+    style: { top: "8px", left: "8px" },
     dot: "#22c55e",
     label: "Normal",
     labelColor: "#15803d",
     bg: "#ffffff",
-    tooltip: "No anomalies detected. Last scan: 2 hours ago.",
+    tooltip: "Unit 2006 - DCU: no anomalies. Last scan: 2 hours ago.",
   },
   {
-    id: "plant-2-badge",
-    // Position in top-right of Plant 2 bounding box (bottom-right quadrant)
-    style: { bottom: "8px", right: "8px", top: "auto", left: "auto" },
+    id: "unit-2007-hcu-badge",
+    style: { top: "8px", right: "8px", left: "auto" },
+    dot: "#22c55e",
+    label: "Normal",
+    labelColor: "#15803d",
+    bg: "#ffffff",
+    tooltip: "Unit 2007 - HCU: no anomalies. Last scan: 2 hours ago.",
+  },
+  {
+    id: "unit-2008-h2-badge",
+    style: { bottom: "8px", right: "12px", left: "auto", top: "auto" },
     dot: "#f59e0b",
     label: "Warning",
     labelColor: "#d97706",
     bg: "#fffbeb",
-    tooltip: "2 anomalies detected — Temperature spike on Equipment c. Review recommended.",
+    tooltip:
+      "Unit 2008 - Hydrogen: 2 anomalies — review pigtail temperature envelope on SMR Pigtails.",
   },
 ]
 

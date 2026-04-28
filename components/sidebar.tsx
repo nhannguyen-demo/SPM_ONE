@@ -343,8 +343,9 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
   const handleEquipmentClick = (siteId: string, plantId: string, equipmentId: string) => {
     ensureSpaShell()
     const site = sites.find((s) => s.id === siteId)
-    const plant = site?.plants.find((p) => p.id === plantId)
-    const equipment = plant?.equipment.find((e) => e.id === equipmentId)
+    const unit = site?.units.find((p) => p.id === plantId)
+    const equipment = unit?.equipment.find((e) => e.id === equipmentId)
+    if (equipment?.isPlaceholder) return
     const firstTab = equipment?.tabs?.[0] || "Overview"
 
     setCurrentPath({ site: siteId, plant: plantId, equipment: equipmentId, tab: firstTab })
@@ -356,23 +357,23 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
   const q = searchQuery.trim().toLowerCase()
 
   const filteredSites = sites.flatMap((site) => {
-    if (!q) return [{ site, visible: true, matchedPlants: site.plants }]
+    if (!q) return [{ site, visible: true, matchedUnits: site.units }]
 
     const siteMatches = site.name.toLowerCase().includes(q)
 
-    const matchedPlants = site.plants.flatMap((plant) => {
-      const plantMatches = plant.name.toLowerCase().includes(q)
-      const matchedEquipment = plant.equipment.filter((eq) =>
+    const matchedUnits = site.units.flatMap((unit) => {
+      const unitMatches = unit.name.toLowerCase().includes(q)
+      const matchedEquipment = unit.equipment.filter((eq) =>
         eq.name.toLowerCase().includes(q)
       )
-      if (plantMatches || matchedEquipment.length > 0) {
-        return [{ ...plant, equipment: plantMatches ? plant.equipment : matchedEquipment }]
+      if (unitMatches || matchedEquipment.length > 0) {
+        return [{ ...unit, equipment: unitMatches ? unit.equipment : matchedEquipment }]
       }
       return []
     })
 
-    if (siteMatches || matchedPlants.length > 0) {
-      return [{ site: { ...site, plants: siteMatches ? site.plants : matchedPlants }, visible: true, matchedPlants }]
+    if (siteMatches || matchedUnits.length > 0) {
+      return [{ site: { ...site, units: siteMatches ? site.units : matchedUnits }, visible: true, matchedUnits }]
     }
     return []
   })
@@ -418,16 +419,16 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
                 </div>
               </div>
 
-              {isSiteExpanded && site.plants.length > 0 && (
+              {isSiteExpanded && site.units.length > 0 && (
                 <div className="ml-4 mt-0.5">
-                  {site.plants.map((plant) => {
-                    const isPlantExpanded = autoExpand || expandedPlants.includes(plant.id)
-                    const isPlantActive = currentPath.plant === plant.id && currentView === "plant"
+                  {site.units.map((unit) => {
+                    const isPlantExpanded = autoExpand || expandedPlants.includes(unit.id)
+                    const isPlantActive = currentPath.plant === unit.id && currentView === "plant"
 
                     return (
-                      <div key={plant.id}>
+                      <div key={unit.id}>
                         <div
-                          onClick={() => handlePlantClick(site.id, plant.id)}
+                          onClick={() => handlePlantClick(site.id, unit.id)}
                           className={cn(
                             "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
                             isPlantActive
@@ -435,11 +436,11 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
                               : "hover:bg-sidebar-hover text-sidebar-foreground"
                           )}
                         >
-                          {plant.equipment.length > 0 ? (
+                          {unit.equipment.length > 0 ? (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                togglePlantExpanded(plant.id)
+                                togglePlantExpanded(unit.id)
                               }}
                               className="p-0.5 flex-shrink-0"
                             >
@@ -453,21 +454,25 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
                             <span className="w-4 flex-shrink-0" />
                           )}
                           <Factory className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{plant.name}</span>
+                          <span className="truncate">{unit.name}</span>
                         </div>
 
-                        {isPlantExpanded && plant.equipment.length > 0 && (
+                        {isPlantExpanded && unit.equipment.length > 0 && (
                           <div className="ml-4 mt-0.5">
-                            {plant.equipment.map((equipment) => {
+                            {unit.equipment.map((equipment) => {
                               const isEquipActive = currentPath.equipment === equipment.id
-
+                              const isPlaceholder = equipment.isPlaceholder
                               return (
                                 <div key={equipment.id}>
                                   <button
-                                    onClick={() => handleEquipmentClick(site.id, plant.id, equipment.id)}
+                                    type="button"
+                                    onClick={() => handleEquipmentClick(site.id, unit.id, equipment.id)}
+                                    disabled={isPlaceholder}
                                     className={cn(
                                       "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
-                                      isEquipActive && (currentView === "equipment" || currentView === "equipment-home" || currentView === "workspace")
+                                      isPlaceholder
+                                        ? "text-sidebar-muted/80 cursor-default"
+                                        : isEquipActive && (currentView === "equipment" || currentView === "equipment-home" || currentView === "workspace")
                                         ? "bg-sidebar-active text-white"
                                         : "hover:bg-sidebar-hover text-sidebar-foreground"
                                     )}

@@ -101,11 +101,11 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
    ═══════════════════════════════════════════════════════════════════════════ */
 function EquipmentInfoSection({
   equipment,
-  plant,
+  unit,
   site,
 }: {
   equipment: { id: string; name: string; tabs: string[] }
-  plant: { id: string; name: string }
+  unit: { id: string; name: string }
   site: { id: string; name: string }
 }) {
   return (
@@ -127,8 +127,8 @@ function EquipmentInfoSection({
               <span>{site.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="font-medium text-foreground">Plant</span>
-              <span>{plant.name}</span>
+              <span className="font-medium text-foreground">Unit</span>
+              <span>{unit.name}</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium text-foreground">Equipment</span>
@@ -318,13 +318,13 @@ function DashboardPopup({
   dashboardId,
   equipment,
   site,
-  plant,
+  unit,
   onClose,
 }: {
   dashboardId: string
   equipment: { id: string; name: string; tabs: string[] }
   site: { id: string; name: string }
-  plant: { id: string; name: string }
+  unit: { id: string; name: string }
   onClose: () => void
 }) {
   const {
@@ -395,7 +395,7 @@ function DashboardPopup({
       fileType: "pdf" as const,
       category: "Uploaded" as const,
       siteId: site.id,
-      plantId: plant.id,
+      plantId: unit.id,
       equipmentId: equipment.id,
       size: `${(0.9 + Math.random() * 1.5).toFixed(1)} MB`,
       date: new Date().toISOString().split("T")[0],
@@ -831,8 +831,8 @@ export function EquipmentHomeView() {
   const setInitialEquipmentFilter = useWorkspaceStore((s) => s.setInitialEquipmentFilter)
 
   const site = sites.find((s) => s.id === currentPath.site)
-  const plant = site?.plants.find((p) => p.id === currentPath.plant)
-  const equipment = plant?.equipment.find((e) => e.id === currentPath.equipment)
+  const unit = site?.units.find((p) => p.id === currentPath.plant)
+  const equipment = unit?.equipment.find((e) => e.id === currentPath.equipment)
 
   const [activePopupDashboardId, setActivePopupDashboardId] = useState<string | null>(null)
 
@@ -850,7 +850,7 @@ export function EquipmentHomeView() {
     setEquipmentHomeAutoOpenTab(null)
   }, [equipmentHomeAutoOpenTab, setEquipmentHomeAutoOpenTab])
 
-  if (!site || !plant || !equipment) {
+  if (!site || !unit || !equipment) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
         No equipment selected. Navigate to an equipment from the Assets panel.
@@ -866,7 +866,7 @@ export function EquipmentHomeView() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground mb-1">
-              {site.name} › {plant.name}
+              {site.name} › {unit.name}
             </p>
             <h1 className="text-xl font-bold text-foreground">{equipment.name}</h1>
           </div>
@@ -886,7 +886,7 @@ export function EquipmentHomeView() {
         <DashboardSection equipment={equipment} onOpenPopup={openPopup} />
 
         {/* ── Equipment Information ─────────────────────────────────── */}
-        <EquipmentInfoSection equipment={equipment} plant={plant} site={site} />
+        <EquipmentInfoSection equipment={equipment} unit={unit} site={site} />
 
         {/* ── Tools Section ─────────────────────────────────────────── */}
         <ToolsSection equipment={equipment} />
@@ -899,7 +899,7 @@ export function EquipmentHomeView() {
           dashboardId={activePopupDashboardId}
           equipment={equipment}
           site={site}
-          plant={plant}
+          unit={unit}
           onClose={closePopup}
         />
       )}

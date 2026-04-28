@@ -14,9 +14,9 @@ export function buildAssetOptions(): AssetOption[] {
   const options: AssetOption[] = [{ value: "All", label: "All Assets" }]
   for (const site of sites) {
     options.push({ value: `site-${site.id}`, label: site.name })
-    for (const plant of site.plants) {
-      options.push({ value: `plant-${plant.id}`, label: `  ${plant.name}` })
-      for (const equipment of plant.equipment) {
+    for (const unit of site.units) {
+      options.push({ value: `plant-${unit.id}`, label: `  ${unit.name}` })
+      for (const equipment of unit.equipment) {
         options.push({ value: `equip-${equipment.id}`, label: `    ${equipment.name}` })
       }
     }

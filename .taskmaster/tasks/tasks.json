@@ -2,100 +2,597 @@
   "master": {
     "tasks": [
       {
-        "id": "1",
-        "title": "Workspace seed expansion — publish all legacy tab dashboards",
-        "description": "Expand lib/workspace/seed.ts to include published WorkspaceDashboard entries for every tab currently in equipment.tabs (lib/data.ts) that is not yet covered by an existing published seed entry. This ensures Equipment Home has visual parity after removing dashboardCards as the data source.",
-        "details": "Add 7 new published dashboard skeletons to the dashSkels array in buildWorkspaceSeed():\n- Coke Drum (cokerId): 'Demo Engineer Team's Dashboard' (widgetsKey: \"Demo Engineer Team's Dashboard\", key: 'legacy-coker-demo'), 'Process' (widgetsKey: 'Process', key: 'legacy-coker-proc'), 'Fatigue' (widgetsKey: 'Fatigue', key: 'legacy-coker-fat'), 'Bulging' (widgetsKey: 'Bulging', key: 'legacy-coker-bul') — all status: 'published', ownerUserId: 'user-nhan', folder: null\n- HCU (hcuId): 'Reactor Health' (widgetsKey: 'Reactor Health', key: 'legacy-hcu-rea'), 'Process Control' (widgetsKey: 'Process Control', key: 'legacy-hcu-proc'), 'Maintenance' (widgetsKey: 'Maintenance', key: 'legacy-hcu-maint') — all status: 'published', ownerUserId: 'user-ben', folder: null\nAll 7 new entries must use stable deterministic IDs via the existing id = `dash-${d.key}` pattern (e.g., 'dash-legacy-coker-demo').\nKeep all existing seed entries unchanged. Ensure DEFAULT_GRIDS lookups succeed for all new widgetsKey values (they already exist in layouts.ts).",
-        "testStrategy": "After change: verify buildWorkspaceSeed().dashboards has 20 entries (13 existing + 7 new); all 7 new entries have lifecycleStatus='published' and deletedAt=null; widgetsKey resolves to non-empty widgets array; IDs are stable on repeated calls.",
-        "status": "done",
+        "id": "19",
+        "title": "Update domain ontology and PROJECT documentation",
+        "description": "Document the new Site → Unit → Equipment model and Apr 2026 naming convention in ontology files and PROJECT.md",
+        "details": "Update the domain ontology file to document the three-tier hierarchy (Site 2000 → Units 2006/2007/2008 → Equipment). Update PROJECT.md to align with ontology summary, describing the new asset structure with Site 2000 containing three process units. Include stable IDs mapping and naming conventions established in Apr 2026.",
+        "testStrategy": "Verify ontology file contains complete hierarchy documentation. Confirm PROJECT.md accurately reflects the new structure and is consistent with ontology. Check that all stable IDs are documented correctly.",
+        "priority": "high",
         "dependencies": [],
-        "priority": "high",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-04-27T14:46:05.991Z"
+        "updatedAt": "2026-04-28T17:04:12.131Z"
       },
       {
-        "id": "2",
-        "title": "Create lib/workspace-data.ts — canonical bridge adapter",
-        "description": "Create lib/workspace-data.ts providing the EquipmentHomeDashCard adapter type and all bridge utility functions used by Equipment Home, Home Page, Site/Plant Overview, and WhatIf to derive dashboard data from the Workspace store.",
-        "details": "Export the following from lib/workspace-data.ts:\n\n1. `EquipmentHomeDashCard` interface:\n   { id: string; equipment: string; equipId: string; tag: string; metrics: { value1: string; value2: string } }\n   This is a drop-in structural replacement for the legacy `dashboardCards[0]` shape.\n\n2. `getPublishedDashboardsForEquipment(equipmentId: string, dashboards: WorkspaceDashboard[]): EquipmentHomeDashCard[]`\n   - Filter by equipmentId, lifecycleStatus === 'published', deletedAt === null\n   - Map each WorkspaceDashboard: id = d.id, equipId = d.equipmentId, equipment = look up from sites (equipment.name), tag = d.name\n   - metrics: deterministic mock derived from a djb2-style hash of d.id ('XX%' for value1, '0.00X%' for value2)\n   - Return sorted by d.publishedAt desc (most recent first)\n\n3. `getDashboardById(id: string, dashboards: WorkspaceDashboard[]): WorkspaceDashboard | undefined`\n   - Simple find by id\n\n4. `LEGACY_TAG_TO_WORKSPACE_ID` — a const Record<string, string> mapping 'equipmentId:legacyTag' to the corresponding stable WorkspaceDashboard.id from the seed:\n   e.g., 'equipment-a:Demo Engineer Team\\'s Dashboard' -> 'dash-legacy-coker-demo'\n        'equipment-a:Monitoring' -> 'dash-nhan-coker-mon'\n        'equipment-a:Process' -> 'dash-legacy-coker-proc'\n        'equipment-a:Fatigue' -> 'dash-legacy-coker-fat'\n        'equipment-a:Bulging' -> 'dash-legacy-coker-bul'\n        'equipment-a:Cracking' -> 'dash-nhan-coker-cra'\n        'equipment-b:Overview' -> 'dash-ben-hcu-over'\n        'equipment-b:Reactor Health' -> 'dash-legacy-hcu-rea'\n        'equipment-b:Process Control' -> 'dash-legacy-hcu-proc'\n        'equipment-b:Maintenance' -> 'dash-legacy-hcu-maint'\n        'equipment-c:SMR Pigtail Integrity' -> 'dash-nhan-smr-pig'\n\n5. `getWorkspaceDashboardIdForTag(equipmentId: string, tag: string, dashboards: WorkspaceDashboard[]): string | undefined`\n   - Look up LEGACY_TAG_TO_WORKSPACE_ID with key `${equipmentId}:${tag}`\n   - If not found, fall back to dashboards.find(d => d.equipmentId === equipmentId && d.name === tag && d.lifecycleStatus === 'published')?.id\n   - Final fallback: dashboards.find(d => d.equipmentId === equipmentId && d.lifecycleStatus === 'published' && !d.deletedAt)?.id\n\nImport WorkspaceDashboard from lib/workspace/types; import sites from lib/data for equipment name resolution. No React imports (pure utility).",
-        "testStrategy": "Spot check: getPublishedDashboardsForEquipment('equipment-a', WORKSPACE_SEED.dashboards) returns 6 cards with equipId='equipment-a'; each has non-empty tag (= dashboard name), non-empty metrics. getWorkspaceDashboardIdForTag('equipment-a', 'Monitoring', ...) returns 'dash-nhan-coker-mon'. getDashboardById('dash-legacy-coker-demo', ...) returns the demo dashboard.",
-        "status": "done",
-        "dependencies": [
-          "1"
-        ],
+        "id": "20",
+        "title": "Update core data types and hierarchy structure in lib/data.ts",
+        "description": "Modify the asset hierarchy data structure to support the new Site 2000 with three units, preserving stable equipment IDs",
+        "details": "Update the site data structure to rename site-x to 'Site 2000'. Remove site-y completely. Create three new units: 'Unit 2006 - DCU' (id: unit-2006-dcu), 'Unit 2007 - HCU' (id: unit-2007-hcu), 'Unit 2008 - Hydrogen Unit' (id: unit-2008-h2). Move equipment-a, equipment-b, equipment-c to their respective units while preserving all existing tabs arrays and functional content.",
+        "testStrategy": "Verify site-x displays as 'Site 2000'. Confirm site-y is completely removed. Test that all three units appear with correct names and IDs. Validate that equipment-a, equipment-b, equipment-c retain their original tabs arrays and functional content.",
         "priority": "high",
+        "dependencies": [
+          "19"
+        ],
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-04-27T14:46:38.698Z"
+        "updatedAt": "2026-04-28T17:04:12.189Z"
       },
       {
-        "id": "3",
-        "title": "Wire Equipment Home to Workspace store (DashboardSection + DashboardPopup + cross-tab)",
-        "description": "Replace dashboardCards-based rendering in components/views/equipment-home.tsx with Workspace store data. DashboardSection reads published WorkspaceDashboard records; DashboardPopup uses WorkspaceDashboard.widgets for the grid while preserving all WIF overlay behavior intact.",
-        "details": "Changes in components/views/equipment-home.tsx:\n\n1. IMPORTS: Remove imports of `dashboardCards`, `DEFAULT_WIDGET_SETS`, `buildDefaultGrid`. Add imports: `useWorkspaceStore` from lib/workspace/store; `getPublishedDashboardsForEquipment`, `getDashboardById`, `EquipmentHomeDashCard` from lib/workspace-data.\n\n2. DashboardSection:\n   - Remove `const equipCards = dashboardCards.filter(c => c.equipId === equipment.id)`\n   - Subscribe to Workspace store: `const rawDashboards = useWorkspaceStore(useShallow(s => s.dashboards))`\n   - Derive `const equipCards = useMemo(() => getPublishedDashboardsForEquipment(equipment.id, rawDashboards), [equipment.id, rawDashboards])`\n   - `handleCardClick(card.id, card.id)` — pass workspace dashboard ID as both cardId and the open-popup identifier (not cardTag)\n\n3. DashboardPopup:\n   - Rename prop `cardTag: string` → `dashboardId: string`\n   - Subscribe: `const rawDashboards = useWorkspaceStore(useShallow(s => s.dashboards))`\n   - `const dashboard = useMemo(() => getDashboardById(dashboardId, rawDashboards), [dashboardId, rawDashboards])`\n   - Replace widget grid source: remove `const widgetSet = DEFAULT_WIDGET_SETS[cardTag] ?? []` and `const grid = buildDefaultGrid(widgetSet)`; use `const grid = dashboard?.widgets ?? []`\n   - Grid rendering: `grid.map(gw => ...)` is unchanged; layout items `layouts = grid.map(gw => gw.layout)` is unchanged\n   - Display name: replace `equipment.name — {cardTag}` with `equipment.name — {dashboard?.name ?? dashboardId}`\n   - New-tab URL: change from `/equipment-dashboard/${encodeURIComponent(equipment.id)}/${encodeURIComponent(cardTag)}/full` to `/dashboards/${encodeURIComponent(dashboardId)}/full`\n   - Report name: replace cardTag in filename with `dashboard?.name ?? dashboardId`\n   - aria-label: use `dashboard?.name ?? dashboardId`\n   - KEEP ALL UNCHANGED: viewedDataIds state, setViewedDataIds, visualReportGenerated, shareOpen, scenarioForEquipment, equipmentRuns, WIF overlay panel (viewedDataIds checkbox section), WidgetViewResolver props (viewType, equipmentId, viewedDataIds, scenarioRuns) — these must not change\n\n4. OpenElsewhereBadge:\n   - Change props from `{ equipmentId, tag }` to `{ dashboardId: string }`\n   - Remove `getEquipmentDashboardPresenceKey` helper function entirely\n   - Call `useDashboardOpenElsewhereCount(dashboardId)` directly\n   - Update all usages inside DashboardSection cards and DashboardPopup header to pass `dashboardId` (workspace ID)\n\n5. EquipmentHomeView:\n   - State: rename `activePopupTag` → `activePopupDashboardId` (string | null)\n   - `openPopup` callback: receives `dashboardId: string`\n   - Auto-open useEffect: change from `setActivePopupTag(equipmentHomeAutoOpenTab)` to `setActivePopupDashboardId(equipmentHomeAutoOpenTab)` (since it now carries a workspace ID)\n   - DashboardPopup JSX: `dashboardId={activePopupDashboardId!}`\n\n6. recents: `handleCardClick` calls `addRecentDashboard(card.id)` where card.id is WorkspaceDashboard.id (no semantic change, just correct ID)\n\nDo NOT change: WIF overlay logic, scenarioRuns derivation, viewedDataIds behavior, WidgetViewResolver rendering, visual layout, favorites display.",
-        "testStrategy": "Equipment Home renders same number of dashboard cards as before (6 for Coke Drum, 4 for HCU, 1 for SMR). Popup opens and shows correct dashboard name. Widget grid renders (uses dashboard.widgets). WIF overlay panel (Viewed Data section) still shows live + run checkboxes. Open-in-new-tab opens /dashboards/[uuid]/full. No TypeScript errors.",
-        "status": "done",
-        "dependencies": [
-          "1",
-          "2"
-        ],
-        "priority": "high",
-        "subtasks": [],
-        "updatedAt": "2026-04-27T14:51:28.882Z"
-      },
-      {
-        "id": "4",
-        "title": "Wire Home Page recents/favorites to Workspace store",
-        "description": "Update components/views/home-view.tsx so that DashboardCardRow, RecentDashboardsModule, FavoriteDashboardsModule, and navigateToDashboardFromCard resolve dashboard display data from the Workspace store instead of the static dashboardCards array.",
-        "details": "Changes in components/views/home-view.tsx:\n\n1. IMPORTS: Remove `dashboardCards` import from lib/data. Add `useWorkspaceStore` from lib/workspace/store; add `getDashboardById`, `EquipmentHomeDashCard`, `getPublishedDashboardsForEquipment` from lib/workspace-data.\n\n2. DashboardCardRow component:\n   - Add `const rawDashboards = useWorkspaceStore(useShallow(s => s.dashboards))`\n   - Replace `const cards = cardIds.map(id => dashboardCards.find(c => c.id === id)).filter(Boolean)` with:\n     `const cards = useMemo(() => { const allPublished = rawDashboards.filter(d => d.lifecycleStatus === 'published' && !d.deletedAt); return cardIds.map(id => { const ws = allPublished.find(d => d.id === id); if (!ws) return null; return getDashboardById_asCard(ws) }).filter(Boolean) }, [cardIds, rawDashboards])`\n   - Add helper `getDashboardById_asCard(ws: WorkspaceDashboard): EquipmentHomeDashCard` inline or as a local function that maps WorkspaceDashboard to the EquipmentHomeDashCard shape\n   - For thumbnailSrc: use `ws.thumbnailUrl ?? getEquipmentDashboardThumbnail(ws.equipmentId)` (thumbnailUrl from workspace store takes precedence)\n   - Typing: update all `(typeof dashboardCards)[0]` type references to `EquipmentHomeDashCard`\n\n3. navigateToDashboardFromCard:\n   - Signature change: `card: EquipmentHomeDashCard` instead of `(typeof dashboardCards)[0]`\n   - Logic unchanged: `addRecentDashboard(card.id)`, find site/plant by `card.equipId`, setCurrentPath with equipment: card.equipId and tab: card.tag\n   - tab in setCurrentPath is now `card.tag` which equals WorkspaceDashboard.name — keep this as-is (used for path context, Equipment Home will resolve the actual popup via getWorkspaceDashboardIdForTag in Task 3's auto-open effect)\n\n4. Global search 'dashboard' result handler (already in home-view.tsx near line 105):\n   - `const card = dashboardCards.find(c => c.equipId === result.equipmentId && c.tag === result.tab)` → replace with Workspace store lookup:\n     `const wsId = getWorkspaceDashboardIdForTag(result.equipmentId, result.tab, useWorkspaceStore.getState().dashboards)`\n   - `if (wsId) addRecentDashboard(wsId)` (no longer look for card)\n   - Navigation path: `tab: result.tab` unchanged (Equipment Home resolves it)\n\nDo NOT change: visual rendering of DashboardCard component, empty state messages, RecentDashboardsModule/FavoriteDashboardsModule JSX structure, favorites toggle logic.",
-        "testStrategy": "Home page renders. Recent dashboards section shows empty state (no items yet) or populated items when recents have been added via Equipment Home. Clicking a recent card navigates to Equipment Home. No TypeScript errors. No dashboardCards import remains.",
-        "status": "done",
-        "dependencies": [
-          "1",
-          "2"
-        ],
+        "id": "21",
+        "title": "Add placeholder equipment with non-navigating behavior",
+        "description": "Create placeholder equipment entries (Coker 02, Coker Furnace, HCU 02, SMR Catalyst Tubes) with isPlaceholder: true",
+        "details": "Add placeholder equipment: 'Coker 02' and 'Coker Furnace' under Unit 2006 - DCU, 'HCU 02' under Unit 2007 - HCU, 'SMR Catalyst Tubes' under Unit 2008 - Hydrogen Unit. Set isPlaceholder: true for all. Ensure these appear as plain tree nodes without navigation functionality when clicked.",
+        "testStrategy": "Verify all placeholder equipment appear in correct units. Test that clicking placeholder equipment does not change view or route. Confirm isPlaceholder flag is set correctly for all placeholder items.",
         "priority": "medium",
+        "dependencies": [
+          "20"
+        ],
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-04-27T14:51:29.194Z"
+        "updatedAt": "2026-04-28T17:04:12.205Z"
       },
       {
-        "id": "5",
-        "title": "Wire Site/Plant Overview tab stacks to Workspace store",
-        "description": "Update components/views/site-overview.tsx and components/views/plant-overview.tsx so their DashboardTabStack card lists are derived from published WorkspaceDashboard records instead of the static dashboardCards array.",
-        "details": "Changes in components/views/site-overview.tsx:\n1. IMPORTS: Remove `dashboardCards` import. Add `useWorkspaceStore` from lib/workspace/store; add `getPublishedDashboardsForEquipment`, `EquipmentHomeDashCard` from lib/workspace-data; add `useShallow` from zustand/react/shallow; add `useMemo` from react.\n2. Subscribe: `const rawDashboards = useWorkspaceStore(useShallow(s => s.dashboards))`\n3. Replace: `const siteCards = dashboardCards.filter(c => site.plants.some(p => p.equipment.some(eq => eq.id === c.equipId)))` with:\n   `const siteCards = useMemo(() => { const equipIds = new Set(site.plants.flatMap(p => p.equipment.map(e => e.id))); return rawDashboards.filter(d => d.lifecycleStatus === 'published' && !d.deletedAt && equipIds.has(d.equipmentId)).map(d => getPublishedDashboardsForEquipment(d.equipmentId, rawDashboards).find(c => c.id === d.id)).filter(Boolean) as EquipmentHomeDashCard[] }, [site, rawDashboards])`\n   OR simpler: `const siteCards = useMemo(() => { const result: EquipmentHomeDashCard[] = []; for (const plant of site.plants) for (const eq of plant.equipment) result.push(...getPublishedDashboardsForEquipment(eq.id, rawDashboards)); return result; }, [site, rawDashboards])`\n4. handleDashboardClick: `addRecentDashboard(card.id)` and `setEquipmentHomeAutoOpenTab(card.id)` where card.id is now WorkspaceDashboard.id\n5. groupedCards derivation uses card.equipId for grouping — unchanged\n\nSame pattern for components/views/plant-overview.tsx:\n- Replace `const plantCards = dashboardCards.filter(...)` with Workspace store derivation for the plant's equipment\n- handleDashboardClick: same WorkspaceDashboard.id pattern\n\nBoth files: remove dashboardCards import, add workspace-data imports.",
-        "testStrategy": "Site Overview and Plant Overview render their dashboard tab stacks with the same number of cards as before. Clicking a card navigates to Equipment Home and auto-opens the correct popup. addRecentDashboard receives a workspace ID. No TypeScript errors.",
-        "status": "done",
-        "dependencies": [
-          "1",
-          "2"
-        ],
-        "priority": "medium",
-        "subtasks": [],
-        "updatedAt": "2026-04-27T14:51:29.479Z"
-      },
-      {
-        "id": "6",
-        "title": "Wire WhatIf Compare Data to Workspace IDs + final cleanup",
-        "description": "Update the What-If tool's Compare Data navigation to resolve a WorkspaceDashboard.id as the auto-open target instead of a legacy tab name string. Mark dashboardCards as deprecated. Remove all remaining legacy tab-name-based identifier usage. Final typecheck pass.",
-        "details": "1. components/views/whatif-tool-view.tsx — onCompareData handler:\n   - Import `useWorkspaceStore` from lib/workspace/store\n   - Import `getWorkspaceDashboardIdForTag` from lib/workspace-data\n   - Inside the handler: `const { site, plant, tab } = findAssetPathForEquipment(panel.session.equipmentId)` — keep this for site/plant path context\n   - After getting tab, add: `const wsDashboards = useWorkspaceStore.getState().dashboards`\n     `const targetDashboardId = getWorkspaceDashboardIdForTag(panel.session.equipmentId, panel.session.selectedDashboards?.[0] ?? tab, wsDashboards) ?? tab`\n   - Call `setEquipmentHomeAutoOpenTab(targetDashboardId)` (was `setEquipmentHomeAutoOpenTab(tab)`)\n   - All other lines in onCompareData unchanged (setCurrentPath, setWhatIfDashboardAutoSelectRunId, setCurrentView, setViewMode)\n\n   Note: panel.session.selectedDashboards?.[0] is the first dashboard the WIF session was run for (e.g. 'Overview'); getWorkspaceDashboardIdForTag maps it to a WorkspaceDashboard.id. If the equipment-a Coke Drum WIF has selectedDashboards = ['Demo Engineer Team\\'s Dashboard'], the result is 'dash-legacy-coker-demo'.\n\n2. lib/data.ts:\n   - Add `@deprecated Use useWorkspaceStore().dashboards (lib/workspace/store) via lib/workspace-data.ts adapters instead.` JSDoc comment above the dashboardCards export\n\n3. Verify no remaining non-deprecated import of dashboardCards in equipment-home.tsx, home-view.tsx, site-overview.tsx, plant-overview.tsx after Tasks 3, 4, 5 are complete.\n\n4. lib/store.ts: no change needed — recentDashboardIds and favoriteDashboardIds are opaque string arrays; they now hold WorkspaceDashboard.id values which is correct.\n\n5. Run TypeScript type check: `npx tsc --noEmit` and resolve any type errors introduced by the migration (likely from card shape changes in home-view.tsx and site-overview.tsx).",
-        "testStrategy": "1. WhatIf tool: clicking Compare Data on a completed run navigates to Equipment Home and auto-opens a popup (not a blank page). 2. The auto-opened popup shows a valid dashboard from the Workspace store. 3. `npx tsc --noEmit` passes with no errors. 4. No console errors on Equipment Home, Home Page, Site Overview, or Plant Overview.",
-        "status": "done",
-        "dependencies": [
-          "3",
-          "4",
-          "5"
-        ],
+        "id": "22",
+        "title": "Update equipment display names and parent unit assignments",
+        "description": "Rename equipment to new display names while preserving stable IDs and all functional content",
+        "details": "Rename equipment-a to 'Coker 01' under Unit 2006 - DCU, equipment-b to 'HCU 01' under Unit 2007 - HCU, equipment-c to 'SMR Pigtails' under Unit 2008 - Hydrogen Unit. Preserve all existing tabs arrays, Equipment Home behavior, Workspace published dashboards, and What-If scenarios. Only change display names and parent unit membership.",
+        "testStrategy": "Navigate to each renamed equipment and verify all existing tabs are preserved. Test Equipment Home behavior remains unchanged. Confirm Workspace published dashboards and What-If scenarios work with equipment IDs, not old display strings.",
         "priority": "high",
+        "dependencies": [
+          "20"
+        ],
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-04-27T14:53:31.656Z"
+        "updatedAt": "2026-04-28T17:04:12.218Z"
+      },
+      {
+        "id": "23",
+        "title": "Create unit resolution helper function",
+        "description": "Implement helper function to resolve which unit contains a given equipmentId for navigation path defaults",
+        "details": "Create a helper function that takes an equipmentId and returns the parent unit information. This should support navigation path resolution and be used throughout the application for consistent unit-equipment mapping. Function should handle equipment-a → unit-2006-dcu, equipment-b → unit-2007-hcu, equipment-c → unit-2008-h2.",
+        "testStrategy": "Test helper function returns correct unit for each equipment ID. Verify function handles invalid equipment IDs gracefully. Test integration with navigation path resolution.",
+        "priority": "medium",
+        "dependencies": [
+          "20"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.222Z"
+      },
+      {
+        "id": "24",
+        "title": "Update sidebar asset tree with placeholder click suppression",
+        "description": "Modify sidebar to display new hierarchy and suppress navigation for placeholder equipment",
+        "details": "Update sidebar asset tree to show Site 2000 with three child units and their equipment. Implement click suppression for placeholder equipment (isPlaceholder: true) so they appear as plain tree nodes without navigation. Maintain existing styling patterns for consistency.",
+        "testStrategy": "Verify sidebar shows exactly one site 'Site 2000' with three units. Test that clicking functional equipment navigates correctly. Confirm placeholder equipment clicks do not trigger navigation or view changes.",
+        "priority": "high",
+        "dependencies": [
+          "21",
+          "22"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.226Z"
+      },
+      {
+        "id": "25",
+        "title": "Update Workspace seed dashboard string references",
+        "description": "Update all Workspace seeded dashboards to use new equipment display names while preserving equipmentId references",
+        "details": "Update lib/workspace-data.ts and related files to use new equipment display names in dashboard titles and labels. Preserve all equipmentId references to maintain dashboard functionality. Update eqByName mappings and display titles to reflect new naming convention.",
+        "testStrategy": "Verify all seeded dashboards display new equipment names. Test that dashboard functionality remains intact with preserved equipmentId references. Confirm eqByName mappings work correctly with new names.",
+        "priority": "medium",
+        "dependencies": [
+          "22"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.232Z"
+      },
+      {
+        "id": "26",
+        "title": "Update mock data tables and remove Site Y references",
+        "description": "Clean up mock data tables to remove Site Y and Unit TFR.40 references while preserving other demo data",
+        "details": "Remove all mock data rows that reference Site Y or Unit TFR.40. Preserve unrelated demo rows (e.g., 'Pipe a') unless they specifically depended on removed sites. Update any remaining mock data to reference the new unit structure where appropriate.",
+        "testStrategy": "Verify no references to Site Y or Unit TFR.40 remain in mock data. Test that unrelated demo data is preserved. Confirm updated mock data references correct new unit IDs.",
+        "priority": "medium",
+        "dependencies": [
+          "20"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.236Z"
+      },
+      {
+        "id": "27",
+        "title": "Update UserDocument plantId mapping to new unit IDs",
+        "description": "Map UserDocument.plantId and similar fields to new unit IDs for documents scoped to units",
+        "details": "Update document scoping to use new unit IDs. Map existing plantId references to appropriate unit IDs (unit-2006-dcu, unit-2007-hcu, unit-2008-h2). Ensure document filtering and scoping continues to work with the new unit structure.",
+        "testStrategy": "Test document filtering works with new unit IDs. Verify documents are correctly scoped to their respective units. Confirm plantId mapping functions correctly for all document types.",
+        "priority": "medium",
+        "dependencies": [
+          "20",
+          "23"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.246Z"
+      },
+      {
+        "id": "28",
+        "title": "Update Site Overview map regions and unit filters",
+        "description": "Modify Site Overview to display three units instead of former Plant 1/Plant 2 and Unit TFR.40",
+        "details": "Update Site Overview map regions to show the three new units. Replace filter dropdowns that previously listed Plant 1/Plant 2 and Unit TFR.40 with the new three-unit structure. Ensure map navigation and filtering work correctly with new unit hierarchy.",
+        "testStrategy": "Verify Site Overview map shows three new units correctly. Test filter dropdowns contain only the new units. Confirm map navigation works with new unit structure.",
+        "priority": "medium",
+        "dependencies": [
+          "20",
+          "23"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.264Z"
+      },
+      {
+        "id": "29",
+        "title": "Update What-If scenarios and labels",
+        "description": "Update What-If scenario labels and references to use new asset naming convention",
+        "details": "Update What-If scenario labels, descriptions, and any hardcoded references to use new equipment and unit names. Preserve all scenario functionality while updating user-visible strings. Ensure scenario equipment associations remain intact through stable IDs.",
+        "testStrategy": "Test all What-If scenarios display new asset names correctly. Verify scenario functionality is preserved. Confirm equipment associations work through stable IDs rather than old display names.",
+        "priority": "medium",
+        "dependencies": [
+          "22",
+          "25"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.272Z"
+      },
+      {
+        "id": "30",
+        "title": "Update AI features and snippets with new asset names",
+        "description": "Replace old asset names in AI snippets, suggestions, and related features with new naming convention",
+        "details": "Update AI feature strings, snippets, and any generated content to reference new asset names (Site 2000, Unit names, equipment names). Ensure AI suggestions and contextual help reflect the current asset hierarchy and naming.",
+        "testStrategy": "Verify AI snippets use new asset names. Test AI suggestions reference correct current asset hierarchy. Confirm no old asset names appear in AI-generated content.",
+        "priority": "low",
+        "dependencies": [
+          "22"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.274Z"
+      },
+      {
+        "id": "31",
+        "title": "Update dashboard creation placeholders and constants",
+        "description": "Replace old asset references in dashboard creation flows and home constants",
+        "details": "Update create-dashboard placeholder text, home page constants, and any hardcoded asset references to use new naming convention. Ensure dashboard creation workflows reference current asset structure.",
+        "testStrategy": "Test dashboard creation shows new asset names in placeholders. Verify home page constants display current asset names. Confirm all hardcoded references are updated.",
+        "priority": "low",
+        "dependencies": [
+          "22"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.289Z"
+      },
+      {
+        "id": "32",
+        "title": "Comprehensive string sweep and validation",
+        "description": "Perform final sweep to ensure no old asset names remain in user-visible strings across the application",
+        "details": "Conduct comprehensive search for any remaining references to old site names (Site Y), unit names (Unit CFR.101, Unit TFR.40), or old equipment names. Update change logs, deprecated dashboard card fallbacks, and any other user-visible strings. Verify complete migration to new naming convention.",
+        "testStrategy": "Search codebase for old asset name references. Test all user-facing interfaces show only new asset names. Verify change logs and documentation reflect new naming. Confirm no old asset names appear in any user-visible context.",
+        "priority": "medium",
+        "dependencies": [
+          "29",
+          "30",
+          "31"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T17:04:12.300Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-04-27T14:53:31.658Z",
-      "taskCount": 6,
-      "completedCount": 6,
+      "lastModified": "2026-04-28T17:04:12.300Z",
+      "taskCount": 14,
+      "completedCount": 14,
       "tags": [
         "master"
+      ]
+    }
+  },
+  "assets-hierarchy-reorg": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Update domain ontology and project documentation",
+        "description": "Update domain.ontology.yaml and PROJECT.md to define the Unit layer, placeholder equipment flag, and new Apr 28 2026 mock naming conventions",
+        "details": "Modify domain.ontology.yaml to include Unit entity definition with properties like unitId, name, plantId. Add Equipment.unitId relationship and Equipment.isPlaceholder boolean flag. Update PROJECT.md to document the new Site → Plant → Unit → Equipment hierarchy, explain placeholder equipment behavior, and document the stable IDs (equipment-a, equipment-b, equipment-c). Include business rules for Unit-Equipment relationships and placeholder rendering logic.",
+        "testStrategy": "Verify ontology schema validates correctly. Confirm documentation accurately reflects the new hierarchy structure and all entity relationships are properly defined.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T15:41:48.680Z"
+      },
+      {
+        "id": "2",
+        "title": "Restructure mock data hierarchy in lib/data.ts",
+        "description": "Restructure the mock data to implement Site → Plant → Unit → Equipment hierarchy, rename Site X to Site 2000, remove Site Y, and add new units and placeholder equipment",
+        "details": "Update lib/data.ts to:\n- Rename primary site from 'Site X' to 'Site 2000' (keep stable id 'site-x')\n- Remove 'Site Y' from mock data completely\n- Add Unit entities: 'Unit 2006 - DCU', 'Unit 2007 - HCU', 'Unit 2008 - Hydrogen Unit'\n- Rename equipment: 'Coke Drum' → 'Coker 01', 'HCU' → 'HCU 01', 'SMR Unit A' → 'SMR Pigtails'\n- Add placeholder equipment with isPlaceholder: true flag: 'Coker 02', 'Coker Furnace', 'HCU 02', 'SMR Catalyst Tubes'\n- Assign new stable IDs for placeholders (equipment-d, equipment-e, etc.)\n- Maintain stable IDs for existing equipment (equipment-a, equipment-b, equipment-c)",
+        "testStrategy": "Verify all sites, plants, units, and equipment are properly structured. Confirm Site Y is completely removed. Test that stable IDs are preserved for existing equipment and new IDs are assigned to placeholders.",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.320Z"
+      },
+      {
+        "id": "3",
+        "title": "Update TypeScript types for Unit layer",
+        "description": "Add TypeScript interfaces and types to support the new Unit entity and Equipment.unitId relationship",
+        "details": "Create or update TypeScript interfaces:\n- Add Unit interface with id, name, plantId, and equipment array\n- Update Equipment interface to include unitId property and isPlaceholder boolean\n- Update Plant interface to include units array\n- Add navigation path types that include unitId if needed for currentPath/store\n- Update any existing type guards or utility types that work with the hierarchy",
+        "testStrategy": "Verify TypeScript compilation passes without errors. Test that all hierarchy navigation and data access patterns work with new types. Confirm type safety is maintained across the application.",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.644Z"
+      },
+      {
+        "id": "4",
+        "title": "Update workspace seed data and lookups",
+        "description": "Modify workspace seed data to use new equipment display names while preserving existing dashboard content and stable ID bindings",
+        "details": "Update lib/workspace/seed.ts and lib/workspace-data.ts:\n- Update eqByName lookups to use new display names: 'Coker 01', 'HCU 01', 'SMR Pigtails'\n- Preserve all existing dashboard content, tab lists, and widget associations for equipment-a, equipment-b, equipment-c\n- Ensure 'SMR Pigtail Integrity' dashboard name is maintained for equipment-c\n- Update any hardcoded equipment name references in seed data\n- Verify workspace published dashboards continue to resolve correctly with stable equipment IDs",
+        "testStrategy": "Test that all existing dashboards load correctly with new equipment names. Verify What-If scenarios and seed data are preserved. Confirm workspace navigation resolves to correct equipment using stable IDs.",
+        "priority": "high",
+        "dependencies": [
+          "2",
+          "3"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.656Z"
+      },
+      {
+        "id": "5",
+        "title": "Update Asset module navigation tree UI",
+        "description": "Modify the Asset module sidebar tree to display the new Site → Plant → Unit → Equipment hierarchy and handle placeholder equipment clicks",
+        "details": "Update Asset module navigation components:\n- Modify tree rendering to show Unit level between Plant and Equipment\n- Update equipment iteration from plant.equipment to unit traversal\n- Implement placeholder equipment click handling (no-op, no navigation to Equipment Home)\n- Ensure tree expansion/collapse works correctly with new hierarchy\n- Update any plant.equipment direct iterations to traverse through units\n- Add visual indicators or styling for placeholder equipment if needed",
+        "testStrategy": "Manually test tree navigation shows correct hierarchy. Verify clicking placeholder equipment performs no navigation. Test that functional equipment still navigate to Equipment Home correctly. Confirm tree state management works with new structure.",
+        "priority": "high",
+        "dependencies": [
+          "3",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.669Z"
+      },
+      {
+        "id": "6",
+        "title": "Update site and plant overview components",
+        "description": "Modify site-overview.tsx and plant-overview.tsx to aggregate equipment data across units and handle placeholder equipment appropriately",
+        "details": "Update overview components:\n- Modify equipment iteration in site-overview.tsx to traverse units\n- Update plant-overview.tsx to group equipment cards by units\n- Exclude or zero out placeholder equipment in aggregations where appropriate\n- Ensure performance remains O(n) over equipment count\n- Update any equipment counting or status aggregation logic\n- Maintain existing overview functionality while supporting new hierarchy",
+        "testStrategy": "Test that site and plant overviews display correct equipment counts and aggregations. Verify placeholder equipment are handled appropriately in summaries. Confirm performance is not degraded with new hierarchy traversal.",
+        "priority": "medium",
+        "dependencies": [
+          "5"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.671Z"
+      },
+      {
+        "id": "7",
+        "title": "Update Zustand store and navigation state",
+        "description": "Modify the Zustand store to handle Unit-level navigation context and update currentPath logic if needed",
+        "details": "Update Zustand store:\n- Evaluate if currentPath needs explicit unitId for navigation context\n- Update navigation state management to handle Unit layer\n- Ensure equipment navigation continues to work with stable IDs\n- Update any path-based routing or state persistence\n- Maintain backward compatibility with existing navigation patterns\n- Consider flattening to equipment ID vs explicit unit context based on requirements",
+        "testStrategy": "Test navigation state persistence across page reloads. Verify equipment navigation works correctly with new hierarchy. Test that URL-less navigation continues to resolve using stable equipment IDs.",
+        "priority": "medium",
+        "dependencies": [
+          "3",
+          "5"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.676Z"
+      },
+      {
+        "id": "8",
+        "title": "Update global mock copy and constants",
+        "description": "Update all hardcoded references to old site and equipment names throughout the application",
+        "details": "Update references across the application:\n- home/constants: Update site and equipment name constants\n- changeLog: Update historical entries to use new naming or rewrite for demo realism\n- Documents and sync jobs: Update any hardcoded references\n- WIS names and feature3-health-summary: Update equipment references\n- Search through codebase for 'Site X', 'Coke Drum', 'SMR Unit A', etc.\n- Update any tooltips, help text, or user-facing strings",
+        "testStrategy": "Perform global search for old naming conventions to ensure complete migration. Test that all user-facing text displays new names correctly. Verify no broken references or inconsistent naming remains.",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.678Z"
+      },
+      {
+        "id": "9",
+        "title": "Implement placeholder equipment behavior",
+        "description": "Implement the isPlaceholder flag handling to ensure placeholder equipment render in tree but don't navigate on click",
+        "details": "Implement placeholder equipment logic:\n- Add isPlaceholder property handling in equipment rendering\n- Implement click handler that prevents navigation for placeholder equipment\n- Ensure placeholder equipment appear in tree structure but are non-functional\n- Add appropriate styling or visual cues for placeholder items\n- Verify currentView doesn't change to equipment-home when clicking placeholders\n- Maintain tree selection state without triggering navigation",
+        "testStrategy": "Manually test clicking each placeholder equipment (Coker 02, Coker Furnace, HCU 02, SMR Catalyst Tubes) performs no navigation. Verify they appear correctly in the tree structure. Confirm no Equipment Home or detail flows open on placeholder clicks.",
+        "priority": "medium",
+        "dependencies": [
+          "5"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.681Z"
+      },
+      {
+        "id": "10",
+        "title": "Update Equipment Home and detail views",
+        "description": "Ensure Equipment Home and related detail views work correctly with the new hierarchy and renamed equipment",
+        "details": "Update Equipment Home and detail components:\n- Verify Equipment Home loads correctly for renamed equipment\n- Update breadcrumb navigation to show Site → Plant → Unit → Equipment path\n- Ensure all equipment tabs and content load with new names\n- Update any hardcoded equipment references in detail views\n- Verify equipment context is properly maintained in detail flows\n- Test that stable equipment IDs continue to resolve correctly",
+        "testStrategy": "Test Equipment Home for all three main equipment (Coker 01, HCU 01, SMR Pigtails). Verify all tabs, dashboards, and content load correctly. Test breadcrumb navigation shows correct hierarchy path. Confirm stable ID resolution works.",
+        "priority": "medium",
+        "dependencies": [
+          "4",
+          "7"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.683Z"
+      },
+      {
+        "id": "11",
+        "title": "Update WIS View Data and global search",
+        "description": "Update WIS View Data functionality and global search to work with new equipment names and hierarchy",
+        "details": "Update WIS and search functionality:\n- Update WIS View Data to use new equipment names\n- Modify global search indexing to include new equipment names\n- Update search results to display new hierarchy path\n- Ensure search continues to find equipment by stable IDs\n- Update any search filters or categories that reference old names\n- Verify WIS data associations remain intact with renamed equipment",
+        "testStrategy": "Test global search finds equipment by new names. Verify WIS View Data displays correct equipment information. Test that search results show proper hierarchy context. Confirm WIS data integrity is maintained.",
+        "priority": "low",
+        "dependencies": [
+          "8"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.686Z"
+      },
+      {
+        "id": "12",
+        "title": "Regression testing and final validation",
+        "description": "Perform comprehensive regression testing to ensure all functionality works correctly with the new hierarchy and no existing features are broken",
+        "details": "Comprehensive testing:\n- Test all Asset module navigation flows\n- Verify all equipment dashboards and tabs load correctly\n- Test site/plant tab stacks work with new hierarchy\n- Verify What-If scenarios continue to work\n- Test workspace seed data and published dashboards\n- Confirm placeholder equipment behavior is correct\n- Test performance of hierarchy traversal\n- Verify Site Y is completely removed from all interfaces\n- Test that stable equipment IDs (equipment-a, equipment-b, equipment-c) resolve correctly",
+        "testStrategy": "Execute manual test plan covering all major user flows. Verify success criteria from PRD are met. Test edge cases and error conditions. Confirm no regressions in existing functionality. Validate that all FR requirements are satisfied.",
+        "priority": "high",
+        "dependencies": [
+          "9",
+          "10",
+          "11"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:18:21.693Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-04-28T16:18:21.693Z",
+      "taskCount": 12,
+      "completedCount": 12,
+      "tags": [
+        "assets-hierarchy-reorg"
+      ]
+    }
+  },
+  "asset-hierarchy-impl": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Update ontology documentation and project metadata",
+        "description": "Update domain.ontology.yaml and PROJECT.md to document the new Unit entity, Equipment.unitId, and Equipment.isPlaceholder properties",
+        "details": "Add Unit entity definition to domain.ontology.yaml with properties: id (string), name (string), plantId (string), equipment (Equipment[]). Update Equipment entity to include unitId (string) and isPlaceholder (boolean) properties. Document the new Site → Plant → Unit → Equipment hierarchy in PROJECT.md with examples of the three units: Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 - Hydrogen Unit.",
+        "testStrategy": "Verify documentation completeness by reviewing ontology schema and PROJECT.md for accurate hierarchy representation and property definitions",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-28T16:44:18.960Z"
+      },
+      {
+        "id": "2",
+        "title": "Update TypeScript types for hierarchy restructure",
+        "description": "Add TypeScript interfaces for Unit entity and update existing Site, Plant, and Equipment types to support the new hierarchy",
+        "details": "Create Unit interface with id, name, plantId, and equipment array. Update Equipment interface to include unitId and isPlaceholder boolean. Modify Site and Plant interfaces to support units array. Ensure backward compatibility for existing equipment IDs (equipment-a, equipment-b, equipment-c).",
+        "testStrategy": "Run `tsc --noEmit` to verify zero TypeScript compilation errors and validate type safety across the codebase",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "3",
+        "title": "Restructure mock data hierarchy in lib/data.ts",
+        "description": "Update the sites array to implement Site → Plant → Unit → Equipment hierarchy, rename Site X to Site 2000, and remove Site Y completely",
+        "details": "Rename primary site from 'Site X' to 'Site 2000' while preserving site-x ID. Remove site-y and all child records. Create three units: Unit 2006 - DCU (contains equipment-a as Coker 01), Unit 2007 - HCU (contains equipment-b as HCU 01), Unit 2008 - Hydrogen Unit (contains equipment-c as SMR Pigtails). Preserve all existing tabs arrays and dashboard associations for the three main equipment.",
+        "testStrategy": "Verify site-x ID preservation, complete removal of site-y references, and validate that equipment-a/b/c retain their stable IDs and content",
+        "priority": "high",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "4",
+        "title": "Add placeholder equipment to mock data",
+        "description": "Create placeholder equipment records (Coker 02, Coker Furnace, HCU 02, SMR Catalyst Tubes) with isPlaceholder: true and assign to appropriate units",
+        "details": "Add equipment-d (Coker 02), equipment-e (Coker Furnace) to Unit 2006 - DCU; equipment-f (HCU 02) to Unit 2007 - HCU; equipment-g (SMR Catalyst Tubes) to Unit 2008 - Hydrogen Unit. Set isPlaceholder: true, provide minimal or empty tabs arrays, and ensure no published dashboards are associated.",
+        "testStrategy": "Confirm placeholder equipment appear in correct units, have stable IDs, isPlaceholder flag set, and no dashboard associations",
+        "priority": "medium",
+        "dependencies": [
+          "3"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "5",
+        "title": "Update Zustand store for unit-level navigation",
+        "description": "Modify navigation state management to support unit-level expansion and path tracking in the asset tree",
+        "details": "Update currentPath state to handle Site → Plant → Unit → Equipment depth. Modify expansion state logic to track unit-level nodes. Ensure search functionality continues to work across the new hierarchy. Update navigation actions to support unit-level interactions while preserving existing equipment navigation for non-placeholder items.",
+        "testStrategy": "Test navigation state persistence, expansion/collapse of unit nodes, and search functionality across the new hierarchy levels",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "6",
+        "title": "Update Asset module sidebar/tree UI component",
+        "description": "Modify the asset tree component to render the new Site → Plant → Unit → Equipment hierarchy with proper unit rows and equipment iteration",
+        "details": "Update tree rendering logic to display units as intermediate nodes between plants and equipment. Implement unit row rendering with proper indentation and expansion controls. Ensure equipment rows render under their respective units. Handle placeholder equipment display (may include muted styling based on open questions).",
+        "testStrategy": "Verify tree structure displays correctly, unit nodes expand/collapse properly, and all equipment appear under correct units",
+        "priority": "high",
+        "dependencies": [
+          "4",
+          "5"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "7",
+        "title": "Implement placeholder equipment no-op navigation",
+        "description": "Ensure clicking placeholder equipment performs no navigation and does not open Equipment Home",
+        "details": "Add logic to check Equipment.isPlaceholder flag before navigation. For placeholder equipment, prevent currentView changes to equipment-home and maintain current navigation state. Ensure non-placeholder equipment (equipment-a, equipment-b, equipment-c) continue to navigate normally to Equipment Home.",
+        "testStrategy": "Click placeholder equipment and verify no navigation occurs, then click real equipment to confirm normal navigation still works",
+        "priority": "medium",
+        "dependencies": [
+          "6"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "8",
+        "title": "Update workspace seed data and lookups",
+        "description": "Update lib/workspace-data.ts and lib/workspace/seed.ts to use new equipment display names for name-based lookups",
+        "details": "Update WorkspaceDashboard seed rows to reference 'Coker 01', 'HCU 01', and 'SMR Pigtails' instead of old names. Modify any equipment.name lookups to use new display names. Preserve equipmentId foreign key references (equipment-a, equipment-b, equipment-c) for dashboard associations. Update dashboard titles where equipment names appear.",
+        "testStrategy": "Verify workspace dashboards display with correct equipment names and maintain proper associations with equipment IDs",
+        "priority": "medium",
+        "dependencies": [
+          "3"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "9",
+        "title": "Update site and plant overview aggregations",
+        "description": "Modify overview components to flatten or iterate over units when aggregating equipment data, excluding placeholders",
+        "details": "Update aggregation logic to traverse Site → Plant → Unit → Equipment hierarchy. Implement flattening function to collect equipment from all units. Exclude placeholder equipment (isPlaceholder: true) from aggregations. Maintain O(n) performance over equipment list. Update any summary statistics or counts to reflect the new structure.",
+        "testStrategy": "Verify aggregations exclude placeholder equipment, performance remains O(n), and summary data reflects only real equipment",
+        "priority": "medium",
+        "dependencies": [
+          "4"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "10",
+        "title": "Update home constants and global mock data strings",
+        "description": "Update components/views/home/constants.tsx, change logs, document metadata, and other global strings to use new display names",
+        "details": "Perform comprehensive string replacement across constants files, mock data arrays, change log entries, document titles, and similar copy. Replace 'Site X' with 'Site 2000', old equipment names with 'Coker 01', 'HCU 01', 'SMR Pigtails'. Remove any references to 'Site Y'. Update path references to reflect new hierarchy.",
+        "testStrategy": "Conduct project-wide string search to verify no stale references to old site or equipment names remain in user-visible content",
+        "priority": "medium",
+        "dependencies": [
+          "3"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "11",
+        "title": "Update Equipment Home and 3D routing",
+        "description": "Ensure Equipment Home and 3D visualization routes continue to work with preserved equipment IDs while displaying new names",
+        "details": "Verify equipment-3d.tsx and related routes continue to function with equipment-a, equipment-b, equipment-c IDs. Update any display names in Equipment Home headers, breadcrumbs, or titles to show 'Coker 01', 'HCU 01', 'SMR Pigtails'. Ensure routing logic remains unchanged for stable equipment IDs.",
+        "testStrategy": "Navigate to Equipment Home for each of the three main equipment and verify correct display names appear while functionality remains intact",
+        "priority": "medium",
+        "dependencies": [
+          "8"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "12",
+        "title": "Update What-If and scenario management strings",
+        "description": "Update scenario names, What-If associations, and related strings to use new equipment and site display names",
+        "details": "Update scenario mock data to reference new equipment names. Modify What-If scenario associations to use updated display names while preserving equipment ID relationships. Update any scenario descriptions or titles that reference the old site or equipment names.",
+        "testStrategy": "Verify What-If scenarios display with correct equipment names and maintain proper functional associations",
+        "priority": "low",
+        "dependencies": [
+          "10"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "13",
+        "title": "Update global search and AI summary strings",
+        "description": "Update search indexing and AI summary content to reflect new hierarchy and equipment names",
+        "details": "Update search index to include new unit names and equipment display names. Modify AI summary generation to use updated names when referencing equipment or site information. Ensure search results show correct hierarchy paths with new naming convention.",
+        "testStrategy": "Perform searches for equipment and verify results show new names and correct hierarchy paths in search results",
+        "priority": "low",
+        "dependencies": [
+          "10"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "14",
+        "title": "Comprehensive regression testing and validation",
+        "description": "Perform end-to-end testing of navigation, WIS compare-to-home, global search, and all affected features with new hierarchy",
+        "details": "Test complete user workflows: asset tree navigation, equipment home access, workspace dashboard functionality, What-If scenarios, document search, and change log viewing. Verify no broken links or missing references. Confirm placeholder equipment behavior and real equipment functionality. Validate that all user-visible strings use new naming convention.",
+        "testStrategy": "Execute comprehensive test scenarios covering all user paths, verify no regression in existing functionality, and confirm complete migration to new naming scheme",
+        "priority": "high",
+        "dependencies": [
+          "7",
+          "9",
+          "11",
+          "12",
+          "13"
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-04-28T16:44:18.960Z",
+      "taskCount": 14,
+      "completedCount": 1,
+      "tags": [
+        "asset-hierarchy-impl"
       ]
     }
   }

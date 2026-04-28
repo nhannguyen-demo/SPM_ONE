@@ -9,7 +9,7 @@
 // ─── Hardcoded content per level ────────────────────────────────────────────
 const HEALTH_CONTENT = {
   site: {
-    text: "Site X is operating within normal parameters. Plant 2 has 1 equipment approaching damage threshold. Last inspection was 14 days ago.",
+    text: "Site 2000 is operating within normal parameters. One unit has equipment approaching a damage threshold. Last inspection was 14 days ago.",
     status: "Normal" as const,
   },
   plant: {

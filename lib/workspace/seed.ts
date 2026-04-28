@@ -39,7 +39,7 @@ interface SeedResult {
 /* ─── Equipment lookup ─────────────────────────────────────────────────────── */
 
 const ALL_EQUIPMENT = sites
-  .flatMap((s) => s.plants.flatMap((p) => p.equipment))
+  .flatMap((s) => s.units.flatMap((p) => p.equipment))
   .filter((e) => e !== undefined)
 
 function eqByName(name: string): string | undefined {
@@ -85,7 +85,7 @@ export function buildWorkspaceSeed(): SeedResult {
     { key: "f-nhan-coker-fatigue", ownerUserId: "user-nhan", parentKey: "f-nhan-coker", name: "Fatigue Studies" },
     { key: "f-nhan-smr", ownerUserId: "user-nhan", parentKey: null, name: "SMR Pigtail" },
     { key: "f-nhan-archive", ownerUserId: "user-nhan", parentKey: null, name: "Archive" },
-    { key: "f-ben-hcu", ownerUserId: "user-ben", parentKey: null, name: "HCU Reactor Health" },
+    { key: "f-ben-hcu", ownerUserId: "user-ben", parentKey: null, name: "HCU 01 Reactor Health" },
     { key: "f-alex-shared-smr", ownerUserId: "user-alex", parentKey: null, name: "SMR Investigations" },
   ]
   for (const fs of folderSkels) {
@@ -99,15 +99,15 @@ export function buildWorkspaceSeed(): SeedResult {
     })
   }
 
-  const cokerId = eqByName("Coke Drum")!
-  const hcuId = eqByName("HCU")!
-  const smrId = eqByName("SMR Unit A")!
+  const cokerId = eqByName("Coker 01")!
+  const hcuId = eqByName("HCU 01")!
+  const smrId = eqByName("SMR Pigtails")!
 
   const dashSkels: DashSkel[] = [
     // ── Nhan (current user) — owner of several drafts + published dashboards ──
     {
       key: "nhan-coker-mon",
-      name: "Coke Drum — Live Monitoring",
+      name: "Coker 01 — Live Monitoring",
       equipmentId: cokerId,
       widgetsKey: "Monitoring",
       ownerUserId: "user-nhan",
@@ -118,7 +118,7 @@ export function buildWorkspaceSeed(): SeedResult {
     },
     {
       key: "nhan-coker-fat",
-      name: "Coke Drum — Fatigue Trend Q2",
+      name: "Coker 01 — Fatigue Trend Q2",
       equipmentId: cokerId,
       widgetsKey: "Fatigue",
       ownerUserId: "user-nhan",
@@ -128,7 +128,7 @@ export function buildWorkspaceSeed(): SeedResult {
     },
     {
       key: "nhan-coker-bul",
-      name: "Coke Drum — Bulging Survey",
+      name: "Coker 01 — Bulging Survey",
       equipmentId: cokerId,
       widgetsKey: "Bulging",
       ownerUserId: "user-nhan",
@@ -139,7 +139,7 @@ export function buildWorkspaceSeed(): SeedResult {
     },
     {
       key: "nhan-coker-cra",
-      name: "Coke Drum — Crack Watchlist",
+      name: "Coker 01 — Crack Watchlist",
       equipmentId: cokerId,
       widgetsKey: "Cracking",
       ownerUserId: "user-nhan",
@@ -170,7 +170,7 @@ export function buildWorkspaceSeed(): SeedResult {
     },
     {
       key: "nhan-coker-demo",
-      name: "Coke Drum — Demo Engineer Dashboard",
+      name: "Coker 01 — Demo Engineer Dashboard",
       equipmentId: cokerId,
       widgetsKey: "Demo Engineer Team's Dashboard",
       ownerUserId: "user-nhan",
@@ -180,7 +180,7 @@ export function buildWorkspaceSeed(): SeedResult {
     },
     {
       key: "nhan-coker-process",
-      name: "Coke Drum — Process Health (legacy)",
+      name: "Coker 01 — Process Health (legacy)",
       equipmentId: cokerId,
       widgetsKey: "Process",
       ownerUserId: "user-nhan",
@@ -265,7 +265,7 @@ export function buildWorkspaceSeed(): SeedResult {
     // ── Other users own these; some are shared with Nhan ──
     {
       key: "ben-hcu-over",
-      name: "HCU — Reactor Overview",
+      name: "HCU 01 — Reactor Overview",
       equipmentId: hcuId,
       widgetsKey: "Overview",
       ownerUserId: "user-ben",
@@ -276,7 +276,7 @@ export function buildWorkspaceSeed(): SeedResult {
     },
     {
       key: "ben-hcu-rea",
-      name: "HCU — Reactor Health Live",
+      name: "HCU 01 — Reactor Health Live",
       equipmentId: hcuId,
       widgetsKey: "Reactor Health",
       ownerUserId: "user-ben",
@@ -296,7 +296,7 @@ export function buildWorkspaceSeed(): SeedResult {
     },
     {
       key: "simon-coker-maint",
-      name: "Coke Drum — Maintenance Plan",
+      name: "Coker 01 — Maintenance Plan",
       equipmentId: cokerId,
       widgetsKey: "Maintenance",
       ownerUserId: "user-simon",
@@ -306,7 +306,7 @@ export function buildWorkspaceSeed(): SeedResult {
     },
     {
       key: "priya-hcu-proc",
-      name: "HCU — Process Control Tuning",
+      name: "HCU 01 — Process Control Tuning",
       equipmentId: hcuId,
       widgetsKey: "Process Control",
       ownerUserId: "user-priya",
@@ -483,7 +483,7 @@ export function buildWorkspaceSeed(): SeedResult {
     relatedShareId: "share-1",
     relatedRequestId: null,
     actorUserId: "user-ben",
-    title: "Ben Tran shared 'HCU — Reactor Health Live' with you",
+    title: "Ben Tran shared 'HCU 01 — Reactor Health Live' with you",
     body: "Permission: edit · \"Nhan, please review the temperature limits and tune if needed.\"",
     readAt: null,
     createdAt: D(20),
@@ -497,7 +497,7 @@ export function buildWorkspaceSeed(): SeedResult {
     relatedShareId: "share-4",
     relatedRequestId: null,
     actorUserId: "user-ben",
-    title: "Ben Tran viewed 'Coke Drum — Live Monitoring' for the first time",
+    title: "Ben Tran viewed 'Coker 01 — Live Monitoring' for the first time",
     body: null,
     readAt: D(18),
     createdAt: D(18),
@@ -511,7 +511,7 @@ export function buildWorkspaceSeed(): SeedResult {
     relatedShareId: "share-3",
     relatedRequestId: null,
     actorUserId: "user-priya",
-    title: "Priya Shah shared 'HCU — Process Control Tuning' with you",
+    title: "Priya Shah shared 'HCU 01 — Process Control Tuning' with you",
     body: "Permission: view",
     readAt: null,
     createdAt: D(50),
@@ -527,7 +527,7 @@ export function buildWorkspaceSeed(): SeedResult {
     relatedShareId: null,
     relatedRequestId: "req-1",
     actorUserId: "user-nhan",
-    title: "Nhan Nguyen requested comment access on 'HCU — Process Control Tuning'",
+    title: "Nhan Nguyen requested comment access on 'HCU 01 — Process Control Tuning'",
     body: "I'd like to leave notes on the tuning section.",
     readAt: null,
     createdAt: D(6),

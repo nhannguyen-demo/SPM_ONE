@@ -54,7 +54,7 @@ const COLS = { lg: 12, md: 12, sm: 12, xs: 6, xxs: 4 }
 
 function equipmentName(equipmentId: string): string {
   for (const s of sites)
-    for (const p of s.plants)
+    for (const p of s.units)
       for (const e of p.equipment) if (e.id === equipmentId) return e.name
   return "Unknown"
 }

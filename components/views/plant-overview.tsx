@@ -37,9 +37,9 @@ export function PlantOverview() {
   }
   
   const site = sites.find((s) => s.id === currentPath.site)
-  const plant = site?.plants.find((p) => p.id === currentPath.plant)
+  const unit = site?.units.find((p) => p.id === currentPath.plant)
   
-  if (!site || !plant) return null
+  if (!site || !unit) return null
 
   const handleEquipmentClick = (equipmentId: string) => {
     setCurrentPath({ site: currentPath.site, plant: currentPath.plant, equipment: equipmentId })
@@ -50,11 +50,11 @@ export function PlantOverview() {
   // grouping cards — derived from published WorkspaceDashboard records
   const plantCards = useMemo(() => {
     const result: EquipmentHomeDashCard[] = []
-    for (const eq of plant.equipment) {
+    for (const eq of unit.equipment) {
       result.push(...getPublishedDashboardsForEquipment(eq.id, rawDashboards))
     }
     return result
-  }, [plant, rawDashboards])
+  }, [unit, rawDashboards])
   const filteredCards = selectedFilter === "All" ? plantCards : plantCards.filter(c => c.equipment === selectedFilter)
   
   const groupedCards = filteredCards.reduce((acc, card) => {
@@ -74,7 +74,7 @@ export function PlantOverview() {
         )}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
-              {plant.name} Overview Dashboard
+              {unit.name} Overview Dashboard
             </span>
             <button
               onClick={() => setDashboardExpanded(!dashboardExpanded)}
@@ -148,7 +148,7 @@ export function PlantOverview() {
         {!dashboardExpanded && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Dashboards of {plant.name}</h2>
+              <h2 className="text-lg font-semibold text-foreground">Dashboards of {unit.name}</h2>
               <div className="flex items-center gap-2">
                 <select 
                   className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm"
@@ -159,7 +159,7 @@ export function PlantOverview() {
                   }}
                 >
                   <option value="All">All Equipments</option>
-                  {plant.equipment.map(eq => (
+                  {unit.equipment.map(eq => (
                     <option key={eq.id} value={eq.name}>{eq.name}</option>
                   ))}
                 </select>
@@ -216,7 +216,7 @@ export function PlantOverview() {
             </div>
 
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Dashboards of {plant.name}</h2>
+              <h2 className="text-lg font-semibold text-foreground">Dashboards of {unit.name}</h2>
               <div className="flex items-center gap-2">
                 <select 
                   className="h-9 px-3 bg-secondary border border-border rounded-lg text-sm"
@@ -227,7 +227,7 @@ export function PlantOverview() {
                   }}
                 >
                   <option value="All">All Equipments</option>
-                  {plant.equipment.map(eq => (
+                  {unit.equipment.map(eq => (
                     <option key={eq.id} value={eq.name}>{eq.name}</option>
                   ))}
                 </select>
