@@ -2,9 +2,16 @@
 
 import { useState, useRef, useEffect, useMemo } from "react"
 import { useAppStore } from "@/lib/store"
+import { useWorkspaceStore } from "@/lib/workspace/store"
+import { useShallow } from "zustand/react/shallow"
+import {
+  getPublishedDashboardsForEquipment,
+  getWorkspaceDashboardIdForTag,
+  type EquipmentHomeDashCard,
+} from "@/lib/workspace-data"
+import type { WorkspaceDashboard } from "@/lib/workspace/types"
 import {
   sites,
-  dashboardCards,
   getEquipmentDashboardThumbnail,
   changeLogEntries,
   userDocuments,
@@ -102,10 +109,12 @@ function GlobalSearchBar() {
         setCurrentView("equipment-home")
         break
       case "dashboard": {
-        const card = dashboardCards.find(
-          (c) => c.equipId === result.equipmentId && c.tag === result.tab
+        const wsId = getWorkspaceDashboardIdForTag(
+          result.equipmentId ?? "",
+          result.tab ?? "",
+          useWorkspaceStore.getState().dashboards,
         )
-        if (card) addRecentDashboard(card.id)
+        if (wsId) addRecentDashboard(wsId)
         setCurrentPath({
           site: result.siteId,
           plant: result.plantId,
@@ -284,6 +293,26 @@ function AISummaryModule() {
    SHARED — Dashboard Card Row (used by Recent + Favorite)
    ═══════════════════════════════════════════════════════════════════════════ */
 
+function wsDashToCard(ws: WorkspaceDashboard): EquipmentHomeDashCard {
+  const equipName = (() => {
+    for (const site of sites) {
+      for (const plant of site.plants) {
+        const eq = plant.equipment.find((e) => e.id === ws.equipmentId)
+        if (eq) return eq.name
+      }
+    }
+    return ws.equipmentId
+  })()
+  const h = ws.id.split("").reduce((acc, c) => ((acc << 5) + acc) ^ c.charCodeAt(0), 5381) >>> 0
+  return {
+    id: ws.id,
+    equipment: equipName,
+    equipId: ws.equipmentId,
+    tag: ws.name,
+    metrics: { value1: `${70 + (h % 30)}%`, value2: `${((h >> 8) % 90 / 1000).toFixed(3)}%` },
+  }
+}
+
 function DashboardCardRow({
   cardIds,
   emptyMessage,
@@ -291,11 +320,20 @@ function DashboardCardRow({
 }: {
   cardIds: string[]
   emptyMessage: string
-  onCardClick: (card: (typeof dashboardCards)[0]) => void
+  onCardClick: (card: EquipmentHomeDashCard) => void
 }) {
-  const cards = cardIds
-    .map((id) => dashboardCards.find((c) => c.id === id))
-    .filter(Boolean) as (typeof dashboardCards)
+  const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
+  const cards = useMemo(() => {
+    const published = rawDashboards.filter(
+      (d) => d.lifecycleStatus === "published" && !d.deletedAt,
+    )
+    return cardIds
+      .map((id) => {
+        const ws = published.find((d) => d.id === id)
+        return ws ? wsDashToCard(ws) : null
+      })
+      .filter(Boolean) as EquipmentHomeDashCard[]
+  }, [cardIds, rawDashboards])
 
   if (cards.length === 0) {
     return (
@@ -325,7 +363,7 @@ function DashboardCardRow({
 }
 
 function navigateToDashboardFromCard(
-  card: (typeof dashboardCards)[0],
+  card: EquipmentHomeDashCard,
   currentPath: ReturnType<typeof useAppStore.getState>["currentPath"],
   addRecentDashboard: (cardId: string) => void,
   setCurrentPath: ReturnType<typeof useAppStore.getState>["setCurrentPath"],
@@ -359,7 +397,7 @@ function RecentDashboardsModule() {
     currentPath,
   } = useAppStore()
 
-  const navigateToDashboard = (card: (typeof dashboardCards)[0]) =>
+  const navigateToDashboard = (card: EquipmentHomeDashCard) =>
     navigateToDashboardFromCard(card, currentPath, addRecentDashboard, setCurrentPath, setCurrentView, setViewMode)
 
   return (
@@ -390,7 +428,7 @@ function FavoriteDashboardsModule() {
   const visibleIds = showAll ? favoriteDashboardIds : favoriteDashboardIds.slice(0, LIMIT)
   const hasMore = favoriteDashboardIds.length > LIMIT
 
-  const navigateToDashboard = (card: (typeof dashboardCards)[0]) =>
+  const navigateToDashboard = (card: EquipmentHomeDashCard) =>
     navigateToDashboardFromCard(card, currentPath, addRecentDashboard, setCurrentPath, setCurrentView, setViewMode)
 
   return (

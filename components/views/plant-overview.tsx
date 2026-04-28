@@ -1,7 +1,10 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, plantDocuments, dashboardCards, getEquipmentDashboardThumbnail } from "@/lib/data"
+import { useWorkspaceStore } from "@/lib/workspace/store"
+import { useShallow } from "zustand/react/shallow"
+import { getPublishedDashboardsForEquipment, type EquipmentHomeDashCard } from "@/lib/workspace-data"
+import { sites, plantDocuments, getEquipmentDashboardThumbnail } from "@/lib/data"
 import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniPieChart, MiniBarChart } from "@/components/mini-charts"
@@ -10,25 +13,25 @@ import { cn } from "@/lib/utils"
 import { AIHealthSummaryCard } from "@/components/ai/feature3-health-summary"
 // FEATURE 5 — P&ID Anomaly Overlay
 import { PIDAnomalyOverlay } from "@/components/ai/feature5-pid-anomaly"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { DashboardTabStack } from "@/components/ui/dashboard-tab-stack"
 
 export function PlantOverview() {
   const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded, expandedEquipment, addRecentDashboard, setEquipmentHomeAutoOpenTab } = useAppStore()
+  const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
   const [selectedFilter, setSelectedFilter] = useState("All")
   const [expandedEquipStack, setExpandedEquipStack] = useState<string | null>(null)
 
-  const handleDashboardClick = (card: any) => {
-    const equipId = card.equipId || card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
+  const handleDashboardClick = (card: EquipmentHomeDashCard) => {
     addRecentDashboard(card.id)
-    setCurrentPath({ ...currentPath, equipment: equipId, tab: card.tag })
-    setEquipmentHomeAutoOpenTab(card.tag)
+    setCurrentPath({ ...currentPath, equipment: card.equipId, tab: card.tag })
+    setEquipmentHomeAutoOpenTab(card.id)
     setCurrentView("equipment-home")
-    if (!expandedEquipment.includes(equipId)) toggleEquipmentExpanded(equipId)
+    if (!expandedEquipment.includes(card.equipId)) toggleEquipmentExpanded(card.equipId)
   }
 
   const handleEquipmentNameClick = (equipId: string) => {
-    setCurrentPath({ ...currentPath, equipment: equipId, tab: "#process" })
+    setCurrentPath({ ...currentPath, equipment: equipId })
     setCurrentView("equipment-home")
     if (!expandedEquipment.includes(equipId)) toggleEquipmentExpanded(equipId)
   }
@@ -39,20 +42,26 @@ export function PlantOverview() {
   if (!site || !plant) return null
 
   const handleEquipmentClick = (equipmentId: string) => {
-    setCurrentPath({ site: currentPath.site, plant: currentPath.plant, equipment: equipmentId, tab: "#process" })
+    setCurrentPath({ site: currentPath.site, plant: currentPath.plant, equipment: equipmentId })
     setCurrentView("equipment-home")
     toggleEquipmentExpanded(equipmentId)
   }
 
-  // grouping cards
-  const plantCards = dashboardCards.filter(c => plant.equipment.some(eq => eq.id === c.equipId))
+  // grouping cards — derived from published WorkspaceDashboard records
+  const plantCards = useMemo(() => {
+    const result: EquipmentHomeDashCard[] = []
+    for (const eq of plant.equipment) {
+      result.push(...getPublishedDashboardsForEquipment(eq.id, rawDashboards))
+    }
+    return result
+  }, [plant, rawDashboards])
   const filteredCards = selectedFilter === "All" ? plantCards : plantCards.filter(c => c.equipment === selectedFilter)
   
   const groupedCards = filteredCards.reduce((acc, card) => {
     if (!acc[card.equipId]) acc[card.equipId] = { equipmentName: card.equipment, cards: [] }
     acc[card.equipId].cards.push(card)
     return acc
-  }, {} as Record<string, { equipmentName: string, cards: any[] }>)
+  }, {} as Record<string, { equipmentName: string, cards: EquipmentHomeDashCard[] }>)
 
   return (
     <div className="flex-1 flex min-w-0 overflow-hidden">

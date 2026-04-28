@@ -71,6 +71,11 @@ export function getEquipmentDashboardThumbnail(equipId: string | undefined): str
   return equipmentDashboardThumbnails[equipId]
 }
 
+/**
+ * @deprecated Use `useWorkspaceStore().dashboards` (lib/workspace/store) via the
+ * adapters in lib/workspace-data.ts instead. This static array remains here as
+ * a fallback only and will be removed once all consumers are migrated.
+ */
 export const dashboardCards = [
   {
     id: "dash-1",

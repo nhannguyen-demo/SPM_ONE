@@ -55,6 +55,7 @@ Business behavior reflected in ontology:
 - The Equipment Home Page Dashboard Popup `Open in new tab` action navigates a new browser tab to the Full-Screen Dashboard Viewer route and closes the popup in the originating tab.
 - A dashboard can be open simultaneously in multiple browser tabs; the Equipment Home Page shows a live `open elsewhere` indicator (count) per dashboard via cross-tab `BroadcastChannel`/`storage` signalling.
 - The Workspace `AppModule` is the canonical home for dashboard editing; `Edit Dashboards` from Equipment Home Page navigates here pre-scoped to the originating equipment.
+- **Canonical data source (Apr 27 2026)**: `WorkspaceDashboard` (from `useWorkspaceStore`) is the single source of truth for dashboard metadata. Equipment Home Page, Home Page Recents/Favorites, and Site/Plant Overview Tab Stacks derive their dashboard lists from published `WorkspaceDashboard` records via `lib/workspace-data.ts` adapters. The static `dashboardCards` array in `lib/data.ts` is deprecated. Dashboard identity across Asset surfaces is keyed on `WorkspaceDashboard.id`.
 
 ## Current Build State
 - ✅ App shell and manual view router (`currentView`) with two-layer sidebar + header.
@@ -78,7 +79,7 @@ Business behavior reflected in ontology:
 - ✅ Dashboard Popup implemented in read-only mode with Viewed Data + report/share actions.
 - ✅ Tools Section implemented on Equipment Home Page (Data & Sync, Shift Log placeholder, Documents, What-If Scenario).
 - ✅ Workspace module stub implemented as the "Edit Dashboards" navigation target.
-- ✅ What-If History -> "View results" now routes back to Equipment Home popup with auto-selected viewed-data run.
+- ✅ What-If History -> "View results" / result **View Data** routes back to Equipment Home for that run's equipment; viewed-data run is queued for overlay when the user opens a dashboard popup (no forced popup or mystery dashboard).
 - ✅ Site/Plant dashboard stack tab clicks now route to Equipment Home popup (not legacy equipment dashboard screen).
 - ✅ Site/Plant dashboard stack equipment-name labels now route to Equipment Home page and are visually clickable link controls.
 - 🚧 **Workspace Module — full content management (in design)**: per-user dashboards, nested folders, search/filter/sort, drafts vs. published lifecycle, popup viewer with Comments + Edit + Open-in-new-tab, Workspace-native editor reusing Widget Library, sharing with named users and copyable links with permission levels (view/comment/edit), Shared-with-me, permission requests.
@@ -148,6 +149,7 @@ Routing principles:
 - **Routing strategy (phased)**: new Workspace, Full-Screen Viewer, and Share-link surfaces are URL-driven via App Router; legacy surfaces continue to use `currentView`. Cross-module navigation that must survive reload (folder, dashboard popup target, full-screen viewer, share-link landing) goes through real URLs.
 - **Workspace module rail submenu**: cleaned to a single-level list — "All Dashboards", "Shared with me", "Recent", "Trash". No nested submenu permitted. Replaces previous "Favorite" / "Share with me" stubs.
 - **Workspace in-page menu unification**: Workspace must render a single in-module navigation panel (no duplicate white + blue menus). The unified panel uses the dark-blue submenu visual style used across modules, while retaining all functional behavior currently provided by the white Workspace menu (locations, folder tree interactions, and badges/counters).
+- **Canonical dashboard data source**: `WorkspaceDashboard` records (via `useWorkspaceStore`) are the single source of truth for dashboard metadata. `lib/workspace-data.ts` provides the `EquipmentHomeDashCard` adapter type and bridge functions (`getPublishedDashboardsForEquipment`, `getDashboardById`, `getWorkspaceDashboardIdForTag`) that Asset and Home modules consume. The legacy `dashboardCards` static array is deprecated. Cross-tab presence and Site/Plant one-shot auto-open use `WorkspaceDashboard.id`. What-If result **View Data** navigates to Equipment Home only (no auto-open popup); `whatIfDashboardAutoSelectRunId` still primes Viewed Data when the user opens a dashboard.
 
 ## Known Tech Debt
 Prioritized from audit:
@@ -156,6 +158,7 @@ Prioritized from audit:
 - URL-less navigation (`currentView` only): no deep links/back-button semantics for real workflows.
 - No persistence for recents/favourites (session reset on refresh).
 - Global single `equipmentKPIs` constant still used in UI (not per-equipment data model).
+- Static `dashboardCards` array in `lib/data.ts` (deprecated; active migration to `WorkspaceDashboard` canonical source underway).
 
 2) Medium
 - Legacy What-If modal flow still mounted while WIS Tool v2 is canonical (parallel pathways).

@@ -1,7 +1,10 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { sites, siteDocuments, dashboardCards, getEquipmentDashboardThumbnail } from "@/lib/data"
+import { useWorkspaceStore } from "@/lib/workspace/store"
+import { useShallow } from "zustand/react/shallow"
+import { getPublishedDashboardsForEquipment, type EquipmentHomeDashCard } from "@/lib/workspace-data"
+import { sites, siteDocuments, getEquipmentDashboardThumbnail } from "@/lib/data"
 import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink, ChevronRight, ArrowUpRight } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniLineChart, MiniPieChart, MiniBarChart } from "@/components/mini-charts"
@@ -10,11 +13,12 @@ import { cn } from "@/lib/utils"
 import { AIHealthSummaryCard } from "@/components/ai/feature3-health-summary"
 // FEATURE 6C — AI Map Badges (activated via FEATURE 1 AI Insight button)
 import { AIMapBadges } from "@/components/ai/feature6-ai-insight-overlay"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { DashboardTabStack } from "@/components/ui/dashboard-tab-stack"
 
 export function SiteOverview() {
   const { currentPath, setCurrentPath, setCurrentView, togglePlantExpanded, dashboardExpanded, setDashboardExpanded, addRecentDashboard, setEquipmentHomeAutoOpenTab, toggleEquipmentExpanded, expandedEquipment } = useAppStore()
+  const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
   const [selectedFilter, setSelectedFilter] = useState("All")
   const [expandedEquipStack, setExpandedEquipStack] = useState<string | null>(null)
   
@@ -27,25 +31,32 @@ export function SiteOverview() {
     togglePlantExpanded(plantId)
   }
 
-  const handleDashboardClick = (card: any) => {
-    const equipId = card.equipId || card.equipment.toLowerCase().replace(": ", "-").replace(" ", "-")
+  const handleDashboardClick = (card: EquipmentHomeDashCard) => {
     const plantId = currentPath.plant || "plant-1"
     addRecentDashboard(card.id)
-    setCurrentPath({ ...currentPath, plant: plantId, equipment: equipId, tab: card.tag })
-    setEquipmentHomeAutoOpenTab(card.tag)
+    setCurrentPath({ ...currentPath, plant: plantId, equipment: card.equipId, tab: card.tag })
+    setEquipmentHomeAutoOpenTab(card.id)
     setCurrentView("equipment-home")
-    if (!expandedEquipment.includes(equipId)) toggleEquipmentExpanded(equipId)
+    if (!expandedEquipment.includes(card.equipId)) toggleEquipmentExpanded(card.equipId)
   }
 
-  const handleEquipmentNameClick = (equipId: string, card: any) => {
+  const handleEquipmentNameClick = (equipId: string, card: EquipmentHomeDashCard) => {
     const plantId = currentPath.plant || "plant-1"
     setCurrentPath({ ...currentPath, plant: plantId, equipment: equipId, tab: card.tag })
     setCurrentView("equipment-home")
     if (!expandedEquipment.includes(equipId)) toggleEquipmentExpanded(equipId)
   }
 
-  // grouping cards
-  const siteCards = dashboardCards.filter(c => site.plants.some(p => p.equipment.some(eq => eq.id === c.equipId)))
+  // grouping cards — derived from published WorkspaceDashboard records
+  const siteCards = useMemo(() => {
+    const result: EquipmentHomeDashCard[] = []
+    for (const plant of site.plants) {
+      for (const eq of plant.equipment) {
+        result.push(...getPublishedDashboardsForEquipment(eq.id, rawDashboards))
+      }
+    }
+    return result
+  }, [site, rawDashboards])
   const filteredCards = selectedFilter === "All" 
     ? siteCards 
     : siteCards.filter(c => site.plants.find(p => p.name === selectedFilter)?.equipment.some(eq => eq.id === c.equipId))

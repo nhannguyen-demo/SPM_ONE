@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAppStore, type WhatIfRunSession } from "@/lib/store"
 import { useWorkspaceStore } from "@/lib/workspace/store"
+import { useShallow } from "zustand/react/shallow"
 import { useDashboardOpenElsewhereCount } from "@/lib/workspace/use-viewer-tabs"
 import {
   sites,
-  dashboardCards,
   plantDocuments,
   getEquipmentDashboardThumbnail,
   whatIfScenarios,
@@ -16,10 +16,10 @@ import {
   type WhatIfScenarioDefinition,
 } from "@/lib/data"
 import {
-  buildDefaultGrid,
-  DEFAULT_WIDGET_SETS,
-  type GridWidget,
-} from "@/components/views/equipment-dashboard/layouts"
+  getPublishedDashboardsForEquipment,
+  getDashboardById,
+  type EquipmentHomeDashCard,
+} from "@/lib/workspace-data"
 import { WidgetErrorBoundary, WidgetViewResolver } from "@/components/views/equipment-dashboard/widget-view-resolver"
 import { DashboardCard } from "@/components/dashboard-card"
 import { cn } from "@/lib/utils"
@@ -45,7 +45,7 @@ import {
   Lock,
   Users,
 } from "lucide-react"
-import { Responsive as ResponsiveGridLayout, type Layout } from "react-grid-layout/legacy"
+import { Responsive as ResponsiveGridLayout } from "react-grid-layout/legacy"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 
@@ -54,22 +54,14 @@ import "react-resizable/css/styles.css"
    the same dashboard has at least one full-screen viewer open in another tab.
    Per resolved open question: only rendered on the Equipment Home Page.
    ═══════════════════════════════════════════════════════════════════════════ */
-function getEquipmentDashboardPresenceKey(equipmentId: string, tag: string) {
-  return `equipment-${equipmentId}-${tag}`
-}
-
 function OpenElsewhereBadge({
-  equipmentId,
-  tag,
+  dashboardId,
   variant = "card",
 }: {
-  equipmentId: string
-  tag: string
+  dashboardId: string
   variant?: "card" | "popup"
 }) {
-  const count = useDashboardOpenElsewhereCount(
-    getEquipmentDashboardPresenceKey(equipmentId, tag)
-  )
+  const count = useDashboardOpenElsewhereCount(dashboardId)
   if (count <= 0) return null
 
   if (variant === "popup") {
@@ -182,7 +174,7 @@ function DashboardSection({
   onOpenPopup,
 }: {
   equipment: { id: string; name: string; tabs: string[] }
-  onOpenPopup: (cardTag: string) => void
+  onOpenPopup: (dashboardId: string) => void
 }) {
   const {
     recentDashboardIds,
@@ -191,29 +183,33 @@ function DashboardSection({
     addRecentDashboard,
   } = useAppStore()
 
-  const equipCards = dashboardCards.filter((c) => c.equipId === equipment.id)
+  const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
+  const equipCards = useMemo(
+    () => getPublishedDashboardsForEquipment(equipment.id, rawDashboards),
+    [equipment.id, rawDashboards],
+  )
   const thumbnailSrc = getEquipmentDashboardThumbnail(equipment.id)
 
-  const recentCards = recentDashboardIds
-    .map((id) => equipCards.find((c) => c.id === id))
-    .filter(Boolean) as typeof equipCards
+  const recentCards = useMemo(
+    () => recentDashboardIds.map((id) => equipCards.find((c) => c.id === id)).filter(Boolean) as EquipmentHomeDashCard[],
+    [recentDashboardIds, equipCards],
+  )
 
-  const favoriteCards = favoriteDashboardIds
-    .map((id) => equipCards.find((c) => c.id === id))
-    .filter(Boolean) as typeof equipCards
+  const favoriteCards = useMemo(
+    () => favoriteDashboardIds.map((id) => equipCards.find((c) => c.id === id)).filter(Boolean) as EquipmentHomeDashCard[],
+    [favoriteDashboardIds, equipCards],
+  )
 
-  const allCards = equipCards
-
-  const handleCardClick = (cardId: string, cardTag: string) => {
-    addRecentDashboard(cardId)
-    onOpenPopup(cardTag)
+  const handleCardClick = (dashboardId: string) => {
+    addRecentDashboard(dashboardId)
+    onOpenPopup(dashboardId)
   }
 
   function CardRow({
     cards,
     emptyMessage,
   }: {
-    cards: typeof equipCards
+    cards: EquipmentHomeDashCard[]
     emptyMessage: string
   }) {
     if (cards.length === 0) {
@@ -230,7 +226,7 @@ function DashboardSection({
           return (
             <div key={card.id} className="relative flex-shrink-0 group">
               <button
-                onClick={() => handleCardClick(card.id, card.tag)}
+                onClick={() => handleCardClick(card.id)}
                 className="text-left rounded-xl border-2 border-transparent hover:border-primary/40 transition-all block"
                 aria-label={`Open ${card.tag} dashboard`}
               >
@@ -242,8 +238,7 @@ function DashboardSection({
                 />
               </button>
               <OpenElsewhereBadge
-                equipmentId={card.equipId}
-                tag={card.tag}
+                dashboardId={card.id}
                 variant="card"
               />
               {/* Favorite toggle */}
@@ -307,7 +302,7 @@ function DashboardSection({
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">All</span>
           </div>
           <CardRow
-            cards={allCards}
+            cards={equipCards}
             emptyMessage="No dashboards created yet"
           />
         </div>
@@ -320,13 +315,13 @@ function DashboardSection({
    DASHBOARD POPUP — read-only widget grid + Viewed Data
    ═══════════════════════════════════════════════════════════════════════════ */
 function DashboardPopup({
-  cardTag,
+  dashboardId,
   equipment,
   site,
   plant,
   onClose,
 }: {
-  cardTag: string
+  dashboardId: string
   equipment: { id: string; name: string; tabs: string[] }
   site: { id: string; name: string }
   plant: { id: string; name: string }
@@ -342,6 +337,15 @@ function DashboardPopup({
     whatIfDashboardAutoSelectRunId,
     setWhatIfDashboardAutoSelectRunId,
   } = useAppStore()
+
+  const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
+  const dashboard = useMemo(
+    () => getDashboardById(dashboardId, rawDashboards),
+    [dashboardId, rawDashboards],
+  )
+  const grid = dashboard?.widgets ?? []
+  const layouts = grid.map((gw) => gw.layout)
+  const dashboardDisplayName = dashboard?.name ?? dashboardId
 
   const [viewedDataIds, setViewedDataIds] = useState<string[]>(["live"])
   const [visualReportGenerated, setVisualReportGenerated] = useState(false)
@@ -384,15 +388,10 @@ function DashboardPopup({
     setWhatIfDashboardAutoSelectRunId,
   ])
 
-  // Build widget grid for this tab
-  const widgetSet = DEFAULT_WIDGET_SETS[cardTag] ?? []
-  const grid: GridWidget[] = buildDefaultGrid(widgetSet)
-  const layouts: Layout = grid.map((gw) => gw.layout)
-
   const generateReport = () => {
     const doc = {
       id: `vis-report-${equipment.id}-${Date.now()}`,
-      name: `[What-If Visual Report] ${equipment.name} — ${cardTag}.pdf`,
+      name: `[What-If Visual Report] ${equipment.name} — ${dashboardDisplayName}.pdf`,
       fileType: "pdf" as const,
       category: "Uploaded" as const,
       siteId: site.id,
@@ -418,21 +417,20 @@ function DashboardPopup({
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       role="dialog"
       aria-modal="true"
-      aria-label={`${cardTag} dashboard preview`}
+      aria-label={`${dashboardDisplayName} dashboard preview`}
     >
       <div className="bg-background rounded-2xl border border-border shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Popup header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
-              {equipment.name} — {cardTag}
+              {dashboardDisplayName}
             </span>
             <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
               View only
             </span>
             <OpenElsewhereBadge
-              equipmentId={equipment.id}
-              tag={cardTag}
+              dashboardId={dashboardId}
               variant="popup"
             />
           </div>
@@ -442,7 +440,7 @@ function DashboardPopup({
             )}
             <button
               onClick={() => {
-                const url = `/equipment-dashboard/${encodeURIComponent(equipment.id)}/${encodeURIComponent(cardTag)}/full`
+                const url = `/dashboards/${encodeURIComponent(dashboardId)}/full`
                 window.open(url, "_blank", "noopener,noreferrer")
               }}
               className="px-3 py-1.5 rounded-lg border border-border text-xs text-foreground hover:bg-secondary flex items-center gap-1.5 transition-colors"
@@ -836,19 +834,19 @@ export function EquipmentHomeView() {
   const plant = site?.plants.find((p) => p.id === currentPath.plant)
   const equipment = plant?.equipment.find((e) => e.id === currentPath.equipment)
 
-  const [activePopupTag, setActivePopupTag] = useState<string | null>(null)
+  const [activePopupDashboardId, setActivePopupDashboardId] = useState<string | null>(null)
 
-  const openPopup = useCallback((cardTag: string) => {
-    setActivePopupTag(cardTag)
+  const openPopup = useCallback((dashboardId: string) => {
+    setActivePopupDashboardId(dashboardId)
   }, [])
 
   const closePopup = useCallback(() => {
-    setActivePopupTag(null)
+    setActivePopupDashboardId(null)
   }, [])
 
   useEffect(() => {
     if (!equipmentHomeAutoOpenTab) return
-    setActivePopupTag(equipmentHomeAutoOpenTab)
+    setActivePopupDashboardId(equipmentHomeAutoOpenTab)
     setEquipmentHomeAutoOpenTab(null)
   }, [equipmentHomeAutoOpenTab, setEquipmentHomeAutoOpenTab])
 
@@ -896,9 +894,9 @@ export function EquipmentHomeView() {
       </div>
 
       {/* ── Dashboard Popup overlay ───────────────────────────────── */}
-      {activePopupTag && (
+      {activePopupDashboardId && (
         <DashboardPopup
-          cardTag={activePopupTag}
+          dashboardId={activePopupDashboardId}
           equipment={equipment}
           site={site}
           plant={plant}

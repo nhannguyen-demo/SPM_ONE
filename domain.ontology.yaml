@@ -6,6 +6,13 @@
 # lifecycle (created/published), per-user ownership, shares, share links,
 # comments, in-app alerts, full-screen dashboard viewer route, cross-tab
 # open-state signalling.
+# Updated Apr 27 2026 (rev 2): Workspace dashboards established as the
+# canonical source of truth for dashboard metadata across all modules.
+# Removed static dashboardCards registry; Equipment Home, Home Page Recents,
+# Site/Plant Overview tab stacks derive their dashboard data from published
+# WorkspaceDashboard records.
+# Updated Apr 27 2026 (rev 3): What-If Scenario result 'View Data' navigates
+# to Equipment Home for the run's equipment only — no dashboard popup auto-open.
 
 entities:
   User:
@@ -614,6 +621,19 @@ business_rules:
   - "The Workspace Module renders exactly one in-module navigation menu surface. A second parallel menu panel is not allowed."
   - "The single Workspace in-module menu must preserve all existing Workspace navigation and information functions: All Dashboards, Shared with me, Recent, Trash, folder tree expansion/collapse, folder selection, and dynamic badges/counters."
   - "The single Workspace in-module menu must use the established module submenu visual language (dark-blue panel styling used by other module submenus) while preserving feature parity with the previous white Workspace menu."
+  # ── Canonical Dashboard Data Source (Apr 27 2026 rev 2) ─────────────────────
+  - "WorkspaceDashboard is the canonical source of truth for all dashboard metadata across the entire application; no module may maintain a separate static dashboard registry."
+  - "The legacy static dashboardCards array in lib/data.ts is deprecated; it must not be consulted as the primary source for dashboard identity, name, widget content, or display metadata in any module. Equipment Home Page, Home Page, Site Overview, and Plant Overview derive dashboard data from WorkspaceDashboard records."
+  - "Equipment Home Page Dashboard collections are derived exclusively from WorkspaceDashboard records where lifecycleStatus = 'published' and deletedAt is null, filtered by equipmentId. The adapter lib/workspace-data.ts provides getPublishedDashboardsForEquipment() for this derivation."
+  - "The EquipmentHomeDashCard adapter type (id: WorkspaceDashboard.id, equipment: equipment.name, equipId: WorkspaceDashboard.equipmentId, tag: WorkspaceDashboard.name, metrics: deterministic mock) is the cross-module display shape for published dashboards; it is structurally compatible with the legacy dashboardCards shape to preserve rendering in DashboardCard, DashboardTabStack, and Home Page DashboardCardRow."
+  - "WorkspaceDashboard.widgets is the single widget layout source for Equipment Home Dashboard Popup, Full-Screen Viewer (/dashboards/[id]/full), and Workspace popup viewer. DEFAULT_WIDGET_SETS and buildDefaultGrid from layouts.ts are used only during Workspace seed generation; they must not be imported at render time by Equipment Home or Home modules."
+  - "Home Page Recent Dashboards and Favorite Dashboards sections store WorkspaceDashboard.id values in useAppStore; display metadata (name, thumbnail, equipment name) is resolved from useWorkspaceStore at render time via getDashboardById."
+  - "Site Overview and Plant Overview Dashboard Tab Stacks derive their card lists from published WorkspaceDashboard records using the same getPublishedDashboardsForEquipment adapter; dashboardCards is not consulted."
+  - "Dashboard identity is shared between the Workspace Module and all Asset Module surfaces via WorkspaceDashboard.id as the canonical key; recents, favorites, cross-tab presence signals, and auto-open state all use WorkspaceDashboard.id."
+  - "The Equipment Home Page OpenElsewhereBadge and useDashboardOpenElsewhereCount hook use WorkspaceDashboard.id as the presence key; the legacy key format 'equipment-{equipId}-{tag}' is replaced."
+  - "When the user completes a What-If Scenario run and chooses 'View Data' on the result, navigation goes to the Equipment Home Page scoped to that run's Equipment only; no Dashboard Popup opens automatically. The run remains queued for Viewed Data overlay via WhatIfRunSession auto-select so that when the user opens any dashboard popup on that Equipment, the scenario run can be selected in Viewed Data without forcing a specific WorkspaceDashboard."
+  - "The legacy Full-Screen Viewer route /equipment-dashboard/[equipmentId]/[tag]/full is superseded; Equipment Home popup Open-in-new-tab now opens /dashboards/[WorkspaceDashboard.id]/full. The legacy route may remain for backward compatibility but is not the primary navigation path."
+  - "All Workspace seed data in lib/workspace/seed.ts must include published WorkspaceDashboard entries for every tab present in equipment.tabs (lib/data.ts); this guarantees Equipment Home visual parity after removing dashboardCards as the source."
 
 invariants:
   - "Every entity has id, createdAt, and updatedAt."

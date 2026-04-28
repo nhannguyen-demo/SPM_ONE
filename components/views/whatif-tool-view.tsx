@@ -693,7 +693,6 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
     setCurrentView,
     setViewMode,
     setWhatIfDashboardAutoSelectRunId,
-    setEquipmentHomeAutoOpenTab,
     removeWhatIfRunSession,
   } = useAppStore()
 
@@ -749,7 +748,7 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
           const { site, plant, tab } = findAssetPathForEquipment(panel.session.equipmentId)
           setCurrentPath({ site, plant, equipment: panel.session.equipmentId, tab })
           setWhatIfDashboardAutoSelectRunId(panel.session.id)
-          setEquipmentHomeAutoOpenTab(tab)
+          /* Navigate to Equipment Home only — no dashboard popup; user picks a dashboard to overlay scenario data. */
           setCurrentView("equipment-home")
           setViewMode("view")
         }}

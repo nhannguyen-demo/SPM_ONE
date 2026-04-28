@@ -3,492 +3,97 @@
     "tasks": [
       {
         "id": "1",
-        "title": "Define Domain Entities and TypeScript Interfaces",
-        "description": "Create comprehensive TypeScript interfaces for all domain entities including Folder, DashboardShare, ShareLink, DashboardComment, Notification, and enhanced Dashboard with lifecycle fields",
-        "details": "Create `types/workspace.ts` with interfaces: Folder (id, name, parentId, userId, createdAt), Dashboard (enhanced with lifecycleStatus, creator, contributors, creationDate, lastChangeAt, lastChangeBy, folderId, thumbnailUrl), DashboardShare (dashboardId, sharedWith, permission, sharedBy, sharedAt, message, notifyOnFirstView), ShareLink (dashboardId, token, permission, createdBy, createdAt, isActive), DashboardComment (id, dashboardId, authorId, content, createdAt), Notification (id, type, userId, dashboardId, fromUserId, message, createdAt, isRead). Include enums for LifecycleStatus ('created' | 'published'), Permission ('view' | 'comment' | 'edit'), NotificationType.",
-        "testStrategy": "Unit tests for type validation, interface completeness checks, and enum value constraints. Verify all required fields are present and optional fields are properly typed.",
-        "priority": "high",
-        "dependencies": [],
+        "title": "Workspace seed expansion — publish all legacy tab dashboards",
+        "description": "Expand lib/workspace/seed.ts to include published WorkspaceDashboard entries for every tab currently in equipment.tabs (lib/data.ts) that is not yet covered by an existing published seed entry. This ensures Equipment Home has visual parity after removing dashboardCards as the data source.",
+        "details": "Add 7 new published dashboard skeletons to the dashSkels array in buildWorkspaceSeed():\n- Coke Drum (cokerId): 'Demo Engineer Team's Dashboard' (widgetsKey: \"Demo Engineer Team's Dashboard\", key: 'legacy-coker-demo'), 'Process' (widgetsKey: 'Process', key: 'legacy-coker-proc'), 'Fatigue' (widgetsKey: 'Fatigue', key: 'legacy-coker-fat'), 'Bulging' (widgetsKey: 'Bulging', key: 'legacy-coker-bul') — all status: 'published', ownerUserId: 'user-nhan', folder: null\n- HCU (hcuId): 'Reactor Health' (widgetsKey: 'Reactor Health', key: 'legacy-hcu-rea'), 'Process Control' (widgetsKey: 'Process Control', key: 'legacy-hcu-proc'), 'Maintenance' (widgetsKey: 'Maintenance', key: 'legacy-hcu-maint') — all status: 'published', ownerUserId: 'user-ben', folder: null\nAll 7 new entries must use stable deterministic IDs via the existing id = `dash-${d.key}` pattern (e.g., 'dash-legacy-coker-demo').\nKeep all existing seed entries unchanged. Ensure DEFAULT_GRIDS lookups succeed for all new widgetsKey values (they already exist in layouts.ts).",
+        "testStrategy": "After change: verify buildWorkspaceSeed().dashboards has 20 entries (13 existing + 7 new); all 7 new entries have lifecycleStatus='published' and deletedAt=null; widgetsKey resolves to non-empty widgets array; IDs are stable on repeated calls.",
         "status": "done",
-        "subtasks": []
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-27T14:46:05.991Z"
       },
       {
         "id": "2",
-        "title": "Implement Mock Identity and User Directory System",
-        "description": "Create mock user identity system with localStorage persistence and organization user directory for sharing functionality",
-        "details": "Create `lib/mock-auth.ts` with mock User interface (id, name, email, avatar), currentUser Zustand slice with localStorage persistence, and mock organization directory of 8+ users. Implement user-switcher debug component in `components/debug/user-switcher.tsx` with dropdown to change current user. Store current user ID in localStorage key 'spm-current-user-id'.",
-        "testStrategy": "Test user switching persists across reloads, mock directory contains diverse users, and user-switcher component renders correctly. Verify localStorage integration works properly.",
-        "priority": "high",
+        "title": "Create lib/workspace-data.ts — canonical bridge adapter",
+        "description": "Create lib/workspace-data.ts providing the EquipmentHomeDashCard adapter type and all bridge utility functions used by Equipment Home, Home Page, Site/Plant Overview, and WhatIf to derive dashboard data from the Workspace store.",
+        "details": "Export the following from lib/workspace-data.ts:\n\n1. `EquipmentHomeDashCard` interface:\n   { id: string; equipment: string; equipId: string; tag: string; metrics: { value1: string; value2: string } }\n   This is a drop-in structural replacement for the legacy `dashboardCards[0]` shape.\n\n2. `getPublishedDashboardsForEquipment(equipmentId: string, dashboards: WorkspaceDashboard[]): EquipmentHomeDashCard[]`\n   - Filter by equipmentId, lifecycleStatus === 'published', deletedAt === null\n   - Map each WorkspaceDashboard: id = d.id, equipId = d.equipmentId, equipment = look up from sites (equipment.name), tag = d.name\n   - metrics: deterministic mock derived from a djb2-style hash of d.id ('XX%' for value1, '0.00X%' for value2)\n   - Return sorted by d.publishedAt desc (most recent first)\n\n3. `getDashboardById(id: string, dashboards: WorkspaceDashboard[]): WorkspaceDashboard | undefined`\n   - Simple find by id\n\n4. `LEGACY_TAG_TO_WORKSPACE_ID` — a const Record<string, string> mapping 'equipmentId:legacyTag' to the corresponding stable WorkspaceDashboard.id from the seed:\n   e.g., 'equipment-a:Demo Engineer Team\\'s Dashboard' -> 'dash-legacy-coker-demo'\n        'equipment-a:Monitoring' -> 'dash-nhan-coker-mon'\n        'equipment-a:Process' -> 'dash-legacy-coker-proc'\n        'equipment-a:Fatigue' -> 'dash-legacy-coker-fat'\n        'equipment-a:Bulging' -> 'dash-legacy-coker-bul'\n        'equipment-a:Cracking' -> 'dash-nhan-coker-cra'\n        'equipment-b:Overview' -> 'dash-ben-hcu-over'\n        'equipment-b:Reactor Health' -> 'dash-legacy-hcu-rea'\n        'equipment-b:Process Control' -> 'dash-legacy-hcu-proc'\n        'equipment-b:Maintenance' -> 'dash-legacy-hcu-maint'\n        'equipment-c:SMR Pigtail Integrity' -> 'dash-nhan-smr-pig'\n\n5. `getWorkspaceDashboardIdForTag(equipmentId: string, tag: string, dashboards: WorkspaceDashboard[]): string | undefined`\n   - Look up LEGACY_TAG_TO_WORKSPACE_ID with key `${equipmentId}:${tag}`\n   - If not found, fall back to dashboards.find(d => d.equipmentId === equipmentId && d.name === tag && d.lifecycleStatus === 'published')?.id\n   - Final fallback: dashboards.find(d => d.equipmentId === equipmentId && d.lifecycleStatus === 'published' && !d.deletedAt)?.id\n\nImport WorkspaceDashboard from lib/workspace/types; import sites from lib/data for equipment name resolution. No React imports (pure utility).",
+        "testStrategy": "Spot check: getPublishedDashboardsForEquipment('equipment-a', WORKSPACE_SEED.dashboards) returns 6 cards with equipId='equipment-a'; each has non-empty tag (= dashboard name), non-empty metrics. getWorkspaceDashboardIdForTag('equipment-a', 'Monitoring', ...) returns 'dash-nhan-coker-mon'. getDashboardById('dash-legacy-coker-demo', ...) returns the demo dashboard.",
+        "status": "done",
         "dependencies": [
           "1"
         ],
-        "status": "done",
-        "subtasks": []
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-27T14:46:38.698Z"
       },
       {
         "id": "3",
-        "title": "Create Workspace Zustand Store with localStorage Persistence",
-        "description": "Implement comprehensive Zustand store for workspace state management with localStorage persistence layer",
-        "details": "Create `stores/workspace-store.ts` with slices for: folders (CRUD operations), dashboards (with lifecycle management), shares, shareLinks, comments, notifications, filters (equipment, status, creator, contributor, dateRange), sort options, selection state, recent dashboards list (LRU, max 20), and trash. Implement localStorage persistence middleware using Zustand persist. Include actions for all CRUD operations and state management.",
-        "testStrategy": "Unit tests for all store actions, localStorage persistence verification, state isolation between users, and proper state hydration on app load. Test filter and sort state persistence.",
-        "priority": "high",
+        "title": "Wire Equipment Home to Workspace store (DashboardSection + DashboardPopup + cross-tab)",
+        "description": "Replace dashboardCards-based rendering in components/views/equipment-home.tsx with Workspace store data. DashboardSection reads published WorkspaceDashboard records; DashboardPopup uses WorkspaceDashboard.widgets for the grid while preserving all WIF overlay behavior intact.",
+        "details": "Changes in components/views/equipment-home.tsx:\n\n1. IMPORTS: Remove imports of `dashboardCards`, `DEFAULT_WIDGET_SETS`, `buildDefaultGrid`. Add imports: `useWorkspaceStore` from lib/workspace/store; `getPublishedDashboardsForEquipment`, `getDashboardById`, `EquipmentHomeDashCard` from lib/workspace-data.\n\n2. DashboardSection:\n   - Remove `const equipCards = dashboardCards.filter(c => c.equipId === equipment.id)`\n   - Subscribe to Workspace store: `const rawDashboards = useWorkspaceStore(useShallow(s => s.dashboards))`\n   - Derive `const equipCards = useMemo(() => getPublishedDashboardsForEquipment(equipment.id, rawDashboards), [equipment.id, rawDashboards])`\n   - `handleCardClick(card.id, card.id)` — pass workspace dashboard ID as both cardId and the open-popup identifier (not cardTag)\n\n3. DashboardPopup:\n   - Rename prop `cardTag: string` → `dashboardId: string`\n   - Subscribe: `const rawDashboards = useWorkspaceStore(useShallow(s => s.dashboards))`\n   - `const dashboard = useMemo(() => getDashboardById(dashboardId, rawDashboards), [dashboardId, rawDashboards])`\n   - Replace widget grid source: remove `const widgetSet = DEFAULT_WIDGET_SETS[cardTag] ?? []` and `const grid = buildDefaultGrid(widgetSet)`; use `const grid = dashboard?.widgets ?? []`\n   - Grid rendering: `grid.map(gw => ...)` is unchanged; layout items `layouts = grid.map(gw => gw.layout)` is unchanged\n   - Display name: replace `equipment.name — {cardTag}` with `equipment.name — {dashboard?.name ?? dashboardId}`\n   - New-tab URL: change from `/equipment-dashboard/${encodeURIComponent(equipment.id)}/${encodeURIComponent(cardTag)}/full` to `/dashboards/${encodeURIComponent(dashboardId)}/full`\n   - Report name: replace cardTag in filename with `dashboard?.name ?? dashboardId`\n   - aria-label: use `dashboard?.name ?? dashboardId`\n   - KEEP ALL UNCHANGED: viewedDataIds state, setViewedDataIds, visualReportGenerated, shareOpen, scenarioForEquipment, equipmentRuns, WIF overlay panel (viewedDataIds checkbox section), WidgetViewResolver props (viewType, equipmentId, viewedDataIds, scenarioRuns) — these must not change\n\n4. OpenElsewhereBadge:\n   - Change props from `{ equipmentId, tag }` to `{ dashboardId: string }`\n   - Remove `getEquipmentDashboardPresenceKey` helper function entirely\n   - Call `useDashboardOpenElsewhereCount(dashboardId)` directly\n   - Update all usages inside DashboardSection cards and DashboardPopup header to pass `dashboardId` (workspace ID)\n\n5. EquipmentHomeView:\n   - State: rename `activePopupTag` → `activePopupDashboardId` (string | null)\n   - `openPopup` callback: receives `dashboardId: string`\n   - Auto-open useEffect: change from `setActivePopupTag(equipmentHomeAutoOpenTab)` to `setActivePopupDashboardId(equipmentHomeAutoOpenTab)` (since it now carries a workspace ID)\n   - DashboardPopup JSX: `dashboardId={activePopupDashboardId!}`\n\n6. recents: `handleCardClick` calls `addRecentDashboard(card.id)` where card.id is WorkspaceDashboard.id (no semantic change, just correct ID)\n\nDo NOT change: WIF overlay logic, scenarioRuns derivation, viewedDataIds behavior, WidgetViewResolver rendering, visual layout, favorites display.",
+        "testStrategy": "Equipment Home renders same number of dashboard cards as before (6 for Coke Drum, 4 for HCU, 1 for SMR). Popup opens and shows correct dashboard name. Widget grid renders (uses dashboard.widgets). WIF overlay panel (Viewed Data section) still shows live + run checkboxes. Open-in-new-tab opens /dashboards/[uuid]/full. No TypeScript errors.",
+        "status": "done",
         "dependencies": [
           "1",
           "2"
         ],
-        "status": "done",
-        "subtasks": []
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-04-27T14:51:28.882Z"
       },
       {
         "id": "4",
-        "title": "Implement Workspace Data Seeding System",
-        "description": "Replace existing workspace data with deterministic seeding system that generates realistic folder structures, dashboards, shares, and notifications",
-        "details": "Create `lib/workspace-seed.ts` with deterministic seeding functions that generate: nested folder structures (5+ levels deep), 50+ mock dashboards across multiple equipment types with varied lifecycle states, sample shares between users, realistic comments, and notification history. Implement 'Reset Workspace' debug action that clears localStorage and reseeds data. Ensure data is consistent and realistic for testing.",
-        "testStrategy": "Verify seeded data covers all edge cases, folder nesting works correctly, dashboard distribution across equipment is realistic, and reset functionality works properly. Test with different user identities.",
-        "priority": "medium",
-        "dependencies": [
-          "2",
-          "3"
-        ],
+        "title": "Wire Home Page recents/favorites to Workspace store",
+        "description": "Update components/views/home-view.tsx so that DashboardCardRow, RecentDashboardsModule, FavoriteDashboardsModule, and navigateToDashboardFromCard resolve dashboard display data from the Workspace store instead of the static dashboardCards array.",
+        "details": "Changes in components/views/home-view.tsx:\n\n1. IMPORTS: Remove `dashboardCards` import from lib/data. Add `useWorkspaceStore` from lib/workspace/store; add `getDashboardById`, `EquipmentHomeDashCard`, `getPublishedDashboardsForEquipment` from lib/workspace-data.\n\n2. DashboardCardRow component:\n   - Add `const rawDashboards = useWorkspaceStore(useShallow(s => s.dashboards))`\n   - Replace `const cards = cardIds.map(id => dashboardCards.find(c => c.id === id)).filter(Boolean)` with:\n     `const cards = useMemo(() => { const allPublished = rawDashboards.filter(d => d.lifecycleStatus === 'published' && !d.deletedAt); return cardIds.map(id => { const ws = allPublished.find(d => d.id === id); if (!ws) return null; return getDashboardById_asCard(ws) }).filter(Boolean) }, [cardIds, rawDashboards])`\n   - Add helper `getDashboardById_asCard(ws: WorkspaceDashboard): EquipmentHomeDashCard` inline or as a local function that maps WorkspaceDashboard to the EquipmentHomeDashCard shape\n   - For thumbnailSrc: use `ws.thumbnailUrl ?? getEquipmentDashboardThumbnail(ws.equipmentId)` (thumbnailUrl from workspace store takes precedence)\n   - Typing: update all `(typeof dashboardCards)[0]` type references to `EquipmentHomeDashCard`\n\n3. navigateToDashboardFromCard:\n   - Signature change: `card: EquipmentHomeDashCard` instead of `(typeof dashboardCards)[0]`\n   - Logic unchanged: `addRecentDashboard(card.id)`, find site/plant by `card.equipId`, setCurrentPath with equipment: card.equipId and tab: card.tag\n   - tab in setCurrentPath is now `card.tag` which equals WorkspaceDashboard.name — keep this as-is (used for path context, Equipment Home will resolve the actual popup via getWorkspaceDashboardIdForTag in Task 3's auto-open effect)\n\n4. Global search 'dashboard' result handler (already in home-view.tsx near line 105):\n   - `const card = dashboardCards.find(c => c.equipId === result.equipmentId && c.tag === result.tab)` → replace with Workspace store lookup:\n     `const wsId = getWorkspaceDashboardIdForTag(result.equipmentId, result.tab, useWorkspaceStore.getState().dashboards)`\n   - `if (wsId) addRecentDashboard(wsId)` (no longer look for card)\n   - Navigation path: `tab: result.tab` unchanged (Equipment Home resolves it)\n\nDo NOT change: visual rendering of DashboardCard component, empty state messages, RecentDashboardsModule/FavoriteDashboardsModule JSX structure, favorites toggle logic.",
+        "testStrategy": "Home page renders. Recent dashboards section shows empty state (no items yet) or populated items when recents have been added via Equipment Home. Clicking a recent card navigates to Equipment Home. No TypeScript errors. No dashboardCards import remains.",
         "status": "done",
-        "subtasks": []
+        "dependencies": [
+          "1",
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-04-27T14:51:29.194Z"
       },
       {
         "id": "5",
-        "title": "Set Up App Router Pages Structure",
-        "description": "Create Next.js App Router pages for all workspace and dashboard routes",
-        "details": "Create App Router pages: `app/workspace/page.tsx` (main workspace view), `app/workspace/folder/[folderId]/page.tsx` (folder view), `app/workspace/shared/page.tsx` (shared with me), `app/workspace/dashboard/[dashboardId]/edit/page.tsx` (workspace editor), `app/dashboards/[dashboardId]/full/page.tsx` (full-screen viewer), `app/share/[linkToken]/page.tsx` (share link landing). Each page should have proper TypeScript typing and basic layout structure.",
-        "testStrategy": "Test all routes render correctly, dynamic segments work properly, and navigation between routes functions. Verify TypeScript compilation passes for all pages.",
-        "priority": "high",
-        "dependencies": [
-          "1"
-        ],
+        "title": "Wire Site/Plant Overview tab stacks to Workspace store",
+        "description": "Update components/views/site-overview.tsx and components/views/plant-overview.tsx so their DashboardTabStack card lists are derived from published WorkspaceDashboard records instead of the static dashboardCards array.",
+        "details": "Changes in components/views/site-overview.tsx:\n1. IMPORTS: Remove `dashboardCards` import. Add `useWorkspaceStore` from lib/workspace/store; add `getPublishedDashboardsForEquipment`, `EquipmentHomeDashCard` from lib/workspace-data; add `useShallow` from zustand/react/shallow; add `useMemo` from react.\n2. Subscribe: `const rawDashboards = useWorkspaceStore(useShallow(s => s.dashboards))`\n3. Replace: `const siteCards = dashboardCards.filter(c => site.plants.some(p => p.equipment.some(eq => eq.id === c.equipId)))` with:\n   `const siteCards = useMemo(() => { const equipIds = new Set(site.plants.flatMap(p => p.equipment.map(e => e.id))); return rawDashboards.filter(d => d.lifecycleStatus === 'published' && !d.deletedAt && equipIds.has(d.equipmentId)).map(d => getPublishedDashboardsForEquipment(d.equipmentId, rawDashboards).find(c => c.id === d.id)).filter(Boolean) as EquipmentHomeDashCard[] }, [site, rawDashboards])`\n   OR simpler: `const siteCards = useMemo(() => { const result: EquipmentHomeDashCard[] = []; for (const plant of site.plants) for (const eq of plant.equipment) result.push(...getPublishedDashboardsForEquipment(eq.id, rawDashboards)); return result; }, [site, rawDashboards])`\n4. handleDashboardClick: `addRecentDashboard(card.id)` and `setEquipmentHomeAutoOpenTab(card.id)` where card.id is now WorkspaceDashboard.id\n5. groupedCards derivation uses card.equipId for grouping — unchanged\n\nSame pattern for components/views/plant-overview.tsx:\n- Replace `const plantCards = dashboardCards.filter(...)` with Workspace store derivation for the plant's equipment\n- handleDashboardClick: same WorkspaceDashboard.id pattern\n\nBoth files: remove dashboardCards import, add workspace-data imports.",
+        "testStrategy": "Site Overview and Plant Overview render their dashboard tab stacks with the same number of cards as before. Clicking a card navigates to Equipment Home and auto-opens the correct popup. addRecentDashboard receives a workspace ID. No TypeScript errors.",
         "status": "done",
-        "subtasks": []
+        "dependencies": [
+          "1",
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-04-27T14:51:29.479Z"
       },
       {
         "id": "6",
-        "title": "Build Workspace Shell UI Layout",
-        "description": "Create the main workspace layout with top bar, left sidebar folder tree, main content area, and breadcrumb navigation",
-        "details": "Create `components/views/workspace/workspace-shell.tsx` with responsive layout using existing two-layer sidebar architecture. Include top bar with search, view toggle (grid/list), and user actions. Left sidebar contains folder tree and virtual locations. Main area shows dashboard grid/list. Implement breadcrumb navigation component. Use shadcn/ui components and Tailwind v4 utilities for consistency.",
-        "testStrategy": "Test responsive behavior across viewport sizes, sidebar collapse/expand functionality, and proper integration with existing app shell. Verify accessibility with keyboard navigation.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "5"
-        ],
+        "title": "Wire WhatIf Compare Data to Workspace IDs + final cleanup",
+        "description": "Update the What-If tool's Compare Data navigation to resolve a WorkspaceDashboard.id as the auto-open target instead of a legacy tab name string. Mark dashboardCards as deprecated. Remove all remaining legacy tab-name-based identifier usage. Final typecheck pass.",
+        "details": "1. components/views/whatif-tool-view.tsx — onCompareData handler:\n   - Import `useWorkspaceStore` from lib/workspace/store\n   - Import `getWorkspaceDashboardIdForTag` from lib/workspace-data\n   - Inside the handler: `const { site, plant, tab } = findAssetPathForEquipment(panel.session.equipmentId)` — keep this for site/plant path context\n   - After getting tab, add: `const wsDashboards = useWorkspaceStore.getState().dashboards`\n     `const targetDashboardId = getWorkspaceDashboardIdForTag(panel.session.equipmentId, panel.session.selectedDashboards?.[0] ?? tab, wsDashboards) ?? tab`\n   - Call `setEquipmentHomeAutoOpenTab(targetDashboardId)` (was `setEquipmentHomeAutoOpenTab(tab)`)\n   - All other lines in onCompareData unchanged (setCurrentPath, setWhatIfDashboardAutoSelectRunId, setCurrentView, setViewMode)\n\n   Note: panel.session.selectedDashboards?.[0] is the first dashboard the WIF session was run for (e.g. 'Overview'); getWorkspaceDashboardIdForTag maps it to a WorkspaceDashboard.id. If the equipment-a Coke Drum WIF has selectedDashboards = ['Demo Engineer Team\\'s Dashboard'], the result is 'dash-legacy-coker-demo'.\n\n2. lib/data.ts:\n   - Add `@deprecated Use useWorkspaceStore().dashboards (lib/workspace/store) via lib/workspace-data.ts adapters instead.` JSDoc comment above the dashboardCards export\n\n3. Verify no remaining non-deprecated import of dashboardCards in equipment-home.tsx, home-view.tsx, site-overview.tsx, plant-overview.tsx after Tasks 3, 4, 5 are complete.\n\n4. lib/store.ts: no change needed — recentDashboardIds and favoriteDashboardIds are opaque string arrays; they now hold WorkspaceDashboard.id values which is correct.\n\n5. Run TypeScript type check: `npx tsc --noEmit` and resolve any type errors introduced by the migration (likely from card shape changes in home-view.tsx and site-overview.tsx).",
+        "testStrategy": "1. WhatIf tool: clicking Compare Data on a completed run navigates to Equipment Home and auto-opens a popup (not a blank page). 2. The auto-opened popup shows a valid dashboard from the Workspace store. 3. `npx tsc --noEmit` passes with no errors. 4. No console errors on Equipment Home, Home Page, Site Overview, or Plant Overview.",
         "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "7",
-        "title": "Implement Folder Tree Component with Drag-and-Drop",
-        "description": "Build nested folder tree with drag-and-drop functionality, context menus, and virtual locations",
-        "details": "Create `components/workspace/folder-tree.tsx` using react-dnd or native HTML5 drag-and-drop. Support nested rendering up to 5+ levels, drag-and-drop for moving folders and dashboards, context menus for folder operations (create, rename, delete, move). Include virtual locations: 'All Dashboards', 'Shared with me', 'Recent', 'Trash'. Implement ARIA tree role for accessibility.",
-        "testStrategy": "Test drag-and-drop across different nesting levels, context menu actions, keyboard navigation with arrow keys, and screen reader compatibility. Verify virtual locations filter correctly.",
-        "priority": "medium",
         "dependencies": [
-          "3",
-          "6"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "8",
-        "title": "Create Dashboard Card Component",
-        "description": "Build dashboard card component for grid and list views with hover actions, status indicators, and metadata display",
-        "details": "Create `components/workspace/dashboard-card.tsx` with responsive card design showing thumbnail, title, equipment, creator, contributors (avatars), last modified date, lifecycle status badge, and permission level (for shared dashboards). Include hover actions: open popup, share, duplicate, move, delete. Support both grid and list view layouts. Use existing shadcn/ui card components.",
-        "testStrategy": "Test card rendering in both grid and list views, hover state interactions, status badge accuracy, and contributor avatar display. Verify responsive behavior and accessibility.",
-        "priority": "medium",
-        "dependencies": [
-          "1",
-          "3"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "9",
-        "title": "Implement Search, Filter, and Sort Functionality",
-        "description": "Build comprehensive search, filtering, and sorting system with debounced input and persistent state",
-        "details": "Create `components/workspace/search-filter-bar.tsx` with debounced search input (300ms), filter chips for equipment/status/creator/contributor/date range, and sort dropdown. Implement `hooks/use-workspace-filters.ts` for state management. Search should cover dashboard name, equipment name, creator name, folder name. Filters should be removable chips. State persists in Zustand store across navigation.",
-        "testStrategy": "Test search debouncing, filter combinations, sort options, chip removal, and state persistence. Verify search covers all specified fields and filtering works correctly with large datasets.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "6"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "10",
-        "title": "Build Dashboard Popup Viewer for Workspace",
-        "description": "Create workspace-specific dashboard popup with full-screen toggle, comments panel, edit button, and open-in-new-tab functionality",
-        "details": "Create `components/workspace/dashboard-popup.tsx` as dialog overlay rendering dashboard widget grid. Include action buttons: full-screen toggle, comments panel toggle, edit (permission-aware), and 'Open in new tab'. Reuse existing widget grid rendering logic. Handle permission-based action enabling/disabling. Implement popup close on new tab open.",
-        "testStrategy": "Test popup rendering, action button functionality, permission-based UI states, full-screen mode, and new tab opening behavior. Verify widget grid renders correctly within popup.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "8"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "11",
-        "title": "Implement Comments Panel Component",
-        "description": "Build comments side panel with chronological comment list and composer for users with comment permissions",
-        "details": "Create `components/workspace/comments-panel.tsx` with scrollable comment list showing author, timestamp, and content. Include comment composer (textarea + submit) enabled only for users with comment permission. Comments stored in Zustand keyed by dashboard ID. Support real-time updates within same session. Use existing shadcn/ui components for consistency.",
-        "testStrategy": "Test comment posting, chronological ordering, permission-based composer enabling, and real-time updates. Verify comment persistence and proper author attribution.",
-        "priority": "medium",
-        "dependencies": [
-          "2",
-          "3",
-          "10"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "12",
-        "title": "Create Workspace-Native Dashboard Editor",
-        "description": "Build new dashboard editor component that reuses Widget Library without modifying legacy editor",
-        "details": "Create `components/views/workspace/dashboard-editor.tsx` as completely new editor (not importing legacy editor). Reuse existing Widget Library catalog and drag-and-drop functionality. Support widget grid manipulation: add from library, reposition, resize, delete. Include save/exit actions. Update contributor list on save by non-creator. Use react-grid-layout for grid management.",
-        "testStrategy": "Test widget library integration, drag-and-drop functionality, grid manipulation, save behavior, and contributor tracking. Verify no interference with legacy editor and proper Widget Library reuse.",
-        "priority": "high",
-        "dependencies": [
-          "1",
-          "3",
-          "5"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "13",
-        "title": "Build Share Dialog with Named User Sharing",
-        "description": "Create comprehensive share dialog supporting multiple recipients, permission levels, messages, and first-view notifications",
-        "details": "Create `components/workspace/share-dialog.tsx` with tabs for 'Share with users' and 'Get link'. User sharing tab includes: typeahead user picker from mock directory, permission selector (view/comment/edit), optional message field (500 char limit), 'notify on first view' checkbox, and current shares list with permission editing. Implement user search/filtering in typeahead.",
-        "testStrategy": "Test user typeahead functionality, permission selection, message validation, notification preferences, and current shares management. Verify proper user directory integration.",
-        "priority": "medium",
-        "dependencies": [
-          "2",
-          "3"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "14",
-        "title": "Implement Share Link Generation and Management",
-        "description": "Build share link functionality with unique token generation, permission control, and revocation capabilities",
-        "details": "Create share link tab in share dialog with unique token generation (crypto.randomUUID()), permission selector, copy button with clipboard API, and revoke/regenerate controls. Implement `lib/share-links.ts` for token management. Store share links in Zustand with dashboard association. Include link validation and expiration handling.",
-        "testStrategy": "Test link generation uniqueness, clipboard copying, permission application, revocation functionality, and token validation. Verify links work correctly when accessed.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "13"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "15",
-        "title": "Create Share Link Landing Page",
-        "description": "Build share link landing route with identity picker and permission application",
-        "details": "Implement `app/share/[linkToken]/page.tsx` that validates share link token, shows dashboard preview, and handles user identity. For signed-in users, apply link permission automatically. For unsigned users, show mock identity picker (reuse user-switcher logic). After identity selection, redirect to workspace with dashboard popup open. Handle invalid/revoked links with appropriate error states.",
-        "testStrategy": "Test link validation, identity picker functionality, permission application, error handling for invalid links, and proper redirection flow. Verify integration with mock auth system.",
-        "priority": "medium",
-        "dependencies": [
-          "2",
-          "5",
-          "14"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "16",
-        "title": "Build Shared With Me Virtual Location",
-        "description": "Implement 'Shared with me' view showing dashboards shared with current user and request access functionality",
-        "details": "Create shared dashboards view in `components/workspace/shared-with-me.tsx` showing dashboards shared with current user. Display sharer name, permission level, shared date, and dashboard metadata. Include 'Request access' button for dashboards where user lacks comment/edit permission. Generate permission request notifications for dashboard owners.",
-        "testStrategy": "Test shared dashboard display, metadata accuracy, request access functionality, and notification generation. Verify proper filtering to show only dashboards shared with current user.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "8",
-          "13"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "17",
-        "title": "Implement Comms Module Alerts Page",
-        "description": "Create alerts page in Comms module listing all dashboard-related notifications with deep-linking",
-        "details": "Create `components/views/comms/alerts-page.tsx` showing notification list in reverse chronological order. Display category icon, primary text, secondary text (message excerpt), timestamp, read/unread state, and 'View' action button. Support notification types: dashboard_shared_with_you, dashboard_first_view, permission_request_received, permission_request_resolved. Implement deep-linking to workspace with dashboard focus.",
-        "testStrategy": "Test notification display, chronological ordering, read/unread states, deep-linking functionality, and proper categorization. Verify all notification types render correctly.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "16"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "18",
-        "title": "Add Unread Badge to Comms Module Rail",
-        "description": "Implement live unread notification count badge on Comms module rail icon",
-        "details": "Update Comms module rail entry to show unread notification count badge. Create `hooks/use-unread-notifications.ts` that subscribes to workspace store notifications and calculates unread count. Badge should update in real-time when notifications are added or marked as read. Use existing badge component styling for consistency.",
-        "testStrategy": "Test real-time badge updates, accurate unread counting, badge visibility states (show/hide based on count), and proper integration with existing rail styling.",
-        "priority": "low",
-        "dependencies": [
-          "3",
-          "17"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "19",
-        "title": "Update Equipment Home Page Edit Dashboards Integration",
-        "description": "Modify Equipment Home Page to navigate to Workspace with equipment pre-filtering when Edit Dashboards is clicked",
-        "details": "Update 'Edit Dashboards' button in Equipment Home Page to navigate to `/workspace` with equipment pre-filter applied. Add `preFilterEquipmentId` and `workspaceInitialEquipmentId` to Zustand store. Implement navigation with equipment context preservation. Update existing Equipment Home Page component without breaking current functionality.",
-        "testStrategy": "Test navigation from Equipment Home Page to Workspace, equipment filter application, context preservation, and backward compatibility with existing Equipment Home Page functionality.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "6"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "20",
-        "title": "Add Open in New Tab to Equipment Home Page Dashboard Popup",
-        "description": "Enhance Equipment Home Page dashboard popup with 'Open in new tab' functionality",
-        "details": "Add 'Open in new tab' button to existing Equipment Home Page dashboard popup. Button should open `/dashboards/[dashboardId]/full` in new tab and close popup in originating tab. Implement proper tab management and ensure new tab opens with full-screen dashboard view. Maintain existing popup functionality.",
-        "testStrategy": "Test new tab opening, popup closure in originating tab, full-screen dashboard rendering in new tab, and preservation of existing popup functionality.",
-        "priority": "medium",
-        "dependencies": [
-          "5",
-          "19"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "21",
-        "title": "Implement Cross-Tab Signaling Utility",
-        "description": "Build cross-tab communication system using BroadcastChannel with localStorage fallback for dashboard open state tracking",
-        "details": "Create `lib/cross-tab-signaling.ts` with BroadcastChannel wrapper and localStorage event fallback. Implement `useDashboardOpenTabs(dashboardId)` hook that tracks dashboard open state across tabs. Handle tab open/close events with proper cleanup on page unload. Support multiple tabs opening same dashboard simultaneously with accurate count tracking.",
-        "testStrategy": "Test BroadcastChannel functionality, localStorage fallback, accurate tab counting, proper cleanup on tab close, and cross-browser compatibility. Verify multiple simultaneous tabs work correctly.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "22",
-        "title": "Create Full-Screen Dashboard Viewer Route",
-        "description": "Build chromeless full-screen dashboard viewer for new tab viewing",
-        "details": "Implement `app/dashboards/[dashboardId]/full/page.tsx` with chromeless layout (no sidebar, header, or navigation). Render dashboard widget grid in read-only mode using existing widget components. Implement cross-tab signaling handshake on mount and cleanup on unmount. Handle dashboard not found and permission errors appropriately.",
-        "testStrategy": "Test chromeless rendering, read-only widget grid functionality, cross-tab signaling integration, error handling, and proper cleanup on tab close. Verify no editing capabilities are available.",
-        "priority": "medium",
-        "dependencies": [
-          "5",
-          "21"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "23",
-        "title": "Add Open Elsewhere Indicator to Equipment Home Page",
-        "description": "Implement real-time indicator on Equipment Home Page dashboard cards showing when dashboard is open in other tabs",
-        "details": "Add 'open elsewhere' indicator to Equipment Home Page dashboard cards/tabs using cross-tab signaling. Show indicator when dashboard is open in any other browser tab with count display. Update indicator in real-time as tabs open/close. Use existing UI patterns for indicator styling and positioning.",
-        "testStrategy": "Test real-time indicator updates, accurate count display, proper show/hide behavior, and visual integration with existing dashboard cards. Verify indicator works across multiple tabs.",
-        "priority": "low",
-        "dependencies": [
-          "20",
-          "21",
-          "22"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "24",
-        "title": "Clean Up Workspace Module Rail Submenu",
-        "description": "Replace current workspace rail submenu with clean, professional entries as specified in requirements",
-        "details": "Update workspace module rail submenu to show only: 'All Dashboards', 'Shared with me', 'Recent', 'Trash'. Remove existing 'Favorite' and duplicate 'Share with me' entries. Ensure single-level menu structure with no nested submenus. Update navigation logic to work with new menu structure.",
-        "testStrategy": "Test new menu structure, navigation functionality, removal of old entries, and proper integration with workspace views. Verify no nested submenu levels exist.",
-        "priority": "low",
-        "dependencies": [
-          "6",
-          "7"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "25",
-        "title": "Implement Dashboard CRUD Operations",
-        "description": "Build comprehensive dashboard creation, duplication, moving, renaming, and deletion functionality",
-        "details": "Implement dashboard CRUD operations: create new dashboard with equipment selection and name validation, duplicate dashboard with 'Copy of' prefix, move dashboard between folders via drag-and-drop or context menu, inline rename with validation, delete with confirmation dialog. Update Zustand store and handle all business rules and constraints.",
-        "testStrategy": "Test all CRUD operations, validation rules, confirmation dialogs, drag-and-drop moving, inline editing, and proper state updates. Verify business rule enforcement and error handling.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "7",
-          "8"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "26",
-        "title": "Implement Dashboard Publishing and Lifecycle Management",
-        "description": "Build dashboard publishing system with lifecycle state transitions and audit logging",
-        "details": "Implement publish/unpublish functionality for dashboards. Add lifecycle status management (created/published) with proper state transitions. Create audit logging for lifecycle changes in ChangeLogEntry format. Handle Equipment Home Page visibility updates when dashboards are published/unpublished. Ensure published dashboards remain editable in workspace.",
-        "testStrategy": "Test publish/unpublish transitions, audit log creation, Equipment Home Page visibility updates, and continued editability of published dashboards. Verify proper lifecycle state management.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "12",
-          "19"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "27",
-        "title": "Implement Recent and Trash Virtual Locations",
-        "description": "Build Recent dashboards list and Trash functionality with soft deletion",
-        "details": "Implement 'Recent' virtual location showing last 20 dashboards opened by current user (LRU order). Create 'Trash' functionality with soft deletion, 30-day retention, and restore capability. Update dashboard access tracking for recent list. Implement permanent deletion after retention period. Add proper UI for both virtual locations.",
-        "testStrategy": "Test recent list LRU behavior, trash soft deletion, restore functionality, retention period handling, and permanent deletion. Verify proper tracking of dashboard access for recent list.",
-        "priority": "low",
-        "dependencies": [
-          "3",
-          "10",
-          "24"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "28",
-        "title": "Final Integration, Type Safety, and Testing",
-        "description": "Complete final integration testing, ensure TypeScript compliance, and verify all requirements are met",
-        "details": "Perform comprehensive integration testing across all workspace functionality. Run `pnpm exec tsc --noEmit` to ensure zero TypeScript errors. Verify all functional requirements are implemented correctly. Test cross-browser compatibility, accessibility compliance (WCAG 2.1 AA), and performance requirements. Clean up any remaining issues and ensure proper error handling throughout the application.",
-        "testStrategy": "Comprehensive end-to-end testing of all workflows, TypeScript compilation verification, accessibility testing with screen readers, performance testing with large datasets, and cross-browser compatibility verification.",
-        "priority": "high",
-        "dependencies": [
-          "1",
-          "2",
           "3",
           "4",
-          "5",
-          "6",
-          "7",
-          "8",
-          "9",
-          "10",
-          "11",
-          "12",
-          "13",
-          "14",
-          "15",
-          "16",
-          "17",
-          "18",
-          "19",
-          "20",
-          "21",
-          "22",
-          "23",
-          "24",
-          "25",
-          "26",
-          "27"
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": "29",
-        "title": "Unify Workspace navigation into one menu panel",
-        "description": "Remove duplicate in-page Workspace navigation so only one menu surface remains.",
-        "details": "Refactor Workspace layout composition so the current white navigation panel is not rendered in parallel with the blue menu. Keep route/state wiring unchanged for current locations (all/shared/recent/trash/folder). Ensure no behavior regression in selected state transitions.",
-        "testStrategy": "Open /workspace, /workspace/shared, /workspace/recent, /workspace/trash, and /workspace/folder/[id]. Verify only one in-page navigation menu is visible and location switching still works.",
-        "status": "pending",
-        "dependencies": [],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": "30",
-        "title": "Apply blue submenu visual system to unified Workspace menu",
-        "description": "Restyle unified Workspace menu to match existing dark-blue module submenu design language.",
-        "details": "Port typography, spacing, hover/active states, icon treatment, and panel chrome from the left blue Workspace submenu style into the unified in-page menu container. Preserve accessibility contrast and focus-visible behavior.",
-        "testStrategy": "Visual check against existing blue submenu style; verify active item and hover states match module conventions in both light/dark themes.",
-        "status": "pending",
-        "dependencies": [
-          "29"
-        ],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": "31",
-        "title": "Preserve full white-menu functional parity in unified menu",
-        "description": "Carry over every existing functional element from the white Workspace menu into the unified blue-styled menu.",
-        "details": "Ensure unified menu still exposes location links (All/Shared/Recent/Trash), folder tree render, nested folder expansion, selection handling, count badges, and drag/drop affordances where currently supported. No feature should be removed during visual merge.",
-        "testStrategy": "Regression checklist covering folder tree interactions, counters, selected state persistence, and route transitions before/after merge.",
-        "status": "done",
-        "dependencies": [
-          "29"
+          "5"
         ],
         "priority": "high",
         "subtasks": [],
-        "updatedAt": "2026-04-27T13:07:25.730Z"
-      },
-      {
-        "id": "32",
-        "title": "Update Workspace component boundaries after menu merge",
-        "description": "Adjust component responsibilities so navigation rendering lives in one source of truth.",
-        "details": "Consolidate duplicated nav rendering logic across sidebar/workspace components. Extract or reuse shared menu item model to avoid drift between style and behavior. Keep existing store contracts intact unless minor extensions are required.",
-        "testStrategy": "Code-level verification that only one component path renders Workspace in-page navigation; smoke test navigation interactions.",
-        "status": "pending",
-        "dependencies": [
-          "30",
-          "31"
-        ],
-        "priority": "medium",
-        "subtasks": []
-      },
-      {
-        "id": "33",
-        "title": "Workspace menu-merge QA and regression hardening",
-        "description": "Validate merged Workspace menu for UX consistency and no behavior changes.",
-        "details": "Add/adjust targeted tests or deterministic manual QA steps for menu rendering, badge counts, folder interactions, and keyboard navigation. Confirm no duplicate menu appears in any Workspace route.",
-        "testStrategy": "Run typecheck/lint plus route-by-route manual QA matrix; verify no layout regressions at common breakpoints.",
-        "status": "pending",
-        "dependencies": [
-          "32"
-        ],
-        "priority": "medium",
-        "subtasks": []
+        "updatedAt": "2026-04-27T14:53:31.656Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-04-27T13:07:25.733Z",
-      "taskCount": 33,
-      "completedCount": 29,
+      "lastModified": "2026-04-27T14:53:31.658Z",
+      "taskCount": 6,
+      "completedCount": 6,
       "tags": [
         "master"
       ]
