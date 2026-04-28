@@ -12,7 +12,7 @@ Core value:
 
 ## Ontology Summary
 Key entities:
-- Asset hierarchy: `Site`, `Plant`, `Equipment`.
+- Asset hierarchy: `Site`, `Unit`, `Equipment` (mock JSON uses `site.units` on each site; Zustand navigation still uses `currentPath.plant` for the selected unit id — see `domain.ontology.yaml`). Optional `Plant` remains in the ontology for future multi-plant sites and is not used in the Apr 2026 mock between Site and Unit.
 - Visualization layer: `Dashboard` (per equipment; now also has `lifecycleStatus`, `ownerUserId`, `contributorUserIds`, `folderId`, `thumbnailUrl`, `lastChangeAt`, `lastChangeByUserId`, `publishedAt`, `deletedAt`), `Widget` (KPI/chart/table/summary components), `DashboardWidget` (placement/layout join), `WidgetLibraryItem` (drag/drop catalog).
 - Workspace Module entities: `WorkspaceFolder` (per-user nested folder tree), `DashboardShare` (per-recipient grant), `ShareLink` (token-based grant), `DashboardComment`, `PermissionRequest`.
 - Comms Module entities: `Notification` (in-app alert).
@@ -23,7 +23,7 @@ Key entities:
 - Supporting operational data: `User` (now with `isCurrentUser` mock-auth flag and `avatarUrl`), `UserDocument`, `ChangeLogEntry`, `DataSyncStatus`, `SyncJob`.
 
 Key relationships:
-- A `Site` has many `Plant`; a `Plant` has many `Equipment`.
+- A `Site` has many `Unit`; a `Unit` has many `Equipment`. Placeholder equipment rows (`isPlaceholder`) appear in the asset menu only and do not navigate.
 - An `Equipment` has zero or many `Dashboard`.
 - A `Widget` can appear in many `Dashboard` via `DashboardWidget`.
 - A `Dashboard` has exactly one owner `User`, zero or many contributor `User`s, and lives in zero or one `WorkspaceFolder` (nested tree per user).
@@ -47,9 +47,9 @@ Business behavior reflected in ontology:
 - Comments do NOT generate notifications; only sharing-related events do (share, first-view, permission requests, resolutions).
 - Users can queue additional What-If runs while another run is running.
 - Selected-dashboard requirement for WIS runs has been removed.
-- Current mock profile replaces Unit CFR.101 pump equipment with an SMR equipment.
-- The only dashboard for this equipment is named `SMR Pigtail Integrity`.
-- Equipment dashboard widgets for this profile are SMR-focused; the 3D model widget shows an SMR mockup model (not a pump model).
+- Current mock profile: **Site 2000** (`site-x`) has three units — **Unit 2006 - DCU**, **Unit 2007 - HCU**, **Unit 2008 - Hydrogen Unit** — with primary equipment **Coker 01** (`equipment-a`), **HCU 01** (`equipment-b`), and **SMR Pigtails** (`equipment-c`). Former labels (Site X, Unit CFR.101, Coke Drum, HCU, SMR Unit A) are retired; **Site Y** and **Unit TFR.40** are removed from mock data. Additional menu-only placeholders: Coker 02, Coker Furnace, HCU 02, SMR Catalyst Tubes.
+- The SMR Pigtails equipment has a dashboard tab named `SMR Pigtail Integrity`.
+- Equipment dashboard widgets for this profile are SMR-focused where applicable; the 3D model widget shows an SMR mockup model (not a pump model) for `equipment-c`.
 - Navigating to an Equipment asset now lands on the Equipment Home Page (not directly on the dashboard editor).
 - Dashboard Popup on the Equipment Home Page is read-only; Viewed Data, report, share, and **Open in new tab** are available.
 - The Equipment Home Page Dashboard Popup `Open in new tab` action navigates a new browser tab to the Full-Screen Dashboard Viewer route and closes the popup in the originating tab.

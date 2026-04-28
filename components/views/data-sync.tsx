@@ -22,8 +22,8 @@ export function DataSyncView() {
   // Derive a display name from the equipment id if a pre-filter is set
   const getEquipmentName = (equipmentId: string): string => {
     for (const site of sites) {
-      for (const plant of site.plants) {
-        const equip = plant.equipment.find((e) => e.id === equipmentId)
+      for (const unit of site.units) {
+        const equip = unit.equipment.find((e) => e.id === equipmentId)
         if (equip) return equip.name
       }
     }

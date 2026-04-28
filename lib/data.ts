@@ -1,44 +1,76 @@
 // Mock data for SPM ONE prototype
+//
+// Site → Unit → Equipment (see domain.ontology.yaml).
 
-export const sites = [
+export type SiteEquipment = {
+  id: string
+  name: string
+  /** Dashboard tab labels for this equipment; empty for placeholder equipment. */
+  tabs: string[]
+  /** When true, asset menu shows the node but click does not navigate. */
+  isPlaceholder?: boolean
+}
+
+export type SiteUnit = { id: string; name: string; equipment: SiteEquipment[] }
+
+export const sites: Array<{ id: string; name: string; units: SiteUnit[] }> = [
   {
     id: "site-x",
-    name: "Site X",
-    plants: [
+    name: "Site 2000",
+    units: [
       {
-        id: "plant-1",
-        name: "Unit CFR.101",
+        id: "unit-2006-dcu",
+        name: "Unit 2006 - DCU",
         equipment: [
           {
             id: "equipment-a",
-            name: "Coke Drum",
-            tabs: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
+            name: "Coker 01",
+            tabs: [
+              "Demo Engineer Team's Dashboard",
+              "Monitoring",
+              "Process",
+              "Fatigue",
+              "Bulging",
+              "Cracking",
+            ],
           },
-          {
-            id: "equipment-b",
-            name: "HCU",
-            tabs: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
-          },
-          {
-            id: "equipment-c",
-            name: "SMR Unit A",
-            tabs: ["SMR Pigtail Integrity"],
-          },
+          { id: "equipment-d", name: "Coker 02", tabs: [], isPlaceholder: true },
+          { id: "equipment-e", name: "Coker Furnace", tabs: [], isPlaceholder: true },
         ],
       },
       {
-        id: "plant-2",
-        name: "Unit TFR.40",
-        equipment: [],
+        id: "unit-2007-hcu",
+        name: "Unit 2007 - HCU",
+        equipment: [
+          {
+            id: "equipment-b",
+            name: "HCU 01",
+            tabs: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
+          },
+          { id: "equipment-f", name: "HCU 02", tabs: [], isPlaceholder: true },
+        ],
+      },
+      {
+        id: "unit-2008-h2",
+        name: "Unit 2008 - Hydrogen Unit",
+        equipment: [
+          { id: "equipment-c", name: "SMR Pigtails", tabs: ["SMR Pigtail Integrity"] },
+          { id: "equipment-g", name: "SMR Catalyst Tubes", tabs: [], isPlaceholder: true },
+        ],
       },
     ],
   },
-  {
-    id: "site-y",
-    name: "Site Y",
-    plants: [],
-  },
 ]
+
+/** Unit id (`sites[].units[].id`) for an equipment, if present. */
+export function getUnitIdForEquipment(equipmentId: string): string | undefined {
+  for (const site of sites) {
+    for (const unit of site.units) {
+      if (unit.equipment.some((e) => e.id === equipmentId)) return unit.id
+    }
+  }
+  return undefined
+}
 
 export const siteDocuments = [
   { name: "how to be an engineer", type: "link" },
@@ -79,28 +111,28 @@ export function getEquipmentDashboardThumbnail(equipId: string | undefined): str
 export const dashboardCards = [
   {
     id: "dash-1",
-    equipment: "Coke Drum",
+    equipment: "Coker 01",
     equipId: "equipment-a",
     tag: "Demo Engineer Team's Dashboard",
     metrics: { value1: "80%", value2: "0.005%" },
   },
   {
     id: "dash-2",
-    equipment: "Coke Drum",
+    equipment: "Coker 01",
     equipId: "equipment-a",
     tag: "Monitoring",
     metrics: { value1: "95%", value2: "0.002%" },
   },
   {
     id: "dash-3",
-    equipment: "Coke Drum",
+    equipment: "Coker 01",
     equipId: "equipment-a",
     tag: "Process",
     metrics: { value1: "92%", value2: "0.001%" },
   },
   {
     id: "dash-4",
-    equipment: "Coke Drum",
+    equipment: "Coker 01",
     equipId: "equipment-a",
     tag: "Fatigue",
     // Keep 90% and 0.001% as it originally was on #process to not break expectations
@@ -108,49 +140,49 @@ export const dashboardCards = [
   },
   {
     id: "dash-5",
-    equipment: "Coke Drum",
+    equipment: "Coker 01",
     equipId: "equipment-a",
     tag: "Bulging",
     metrics: { value1: "201%", value2: "0.04%" },
   },
   {
     id: "dash-6",
-    equipment: "Coke Drum",
+    equipment: "Coker 01",
     equipId: "equipment-a",
     tag: "Cracking",
     metrics: { value1: "76%", value2: "0.01%" },
   },
   {
     id: "dash-hcu-1",
-    equipment: "HCU",
+    equipment: "HCU 01",
     equipId: "equipment-b",
     tag: "Overview",
     metrics: { value1: "95%", value2: "0.003%" },
   },
   {
     id: "dash-hcu-2",
-    equipment: "HCU",
+    equipment: "HCU 01",
     equipId: "equipment-b",
     tag: "Reactor Health",
     metrics: { value1: "88%", value2: "0.010%" },
   },
   {
     id: "dash-hcu-3",
-    equipment: "HCU",
+    equipment: "HCU 01",
     equipId: "equipment-b",
     tag: "Process Control",
     metrics: { value1: "92%", value2: "0.005%" },
   },
   {
     id: "dash-hcu-4",
-    equipment: "HCU",
+    equipment: "HCU 01",
     equipId: "equipment-b",
     tag: "Maintenance",
     metrics: { value1: "78%", value2: "0.020%" },
   },
   {
     id: "dash-smr-1",
-    equipment: "SMR Unit A",
+    equipment: "SMR Pigtails",
     equipId: "equipment-c",
     tag: "SMR Pigtail Integrity",
     metrics: { value1: "99%", value2: "0.001%" },
@@ -184,16 +216,16 @@ export const moduleLibrary = [
 ]
 
 export const dataStatusItems = [
-  { asset: "Coke Drum", files: 10, loadStatus: "10/10", lastUpdate: "11/04/2026", error: "0/10" },
-  { asset: "HCU", files: 7, loadStatus: "7/7", lastUpdate: "11/04/2026", error: "0/7" },
-  { asset: "SMR Unit A", files: 6, loadStatus: "5/6", lastUpdate: "09/04/2026", error: "0/5" },
+  { asset: "Coker 01", files: 10, loadStatus: "10/10", lastUpdate: "11/04/2026", error: "0/10" },
+  { asset: "HCU 01", files: 7, loadStatus: "7/7", lastUpdate: "11/04/2026", error: "0/7" },
+  { asset: "SMR Pigtails", files: 6, loadStatus: "5/6", lastUpdate: "09/04/2026", error: "0/5" },
   { asset: "Pipe a", files: 3, loadStatus: "3/3", lastUpdate: "10/04/2026", error: "1/3" },
 ]
 
 export const syncJobs = [
-  { asset: "Coke Drum", description: "fix pressure", state: "Success", startTime: "05/04/2026", elapsed: "4m 52s", user: "Ben - process en", tokens: 0 },
-  { asset: "HCU", description: "what-if scenario", state: "Success", startTime: "28/03/2026", elapsed: "3m 50s", user: "Alex - process en", tokens: 0 },
-  { asset: "SMR Unit A", description: "pigtail thermal scan", state: "Success", startTime: "09/03/2026", elapsed: "2s", user: "Alex - process en", tokens: 0 },
+  { asset: "Coker 01", description: "fix pressure", state: "Success", startTime: "05/04/2026", elapsed: "4m 52s", user: "Ben - process en", tokens: 0 },
+  { asset: "HCU 01", description: "what-if scenario", state: "Success", startTime: "28/03/2026", elapsed: "3m 50s", user: "Alex - process en", tokens: 0 },
+  { asset: "SMR Pigtails", description: "pigtail thermal scan", state: "Success", startTime: "09/03/2026", elapsed: "2s", user: "Alex - process en", tokens: 0 },
   { asset: "Pipe a", description: "fea solve", state: "Failed", startTime: "10/01/2026", elapsed: "58m 41s", user: "Simon - integrit...", tokens: 192 },
 ]
 
@@ -228,8 +260,8 @@ export const changeLogEntries: ChangeLogEntry[] = [
     id: "cl-1",
     timestamp: "2026-04-19 19:42",
     user: "Nhan N.",
-    action: "Added Fatigue Trend widget to Coke Drum — Fatigue dashboard",
-    location: "Site X › Plant 1 › Coke Drum › Fatigue",
+    action: "Added Fatigue Trend widget to Coker 01 — Fatigue dashboard",
+    location: "Site 2000 › Unit 2006 - DCU › Coker 01 › Fatigue",
     type: "dashboard",
   },
   {
@@ -237,31 +269,31 @@ export const changeLogEntries: ChangeLogEntry[] = [
     timestamp: "2026-04-19 17:10",
     user: "Ben T.",
     action: "Updated operating pressure set-point from 2.1 bar to 2.3 bar",
-    location: "Site X › Plant 1 › Coke Drum",
+    location: "Site 2000 › Unit 2006 - DCU › Coker 01",
     type: "operation",
   },
   {
     id: "cl-3",
     timestamp: "2026-04-19 14:55",
     user: "Alex P.",
-    action: "Ran What-If Scenario: 'Fix Pressure' on HCU",
-    location: "Site X › Plant 1 › HCU",
+    action: "Ran What-If Scenario: 'Fix Pressure' on HCU 01",
+    location: "Site 2000 › Unit 2007 - HCU › HCU 01",
     type: "operation",
   },
   {
     id: "cl-4",
     timestamp: "2026-04-18 22:30",
     user: "Nhan N.",
-    action: "Rearranged widgets on HCU — Reactor Health dashboard",
-    location: "Site X › Plant 1 › HCU › Reactor Health",
+    action: "Rearranged widgets on HCU 01 — Reactor Health dashboard",
+    location: "Site 2000 › Unit 2007 - HCU › HCU 01 › Reactor Health",
     type: "dashboard",
   },
   {
     id: "cl-5",
     timestamp: "2026-04-18 16:15",
     user: "Simon K.",
-    action: "Uploaded new P&ID diagram for Plant 1",
-    location: "Site X › Plant 1",
+    action: "Uploaded new P&ID diagram for Unit 2006 - DCU",
+    location: "Site 2000 › Unit 2006 - DCU",
     type: "operation",
   },
   {
@@ -269,15 +301,15 @@ export const changeLogEntries: ChangeLogEntry[] = [
     timestamp: "2026-04-17 09:05",
     user: "Ben T.",
     action: "Removed Summary KPIs widget from Monitoring dashboard",
-    location: "Site X › Plant 1 › Coke Drum › Monitoring",
+    location: "Site 2000 › Unit 2006 - DCU › Coker 01 › Monitoring",
     type: "dashboard",
   },
   {
     id: "cl-7",
     timestamp: "2026-04-16 11:00",
     user: "Alex P.",
-    action: "Flagged high pigtail tube-skin temperature on SMR Unit A for review",
-    location: "Site X › Plant 1 › SMR Unit A",
+    action: "Flagged high pigtail tube-skin temperature on SMR Pigtails for review",
+    location: "Site 2000 › Unit 2008 - Hydrogen Unit › SMR Pigtails",
     type: "operation",
   },
   {
@@ -285,7 +317,7 @@ export const changeLogEntries: ChangeLogEntry[] = [
     timestamp: "2026-04-15 08:45",
     user: "Nhan N.",
     action: "Pinned Cracking dashboard to favourites",
-    location: "Site X › Plant 1 › Coke Drum › Cracking",
+    location: "Site 2000 › Unit 2006 - DCU › Coker 01 › Cracking",
     type: "dashboard",
   },
 ]
@@ -309,44 +341,44 @@ export interface UserDocument {
 export const userDocuments: UserDocument[] = [
   {
     id: "doc-1",
-    name: "Coke Drum Fatigue Assessment 2026.pdf",
+    name: "Coker 01 Fatigue Assessment 2026.pdf",
     fileType: "pdf",
     category: "Uploaded",
     siteId: "site-x",
-    plantId: "plant-1",
+    plantId: "unit-2006-dcu",
     equipmentId: "equipment-a",
     size: "4.2 MB",
     date: "2026-04-10",
   },
   {
     id: "doc-2",
-    name: "HCU Reactor Maintenance Procedure.docx",
+    name: "HCU 01 Reactor Maintenance Procedure.docx",
     fileType: "docx",
     category: "Uploaded",
     siteId: "site-x",
-    plantId: "plant-1",
+    plantId: "unit-2007-hcu",
     equipmentId: "equipment-b",
     size: "1.8 MB",
     date: "2026-04-08",
   },
   {
     id: "doc-3",
-    name: "Plant 1 — Q1 2026 Inspection Report.xlsx",
+    name: "Unit 2006 - DCU — Q1 2026 Inspection Report.xlsx",
     fileType: "xlsx",
     category: "Shared",
     siteId: "site-x",
-    plantId: "plant-1",
+    plantId: "unit-2006-dcu",
     size: "890 KB",
     date: "2026-04-05",
     sharedBy: "Simon K.",
   },
   {
     id: "doc-4",
-    name: "SMR Unit A Pigtail Tube Temperature Logs Mar-26.xlsx",
+    name: "SMR Pigtails — Tube Skin Temperature Logs Mar-26.xlsx",
     fileType: "xlsx",
     category: "Uploaded",
     siteId: "site-x",
-    plantId: "plant-1",
+    plantId: "unit-2008-h2",
     equipmentId: "equipment-c",
     size: "220 KB",
     date: "2026-04-01",
@@ -367,14 +399,14 @@ export const userDocuments: UserDocument[] = [
     fileType: "docx",
     category: "Shared",
     siteId: "site-x",
-    plantId: "plant-1",
+    plantId: "unit-2006-dcu",
     size: "560 KB",
     date: "2026-03-20",
     sharedBy: "Ben T.",
   },
   {
     id: "doc-7",
-    name: "Site X Asset Register 2026.xlsx",
+    name: "Site 2000 Asset Register 2026.xlsx",
     fileType: "xlsx",
     category: "Uploaded",
     siteId: "site-x",
@@ -383,11 +415,11 @@ export const userDocuments: UserDocument[] = [
   },
   {
     id: "doc-8",
-    name: "HCU Process Control SOP.pdf",
+    name: "HCU 01 Process Control SOP.pdf",
     fileType: "pdf",
     category: "Shared",
     siteId: "site-x",
-    plantId: "plant-1",
+    plantId: "unit-2007-hcu",
     equipmentId: "equipment-b",
     size: "2.7 MB",
     date: "2026-03-10",
@@ -416,8 +448,8 @@ export const whatIfScenarios: WhatIfScenarioDefinition[] = [
   {
     id: "scenario-coke-drum",
     equipmentId: "equipment-a",
-    equipmentName: "Coke Drum",
-    name: "Coke Drum — Future Operating Scenario",
+    equipmentName: "Coker 01",
+    name: "Coker 01 — Future Operating Scenario",
     description: "Models a future operating cycle where inlet temperature and pressure profiles are varied to assess impact on fatigue accumulation, bulging probability, and remaining asset life.",
     details: "Upload a CSV file containing projected temperature and pressure time-series data for the next scheduled operating period. The tool computes updated Damage (DMG%), Remaining Life, and generates scenario-specific equivalents of the Fatigue, Bulging, and Cracking dashboards so engineers can compare future state against current actuals.",
     availableDashboards: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
@@ -431,14 +463,14 @@ export const whatIfScenarios: WhatIfScenarioDefinition[] = [
       "Pipe Diameter":     { value: "250",   unit: "mm" },
       "Wall Thickness":    { value: "12.5",  unit: "mm" },
     },
-    plant: "Plant 1",
-    site: "Site X",
+    plant: "Unit 2006 - DCU",
+    site: "Site 2000",
   },
   {
     id: "scenario-hcu",
     equipmentId: "equipment-b",
-    equipmentName: "HCU",
-    name: "HCU — Reactor Load Variation Scenario",
+    equipmentName: "HCU 01",
+    name: "HCU 01 — Reactor Load Variation Scenario",
     description: "Simulates the effect of varying hydrogen partial pressure and feed rate on reactor health indicators, catalyst deactivation rates, and predicted maintenance intervals.",
     details: "Upload a CSV containing projected feed compositions, reactor inlet conditions, and recycle gas compositions for a specified future period. The tool produces scenario-adapted Reactor Health, Process Control, and Maintenance dashboards for direct comparison with current live data.",
     availableDashboards: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
@@ -451,8 +483,8 @@ export const whatIfScenarios: WhatIfScenarioDefinition[] = [
       "Pressure Drop ΔP":     { value: "1.8",   unit: "bar" },
       "Catalyst Age":         { value: "18",    unit: "months" },
     },
-    plant: "Plant 1",
-    site: "Site X",
+    plant: "Unit 2007 - HCU",
+    site: "Site 2000",
   },
 ]
 
@@ -465,7 +497,7 @@ export const mockWhatIfRunSessions = [
     id: "wir-001",
     scenarioId: "scenario-coke-drum",
     equipmentId: "equipment-a",
-    equipmentName: "Coke Drum",
+    equipmentName: "Coker 01",
     runName: "Q2 Extended Cycle Projection",
     startedAt: "2026-04-18T14:22:00Z",
     duration: "4m 52s",
@@ -491,7 +523,7 @@ export const mockWhatIfRunSessions = [
     id: "wir-002",
     scenarioId: "scenario-coke-drum",
     equipmentId: "equipment-a",
-    equipmentName: "Coke Drum",
+    equipmentName: "Coker 01",
     runName: "Reduced Pressure Test Run",
     startedAt: "2026-04-03T09:10:00Z",
     duration: "3m 28s",
@@ -517,7 +549,7 @@ export const mockWhatIfRunSessions = [
     id: "wir-003",
     scenarioId: "scenario-hcu",
     equipmentId: "equipment-b",
-    equipmentName: "HCU",
+    equipmentName: "HCU 01",
     runName: "High Feed Rate Stress Test",
     startedAt: "2026-04-15T11:05:00Z",
     duration: "5m 14s",
@@ -540,7 +572,7 @@ export const mockWhatIfRunSessions = [
     id: "wir-004",
     scenarioId: "scenario-hcu",
     equipmentId: "equipment-b",
-    equipmentName: "HCU",
+    equipmentName: "HCU 01",
     runName: "Nominal Q2 Projection",
     startedAt: "2026-03-28T08:30:00Z",
     duration: "4m 02s",

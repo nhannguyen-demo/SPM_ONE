@@ -25,7 +25,7 @@ import type { WorkspaceDashboard } from "@/lib/workspace/types"
 export interface EquipmentHomeDashCard {
   /** WorkspaceDashboard.id — canonical key across all modules. */
   id: string
-  /** Equipment display name (e.g. "Coke Drum"). */
+  /** Equipment display name (e.g. "Coker 01"). */
   equipment: string
   /** Equipment id (e.g. "equipment-a"). */
   equipId: string
@@ -44,8 +44,8 @@ function getEquipmentName(equipmentId: string): string {
     return EQUIPMENT_NAME_CACHE.get(equipmentId)!
   }
   for (const site of sites) {
-    for (const plant of site.plants) {
-      const eq = plant.equipment.find((e) => e.id === equipmentId)
+    for (const unit of site.units) {
+      const eq = unit.equipment.find((e) => e.id === equipmentId)
       if (eq) {
         EQUIPMENT_NAME_CACHE.set(equipmentId, eq.name)
         return eq.name
@@ -127,19 +127,19 @@ export function getDashboardById(
  * Seed IDs are deterministic; they do not change across reloads.
  */
 export const LEGACY_TAG_TO_WORKSPACE_ID: Record<string, string> = {
-  // Coke Drum (equipment-a)
+  // Coker 01 (equipment-a)
   "equipment-a:Demo Engineer Team's Dashboard": "dash-legacy-coker-demo",
   "equipment-a:Monitoring": "dash-nhan-coker-mon",
   "equipment-a:Process": "dash-legacy-coker-proc",
   "equipment-a:Fatigue": "dash-legacy-coker-fat",
   "equipment-a:Bulging": "dash-legacy-coker-bul",
   "equipment-a:Cracking": "dash-nhan-coker-cra",
-  // HCU (equipment-b)
+  // HCU 01 (equipment-b)
   "equipment-b:Overview": "dash-ben-hcu-over",
   "equipment-b:Reactor Health": "dash-legacy-hcu-rea",
   "equipment-b:Process Control": "dash-legacy-hcu-proc",
   "equipment-b:Maintenance": "dash-legacy-hcu-maint",
-  // SMR Unit A (equipment-c)
+  // SMR Pigtails (equipment-c)
   "equipment-c:SMR Pigtail Integrity": "dash-nhan-smr-pig",
 }
 

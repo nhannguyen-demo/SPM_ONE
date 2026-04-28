@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useAppStore, type WhatIfRunSession, type WhatIfParameterInputMode } from "@/lib/store"
-import { whatIfScenarios } from "@/lib/data"
+import { getUnitIdForEquipment, whatIfScenarios } from "@/lib/data"
 import type { UserDocument } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { RUN_STEPS, StatusBadge, findAssetPathForEquipment, useSeedMockHistory } from "@/components/views/whatif-tool/shared"
@@ -149,7 +149,7 @@ function ResultsPanel({
       fileType: "pdf",
       category: "Uploaded",
       siteId: "site-x",
-      plantId: "plant-1",
+      plantId: getUnitIdForEquipment(session.equipmentId) ?? "unit-2006-dcu",
       equipmentId: session.equipmentId,
       size: `${(0.8 + Math.random() * 2).toFixed(1)} MB`,
       date: new Date().toISOString().split("T")[0],

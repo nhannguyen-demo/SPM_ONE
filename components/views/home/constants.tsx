@@ -19,12 +19,12 @@ function buildSearchIndex(): SearchResult[] {
   const results: SearchResult[] = []
   for (const site of sites) {
     results.push({ id: `site-${site.id}`, label: site.name, sublabel: "Site", kind: "site", siteId: site.id })
-    for (const plant of site.plants) {
-      results.push({ id: `plant-${plant.id}`, label: plant.name, sublabel: `${site.name}`, kind: "plant", siteId: site.id, plantId: plant.id })
-      for (const eq of plant.equipment) {
-        results.push({ id: `equip-${eq.id}`, label: eq.name, sublabel: `${site.name} › ${plant.name}`, kind: "equipment", siteId: site.id, plantId: plant.id, equipmentId: eq.id })
+    for (const unit of site.units) {
+      results.push({ id: `plant-${unit.id}`, label: unit.name, sublabel: `${site.name}`, kind: "plant", siteId: site.id, plantId: unit.id })
+      for (const eq of unit.equipment) {
+        results.push({ id: `equip-${eq.id}`, label: eq.name, sublabel: `${site.name} › ${unit.name}`, kind: "equipment", siteId: site.id, plantId: unit.id, equipmentId: eq.id })
         for (const tab of eq.tabs ?? []) {
-          results.push({ id: `dash-${eq.id}-${tab}`, label: tab, sublabel: `${eq.name} · ${site.name} › ${plant.name}`, kind: "dashboard", siteId: site.id, plantId: plant.id, equipmentId: eq.id, tab })
+          results.push({ id: `dash-${eq.id}-${tab}`, label: tab, sublabel: `${eq.name} · ${site.name} › ${unit.name}`, kind: "dashboard", siteId: site.id, plantId: unit.id, equipmentId: eq.id, tab })
         }
       }
     }
@@ -35,15 +35,15 @@ function buildSearchIndex(): SearchResult[] {
 export const SEARCH_INDEX = buildSearchIndex()
 
 export const AI_NOTICES = [
-  { severity: "warning" as const, title: "Coke Drum thermal cycling variance", body: "Thermal cycling variance is trending 12% above the 3-month rolling average. Review the Fatigue dashboard for detailed cycle count data.", location: "Coke Drum › Fatigue" },
-  { severity: "warning" as const, title: "SMR Unit A pigtail hotspot anomaly", body: "Tube-skin temperature has intermittently exceeded the alert envelope in the last 72 hours. Review pigtail integrity trends for creep-risk escalation.", location: "SMR Unit A › SMR Pigtail Integrity" },
-  { severity: "info" as const, title: "HCU Maintenance window approaching", body: "Scheduled maintenance for the HCU is due in approximately 8 days based on last service records in the Maintenance dashboard.", location: "HCU › Maintenance" },
+  { severity: "warning" as const, title: "Coker 01 thermal cycling variance", body: "Thermal cycling variance is trending 12% above the 3-month rolling average. Review the Fatigue dashboard for detailed cycle count data.", location: "Coker 01 › Fatigue" },
+  { severity: "warning" as const, title: "SMR Pigtails pigtail hotspot anomaly", body: "Tube-skin temperature has intermittently exceeded the alert envelope in the last 72 hours. Review pigtail integrity trends for creep-risk escalation.", location: "SMR Pigtails › SMR Pigtail Integrity" },
+  { severity: "info" as const, title: "HCU 01 maintenance window approaching", body: "Scheduled maintenance for HCU 01 is due in approximately 8 days based on last service records in the Maintenance dashboard.", location: "HCU 01 › Maintenance" },
 ]
 
 export const AI_ACTIONS = [
-  { icon: <Activity className="w-4 h-4 text-amber-500" />, action: "Check Coke Drum Fatigue dashboard", reason: "Thermal cycling variance trending above threshold.", dashboardKind: "Coke Drum — Fatigue" },
-  { icon: <Activity className="w-4 h-4 text-rose-500" />, action: "Review SMR Unit A pigtail integrity trends", reason: "Tube-skin temperature excursions detected in recent sensor data.", dashboardKind: "SMR Unit A — SMR Pigtail Integrity" },
-  { icon: <Activity className="w-4 h-4 text-blue-500" />, action: "Inspect HCU Maintenance schedule", reason: "Service window approaching based on last recorded date.", dashboardKind: "HCU — Maintenance" },
+  { icon: <Activity className="w-4 h-4 text-amber-500" />, action: "Check Coker 01 Fatigue dashboard", reason: "Thermal cycling variance trending above threshold.", dashboardKind: "Coker 01 — Fatigue" },
+  { icon: <Activity className="w-4 h-4 text-rose-500" />, action: "Review SMR Pigtails integrity trends", reason: "Tube-skin temperature excursions detected in recent sensor data.", dashboardKind: "SMR Pigtails — SMR Pigtail Integrity" },
+  { icon: <Activity className="w-4 h-4 text-blue-500" />, action: "Inspect HCU 01 Maintenance schedule", reason: "Service window approaching based on last recorded date.", dashboardKind: "HCU 01 — Maintenance" },
 ]
 
 export const FILE_ICONS: Record<string, ReactNode> = {

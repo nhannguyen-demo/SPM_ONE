@@ -15,12 +15,12 @@ export const RUN_STEPS = [
 
 export function findAssetPathForEquipment(equipmentId: string): { site: string; plant: string; tab: string } {
   for (const site of sites) {
-    for (const plant of site.plants) {
-      const eq = plant.equipment.find((e) => e.id === equipmentId)
-      if (eq) return { site: site.id, plant: plant.id, tab: eq.tabs?.[0] ?? "Overview" }
+    for (const unit of site.units) {
+      const eq = unit.equipment.find((e) => e.id === equipmentId)
+      if (eq) return { site: site.id, plant: unit.id, tab: eq.tabs?.[0] ?? "Overview" }
     }
   }
-  return { site: "site-x", plant: "plant-1", tab: "Overview" }
+  return { site: "site-x", plant: "unit-2006-dcu", tab: "Overview" }
 }
 
 export function useSeedMockHistory() {

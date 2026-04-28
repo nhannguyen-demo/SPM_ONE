@@ -40,7 +40,7 @@ import { DASHBOARD_DRAG_TYPE } from "./folder-tree"
 
 function equipmentName(equipmentId: string): string {
   for (const s of sites)
-    for (const p of s.plants)
+    for (const p of s.units)
       for (const e of p.equipment) if (e.id === equipmentId) return e.name
   return "Unknown equipment"
 }

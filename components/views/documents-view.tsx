@@ -178,8 +178,8 @@ function DocumentCard({
   const equipName = useMemo(() => {
     if (!doc.equipmentId) return null
     for (const site of sites) {
-      for (const plant of site.plants) {
-        const eq = plant.equipment.find((e) => e.id === doc.equipmentId)
+      for (const unit of site.units) {
+        const eq = unit.equipment.find((e) => e.id === doc.equipmentId)
         if (eq) return eq.name
       }
     }
@@ -287,8 +287,8 @@ function DocumentRow({
   const equipName = useMemo(() => {
     if (!doc.equipmentId) return null
     for (const site of sites) {
-      for (const plant of site.plants) {
-        const eq = plant.equipment.find((e) => e.id === doc.equipmentId)
+      for (const unit of site.units) {
+        const eq = unit.equipment.find((e) => e.id === doc.equipmentId)
         if (eq) return eq.name
       }
     }

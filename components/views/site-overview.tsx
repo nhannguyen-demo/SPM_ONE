@@ -4,7 +4,7 @@ import { useAppStore } from "@/lib/store"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import { useShallow } from "zustand/react/shallow"
 import { getPublishedDashboardsForEquipment, type EquipmentHomeDashCard } from "@/lib/workspace-data"
-import { sites, siteDocuments, getEquipmentDashboardThumbnail } from "@/lib/data"
+import { sites, siteDocuments, getEquipmentDashboardThumbnail, getUnitIdForEquipment } from "@/lib/data"
 import { Maximize2, Minimize2, Plus, Filter, Search, ExternalLink, ChevronRight, ArrowUpRight } from "lucide-react"
 import { DashboardCard } from "@/components/dashboard-card"
 import { MiniLineChart, MiniPieChart, MiniBarChart } from "@/components/mini-charts"
@@ -31,8 +31,10 @@ export function SiteOverview() {
     togglePlantExpanded(plantId)
   }
 
+  const defaultUnitId = site.units[0]?.id
   const handleDashboardClick = (card: EquipmentHomeDashCard) => {
-    const plantId = currentPath.plant || "plant-1"
+    const plantId =
+      getUnitIdForEquipment(card.equipId) ?? currentPath.plant ?? defaultUnitId
     addRecentDashboard(card.id)
     setCurrentPath({ ...currentPath, plant: plantId, equipment: card.equipId, tab: card.tag })
     setEquipmentHomeAutoOpenTab(card.id)
@@ -41,7 +43,7 @@ export function SiteOverview() {
   }
 
   const handleEquipmentNameClick = (equipId: string, card: EquipmentHomeDashCard) => {
-    const plantId = currentPath.plant || "plant-1"
+    const plantId = getUnitIdForEquipment(equipId) ?? currentPath.plant ?? defaultUnitId
     setCurrentPath({ ...currentPath, plant: plantId, equipment: equipId, tab: card.tag })
     setCurrentView("equipment-home")
     if (!expandedEquipment.includes(equipId)) toggleEquipmentExpanded(equipId)
@@ -50,8 +52,8 @@ export function SiteOverview() {
   // grouping cards — derived from published WorkspaceDashboard records
   const siteCards = useMemo(() => {
     const result: EquipmentHomeDashCard[] = []
-    for (const plant of site.plants) {
-      for (const eq of plant.equipment) {
+    for (const unit of site.units) {
+      for (const eq of unit.equipment) {
         result.push(...getPublishedDashboardsForEquipment(eq.id, rawDashboards))
       }
     }
@@ -59,7 +61,7 @@ export function SiteOverview() {
   }, [site, rawDashboards])
   const filteredCards = selectedFilter === "All" 
     ? siteCards 
-    : siteCards.filter(c => site.plants.find(p => p.name === selectedFilter)?.equipment.some(eq => eq.id === c.equipId))
+    : siteCards.filter(c => site.units.find(p => p.name === selectedFilter)?.equipment.some(eq => eq.id === c.equipId))
   
   const groupedCards = filteredCards.reduce((acc, card) => {
     if (!acc[card.equipId]) acc[card.equipId] = { equipmentName: card.equipment, cards: [] }
@@ -105,21 +107,32 @@ export function SiteOverview() {
             {/* Fallback tinted background shown until image is provided */}
             <div className="absolute inset-0 bg-gradient-to-br from-amber-200/60 via-amber-100/40 to-stone-200/60" />
 
-            {/* Plant markers */}
+            {/* Process unit markers (Site 2000) */}
             <button
-              onClick={() => handlePlantClick("plant-1")}
-              className="absolute top-8 left-8 right-1/2 bottom-1/2 border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer z-10"
+              type="button"
+              onClick={() => handlePlantClick("unit-2006-dcu")}
+              className="absolute top-8 left-8 w-[45%] h-[42%] border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer z-10"
             >
-              <span className="px-3 py-1 bg-white/90 rounded text-sm font-medium text-foreground shadow">
-                Plant 1
+              <span className="px-3 py-1 bg-white/90 rounded text-sm font-medium text-foreground shadow text-center max-w-[95%]">
+                Unit 2006 - DCU
               </span>
             </button>
             <button
-              onClick={() => handlePlantClick("plant-2")}
-              className="absolute bottom-8 right-8 left-1/2 top-1/2 border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer z-10"
+              type="button"
+              onClick={() => handlePlantClick("unit-2007-hcu")}
+              className="absolute top-8 right-8 w-[45%] h-[42%] border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer z-10"
             >
-              <span className="px-3 py-1 bg-white/90 rounded text-sm font-medium text-foreground shadow">
-                Plant 2
+              <span className="px-3 py-1 bg-white/90 rounded text-sm font-medium text-foreground shadow text-center max-w-[95%]">
+                Unit 2007 - HCU
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePlantClick("unit-2008-h2")}
+              className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[70%] h-[30%] border-2 border-dashed border-red-500 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors cursor-pointer z-10"
+            >
+              <span className="px-3 py-1 bg-white/90 rounded text-sm font-medium text-foreground shadow text-center max-w-[95%]">
+                Unit 2008 - Hydrogen Unit
               </span>
             </button>
             {/* FEATURE 6C — AI Map Badges: positioned over plant bounding boxes (appears when AI Insight is active) */}
@@ -168,8 +181,8 @@ export function SiteOverview() {
                     setExpandedEquipStack(null)
                   }}
                 >
-                  <option value="All">All Plants</option>
-                  {site.plants.map(p => (
+                  <option value="All">All units</option>
+                  {site.units.map(p => (
                     <option key={p.id} value={p.name}>{p.name}</option>
                   ))}
                 </select>
@@ -239,8 +252,8 @@ export function SiteOverview() {
                     setExpandedEquipStack(null)
                   }}
                 >
-                  <option value="All">All Plants</option>
-                  {site.plants.map(p => (
+                  <option value="All">All units</option>
+                  {site.units.map(p => (
                     <option key={p.id} value={p.name}>{p.name}</option>
                   ))}
                 </select>

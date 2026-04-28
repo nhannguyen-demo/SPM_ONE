@@ -31,7 +31,7 @@ export function CreateDashboardDialog({
   const router = useRouter()
 
   const allEquipment = sites.flatMap((s) =>
-    s.plants.flatMap((p) =>
+    s.units.flatMap((p) =>
       p.equipment.map((e) => ({ id: e.id, label: `${e.name} (${p.name})` }))
     )
   )
@@ -73,7 +73,7 @@ export function CreateDashboardDialog({
               id="dash-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Coke Drum — Pressure Watch"
+              placeholder="e.g. Coker 01 — Pressure Watch"
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && submit()}
             />

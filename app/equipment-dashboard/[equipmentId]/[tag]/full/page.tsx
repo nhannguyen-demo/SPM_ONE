@@ -48,7 +48,7 @@ export default function LegacyFullScreenDashboardPage() {
   }, [])
 
   const equipment = sites
-    .flatMap((s) => s.plants.flatMap((p) => p.equipment.map((e) => ({ e, p, s }))))
+    .flatMap((s) => s.units.flatMap((p) => p.equipment.map((e) => ({ e, p, s }))))
     .find(({ e }) => e.id === equipmentId)
 
   const presenceKey = `equipment-${equipmentId}-${tag}`

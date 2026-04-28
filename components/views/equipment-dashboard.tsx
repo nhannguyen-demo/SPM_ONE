@@ -177,10 +177,10 @@ export function EquipmentDashboard() {
   }, [])
 
   const site = sites.find((s) => s.id === currentPath.site)
-  const plant = site?.plants.find((p) => p.id === currentPath.plant)
-  const equipment = plant?.equipment.find((e) => e.id === currentPath.equipment)
+  const unit = site?.units.find((p) => p.id === currentPath.plant)
+  const equipment = unit?.equipment.find((e) => e.id === currentPath.equipment)
 
-  if (!site || !plant || !equipment) return null
+  if (!site || !unit || !equipment) return null
 
   const tabThumbnailSrc = getEquipmentDashboardThumbnail(equipment.id)
   const deletedBaseTags = deletedBaseTagsByEquip[equipment.id] || []
@@ -402,7 +402,7 @@ export function EquipmentDashboard() {
       fileType: "pdf" as const,
       category: "Uploaded" as const,
       siteId: site.id,
-      plantId: plant.id,
+      plantId: unit.id,
       equipmentId: equipment.id,
       size: `${(0.9 + Math.random() * 1.5).toFixed(1)} MB`,
       date: new Date().toISOString().split("T")[0],

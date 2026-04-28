@@ -114,7 +114,7 @@ export function WorkspaceToolbar({
   const allEquipment = useMemo(
     () =>
       sites.flatMap((site) =>
-        site.plants.flatMap((p) =>
+        site.units.flatMap((p) =>
           p.equipment.map((e) => ({ id: e.id, label: `${e.name} (${p.name})` }))
         )
       ),

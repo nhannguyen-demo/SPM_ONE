@@ -13,6 +13,10 @@
 # WorkspaceDashboard records.
 # Updated Apr 27 2026 (rev 3): What-If Scenario result 'View Data' navigates
 # to Equipment Home for the run's equipment only — no dashboard popup auto-open.
+# Updated Apr 28 2026: Mock asset tree is Site → Unit → Equipment. Site 2000
+# (id site-x) has three units: Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 -
+# Hydrogen Unit. Primary equipment ids equipment-a/b/c (Coker 01, HCU 01, SMR
+# Pigtails) are unchanged. Placeholder equipment rows have no functional surface.
 
 entities:
   User:
@@ -51,16 +55,34 @@ entities:
       name: { type: string }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
+    comment: "Optional organizational layer for future multi-plant sites; the Apr
+      2026 mock does not use Plant between Site and Unit."
+
+  Unit:
+    fields:
+      id: { type: uuid }
+      siteId: { type: uuid, references: Site.id }
+      name: { type: string }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+    comment: "Process unit (e.g. DCU, HCU, Hydrogen) — the middle tier of the
+      Asset module hierarchy under Site in the mock. Encoded in lib/data.ts as
+      the `units` array on each site; each element is a Unit row."
 
   Equipment:
     fields:
       id: { type: uuid }
-      plantId: { type: uuid, references: Plant.id }
+      unitId: { type: uuid, references: Unit.id }
       name: { type: string }
+      isPlaceholder:
+        type: boolean
+        default: false
+        comment: "When true, the row appears in the asset menu only; click does
+          not navigate. Mock-only."
       type:
         type: enum
         values: [vessel, reactor, pump, smr, other]
-        comment: "# ASSUMPTION — inferred from UI naming; SMR added for Unit CFR.101 replacement scope."
+        comment: "# ASSUMPTION — inferred from UI naming."
       hasWhatIfTool: { type: boolean, default: false }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
@@ -487,7 +509,12 @@ entities:
       category: { type: enum, values: [uploaded, shared] }
       subType: { type: enum, values: [general, whatif_parameter_report, whatif_visual_report], default: general }
       siteId: { type: uuid, nullable: true, references: Site.id }
-      plantId: { type: uuid, nullable: true, references: Plant.id }
+      plantId:
+        type: uuid
+        nullable: true
+        references: Unit.id
+        comment: "Legacy field name in app types; value is a Unit id in the mock
+          (e.g. unit-2007-hcu for HCU-scoped docs)."
       equipmentId: { type: uuid, nullable: true, references: Equipment.id }
       sourceRunSessionId: { type: uuid, nullable: true, references: WhatIfRunSession.id }
       createdAt: { type: datetime }
@@ -530,8 +557,11 @@ entities:
       updatedAt: { type: datetime }
 
 relationships:
-  - "A Site has many Plants; a Plant belongs to one Site."
-  - "A Plant has many Equipment; an Equipment belongs to one Plant."
+  - "A Site has many Units; a Unit belongs to one Site. (Mock JSON uses `site.units`.)"
+  - "A Unit has many Equipment; an Equipment belongs to one Unit (Equipment.unitId).
+    Optional: Site may also have Plants for other deployments; the Apr 2026 mock
+    is Site → Unit → Equipment only."
+  - "A Site may have many Plants; a Plant belongs to one Site. (Not interposed between Site and Unit in the current mock profile.)"
   - "An Equipment has zero or many Dashboards."
   - "A Widget can appear in many Dashboards via DashboardWidget."
   - "A Dashboard has many DashboardWidgets; each DashboardWidget references one Widget."
@@ -539,7 +569,7 @@ relationships:
   - "A WhatIfScenario belongs to one Equipment."
   - "A WhatIfScenario has many parameters and many run sessions (history)."
   - "A WhatIfRunSession has many inputs and many results."
-  - "A UserDocument can optionally reference Site, Plant, Equipment, and source WhatIfRunSession."
+  - "A UserDocument can optionally reference Site, Unit (field name plantId in legacy types), Equipment, and source WhatIfRunSession."
   - "A DataSyncStatus belongs to one Equipment."
   - "A SyncJob belongs to one Equipment and optionally one User."
   - "An EquipmentHomeView is scoped to one Equipment and can show one Dashboard via popup at a time."
@@ -564,9 +594,10 @@ business_rules:
   - "What-If results can be surfaced through Viewed Data on the Equipment Dashboard."
   - "What-If Scenarios are accessed from the Tools module."
   - "Documents generated from runs are stored in the same document library."
-  - "For the current mock profile, Unit CFR.101 replaces the previous pump equipment with an SMR equipment."
-  - "For the current mock profile, the SMR equipment has one dashboard named 'SMR Pigtail Integrity'."
-  - "For the current mock profile, dashboard widgets must be SMR-relevant, including a model_view widget showing an SMR mockup (not pump geometry)."
+  - "For the current mock profile, Site 2000 has three units: Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 - Hydrogen Unit. Primary equipment are Coker 01 (ex Coke Drum, id equipment-a), HCU 01 (id equipment-b), SMR Pigtails (ex SMR Unit A, id equipment-c), with all prior tab sets and seed dashboards preserved for those ids."
+  - "For the current mock profile, SMR Pigtails (equipment-c) has a dashboard tab named 'SMR Pigtail Integrity'."
+  - "For the current mock profile, dashboard widgets for the hydrogen unit coker and SMR equipment are scenario-appropriate, including a model_view widget for SMR mockup where applicable (not a generic pump geometry for SMR content)."
+  - "Placeholder equipment (Coker 02, Coker Furnace, HCU 02, SMR Catalyst Tubes) have no linked dashboards, What-If, or tool navigation; they are menu-only nodes."
   - "Navigating to an Equipment asset from the Asset module hierarchy now lands on the Equipment Home Page, not directly on the dashboard editor."
   - "The Equipment Home Page groups the equipment's dashboards into Recent and Favourites sections; Dashboard.lastAccessedAt drives Recent; Dashboard.isFavorite drives Favourites."
   - "The Dashboard Popup on the Equipment Home Page is strictly read-only; widget editing controls (drag, resize, add, remove) must be hidden."
@@ -644,7 +675,7 @@ invariants:
   - "Valid run state progression is queued -> running -> success|failed|cancelled."
   - "If run status is success, completedAt is not null and at least one result exists."
   - "If document category is shared, sharedBy semantics are required. # ASSUMPTION — sharedBy currently inferred from prototype fields."
-  - "If UserDocument.equipmentId is set with plant/site, asset hierarchy references must be consistent."
+  - "If UserDocument.equipmentId is set with site/unit, asset hierarchy references must be consistent."
   - "DataSyncStatus.loadedFiles + errorFiles <= totalFiles."
   - "EquipmentHomeView.activeDashboardPopupId, if set, must reference a Dashboard that belongs to EquipmentHomeView.equipmentId."
   - "EquipmentHomeView.viewedDataScenarioId, if set, must reference a WhatIfRunSession that belongs to the same Equipment."
