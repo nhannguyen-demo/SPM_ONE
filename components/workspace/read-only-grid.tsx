@@ -5,11 +5,13 @@ import { Responsive as ResponsiveGridLayout, type LayoutItem } from "react-grid-
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 import { useAppStore } from "@/lib/store"
+import { getEquipmentTypeKey } from "@/lib/data"
 import {
   WidgetErrorBoundary,
-  WidgetViewResolver,
-} from "@/components/views/equipment-dashboard/widget-view-resolver"
-import { DEFAULT_GRIDS } from "@/components/views/equipment-dashboard/layouts"
+} from "@/components/dashboard/widget-view-resolver"
+import { DashboardWidgetBody } from "@/components/dashboard/dashboard-widget-body"
+import { DEFAULT_GRIDS } from "@/components/dashboard/layouts"
+import { cn } from "@/lib/utils"
 import type { WorkspaceDashboard } from "@/lib/workspace/types"
 
 const ROW_HEIGHT = 70
@@ -29,6 +31,7 @@ export function ResponsiveDashboardGrid({
   dashboard: WorkspaceDashboard
 }) {
   const whatIfRunSessions = useAppStore((s) => s.whatIfRunSessions)
+  const coker = getEquipmentTypeKey(dashboard.equipmentId) === "coker"
   const widgets = useMemo(() => {
     if (dashboard.widgets.length > 0) return dashboard.widgets
     // Fall back to a sensible default layout based on equipment.
@@ -62,7 +65,7 @@ export function ResponsiveDashboardGrid({
   }, [])
 
   return (
-    <div className="p-3" ref={containerRef}>
+    <div className={cn("p-3", coker && "coker-bg")} ref={containerRef}>
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
@@ -80,7 +83,12 @@ export function ResponsiveDashboardGrid({
         {widgets.map((w) => (
           <div
             key={w.id}
-            className="bg-card rounded-xl border border-border shadow-sm overflow-hidden"
+            className={cn(
+              "rounded-xl border shadow-sm overflow-hidden",
+              coker && w.templateKey
+                ? "bg-[hsl(var(--coker-card))] border-[hsl(var(--coker-border))] coker-theme"
+                : "bg-card border-border"
+            )}
           >
             {w.title && (
               <div className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
@@ -89,10 +97,11 @@ export function ResponsiveDashboardGrid({
             )}
             <div className="h-[calc(100%-30px)] p-2">
               <WidgetErrorBoundary>
-                <WidgetViewResolver
-                  viewType={w.viewType}
+                <DashboardWidgetBody
+                  widget={w}
                   equipmentId={dashboard.equipmentId}
                   scenarioRuns={whatIfRunSessions}
+                  context={dashboard.dashboardContext ?? undefined}
                 />
               </WidgetErrorBoundary>
             </div>

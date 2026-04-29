@@ -20,7 +20,7 @@ import { permissionAtLeast } from "@/lib/workspace/types"
  *   - Token must exist and be non-revoked.
  *   - The current user MUST be a member of the organization directory; non-org
  *     users are blocked with a "not authorised" state.
- *   - On a successful "Open in Workspace" action with edit/comment permission,
+ *   - On a successful "Open in Dashboard" action with edit/comment permission,
  *     the user becomes a contributor on first save (handled by the editor, not
  *     here — this landing only routes them in).
  */
@@ -102,7 +102,7 @@ export default function ShareLandingPage() {
             {canEdit && (
               <Button
                 size="sm"
-                onClick={() => router.push(`/workspace/dashboard/${dashboard.id}/edit`)}
+                onClick={() => router.push(`/dashboard/dashboard/${dashboard.id}/edit`)}
                 className="gap-1.5"
               >
                 Open editor <ArrowRight className="w-3.5 h-3.5" />
@@ -111,10 +111,10 @@ export default function ShareLandingPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => router.push("/workspace/shared")}
+              onClick={() => router.push("/dashboard/shared")}
               className="gap-1.5"
             >
-              Go to Workspace <ExternalLink className="w-3.5 h-3.5" />
+              Go to Dashboard <ExternalLink className="w-3.5 h-3.5" />
             </Button>
           </div>
         </header>
@@ -169,7 +169,7 @@ function CenteredPanel({
           <p className="text-sm text-muted-foreground">{body}</p>
         </div>
         <Button asChild>
-          <a href="/workspace">Go to Workspace</a>
+          <a href="/dashboard">Go to Dashboard</a>
         </Button>
       </div>
     </div>

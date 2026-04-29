@@ -71,8 +71,8 @@ interface AppState {
   // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
-  currentView: "home" | "site" | "plant" | "equipment" | "equipment-home" | "workspace" | "data-sync" | "whatIfTool" | "documents-tool"
-  setCurrentView: (view: "home" | "site" | "plant" | "equipment" | "equipment-home" | "workspace" | "data-sync" | "whatIfTool" | "documents-tool") => void
+  currentView: "home" | "site" | "plant" | "equipment-home" | "workspace" | "data-sync" | "whatIfTool" | "documents-tool"
+  setCurrentView: (view: "home" | "site" | "plant" | "equipment-home" | "workspace" | "data-sync" | "whatIfTool" | "documents-tool") => void
 
   // ── EQUIPMENT HOME PAGE STATE ─────────────────────────────────────────────
   /** Equipment ID to pre-apply as filter when navigating into a tool from Equipment Home Page. Consumed on mount by the target tool view. */
@@ -203,7 +203,7 @@ export const useAppStore = create<AppState>((set) => ({
       if (view === "home") {
         activeModule = "home"
         isPanelOpen = false
-      } else if (view === "site" || view === "plant" || view === "equipment" || view === "equipment-home") {
+      } else if (view === "site" || view === "plant" || view === "equipment-home") {
         activeModule = "assets"
         isPanelOpen = true
       } else if (view === "workspace") {

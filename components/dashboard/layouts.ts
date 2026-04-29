@@ -6,6 +6,10 @@ export type WidgetData = {
   id: string
   viewType: string
   title?: string
+  /** Catalog template key (Coker v1+). When set, equipment pack renderer is used. */
+  templateKey?: string
+  packVersion?: string
+  options?: Record<string, unknown>
 }
 
 export type GridWidget = WidgetData & { layout: LayoutItem }

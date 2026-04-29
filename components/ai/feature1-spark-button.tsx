@@ -1,5 +1,5 @@
 // FEATURE 1 - Global Floating AI Spark Button System
-// Renders on: Site Overview, Plant Overview, Equipment Dashboard
+// Renders on: Site Overview, Plant Overview, Equipment Home
 // Does NOT render on: Data & Sync screen, any modal
 // To remove this feature: delete this file and remove <AISparkButton /> from app/page.tsx
 // Note: When viewMode === "edit", this component renders AIEditingSuggestionButton (FEATURE 7) instead.
@@ -53,7 +53,7 @@ export function AISparkButton() {
   const [chatValue, setChatValue] = useState("")
 
   // Only render on dashboard views
-  if (!["site", "plant", "equipment"].includes(currentView)) return null
+  if (!["site", "plant", "equipment-home"].includes(currentView)) return null
 
   // FEATURE 7 integration: when in edit mode, delegate to editing suggestion button
   if (viewMode === "edit" || viewMode === "modules") {

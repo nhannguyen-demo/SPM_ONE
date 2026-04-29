@@ -28,7 +28,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 const categories = ["Asset Efficiency", "Asset Information", "Event Visualization", "Other"]
 
-/** MIME type for HTML5 drag payload (read on drop in equipment-dashboard). */
+/** MIME type for HTML5 drag payload (read on drop in dashboard editor). */
 export const SPM_WIDGET_DRAG_TYPE = "application/x-spm-widget"
 
 export interface LibraryModule {

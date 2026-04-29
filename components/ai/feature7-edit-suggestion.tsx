@@ -1,6 +1,6 @@
 // FEATURE 7 - Edit Mode "Editing Suggestion" Floating Button
 // Renders in: same fixed position as FEATURE 1 spark button
-// Activated when: viewMode === "edit" or "modules" in equipment-dashboard.tsx
+// Activated when: viewMode === "edit" or "modules" (legacy; editor is now Dashboard module route)
 // Controlled by: FEATURE 1 component (feature1-spark-button.tsx delegates to this)
 // To remove this feature: delete this file and remove delegation logic from feature1-spark-button.tsx
 

@@ -18,7 +18,7 @@ export function WorkspaceView() {
 
         {/* Heading */}
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Workspace</h1>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground text-sm leading-relaxed">
             The dashboard editing workspace is under construction. Full drag-and-drop
             dashboard authoring, version history, and collaborative editing will be

@@ -200,13 +200,665 @@
         "status": "done",
         "subtasks": [],
         "updatedAt": "2026-04-28T17:04:12.300Z"
+      },
+      {
+        "id": "33",
+        "title": "Inventory and document legacy equipment dashboard references",
+        "description": "Perform comprehensive grep search to identify all references to legacy equipment dashboard components and entry points",
+        "details": "Execute grep commands to find all occurrences of 'equipment', 'EquipmentDashboard', 'currentView: \"equipment\"', and legacy route '/equipment-dashboard/'. Document all entry points including sidebar links, header navigation, and direct route access. Create a comprehensive list of files and components that need modification or removal. This inventory will guide the subsequent cleanup tasks.",
+        "testStrategy": "Verify grep results are complete by searching with multiple patterns. Cross-reference findings with codebase structure to ensure no references are missed.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:23.995Z"
+      },
+      {
+        "id": "34",
+        "title": "Remove equipment currentView from store and types",
+        "description": "Remove 'equipment' option from currentView union type in lib/store.ts and update related setters",
+        "details": "In lib/store.ts, remove 'equipment' from the currentView union type definition. Remove or update any setCurrentView('equipment') calls found during inventory. Update TypeScript types to reflect the removal. Ensure no compilation errors are introduced by this change.",
+        "testStrategy": "Run TypeScript compilation to verify no type errors. Search codebase for any remaining setCurrentView('equipment') calls and verify they are updated or removed.",
+        "priority": "high",
+        "dependencies": [
+          "33"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.054Z"
+      },
+      {
+        "id": "35",
+        "title": "Update app/page.tsx to remove equipment view handling",
+        "description": "Remove currentView: 'equipment' handling from the main page component",
+        "details": "In app/page.tsx, remove any conditional rendering logic that displays the equipment dashboard when currentView is 'equipment'. Remove imports related to EquipmentDashboard component. Ensure the page still renders correctly without the equipment view option.",
+        "testStrategy": "Test that the main page loads without errors. Verify that no equipment dashboard view is accessible from the main page navigation.",
+        "priority": "high",
+        "dependencies": [
+          "34"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.062Z"
+      },
+      {
+        "id": "36",
+        "title": "Remove sidebar and header links to legacy equipment editor",
+        "description": "Remove or update navigation links that open the legacy equipment dashboard editor",
+        "details": "Identify and remove sidebar navigation items and header links that set currentView to 'equipment' or navigate to the legacy equipment dashboard. Update any remaining equipment-related navigation to redirect to the appropriate /dashboard routes instead.",
+        "testStrategy": "Manual testing of all navigation elements to ensure no links lead to the legacy equipment editor. Verify that equipment-related navigation properly redirects to the new dashboard editor.",
+        "priority": "medium",
+        "dependencies": [
+          "33"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.074Z"
+      },
+      {
+        "id": "37",
+        "title": "Update Equipment Home edit links to use DashboardEditor",
+        "description": "Modify Equipment Home edit functionality to deep-link to /dashboard/dashboard/[id]/edit",
+        "details": "Update Equipment Home component to generate edit links that navigate to /dashboard/dashboard/[dashboardId]/edit with correct WorkspaceDashboard.id. Include optional equipment pre-filter parameters in the URL. Ensure the transition maintains context and user expectations.",
+        "testStrategy": "Test editing from Equipment Home leads to the correct dashboard editor with proper ID and pre-filters applied. Verify the editing experience is seamless.",
+        "priority": "high",
+        "dependencies": [
+          "35"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.077Z"
+      },
+      {
+        "id": "38",
+        "title": "Update Site/Plant stack edit links to use DashboardEditor",
+        "description": "Modify Site/Plant stack components to link to the unified dashboard editor",
+        "details": "Update Site/Plant stack components to generate edit links pointing to /dashboard or /dashboard/dashboard/[id]/edit with appropriate WorkspaceDashboard.id. Maintain any equipment-specific filtering or context that was previously available in the legacy editor.",
+        "testStrategy": "Test editing from Site/Plant stacks navigates to correct dashboard editor. Verify that equipment context and filtering is preserved in the new editor.",
+        "priority": "high",
+        "dependencies": [
+          "37"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.090Z"
+      },
+      {
+        "id": "39",
+        "title": "Update Dashboard card edit links to use DashboardEditor",
+        "description": "Ensure Dashboard cards properly link to the unified dashboard editor",
+        "details": "Review and update Dashboard card components to ensure edit functionality uses /dashboard/dashboard/[id]/edit routes. Verify that the correct WorkspaceDashboard.id is passed and that any equipment pre-filtering is maintained.",
+        "testStrategy": "Test editing from Dashboard cards opens the correct editor with proper dashboard ID. Verify no broken edit links remain.",
+        "priority": "medium",
+        "dependencies": [
+          "38"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.096Z"
+      },
+      {
+        "id": "40",
+        "title": "Remove or redirect legacy full-screen equipment route",
+        "description": "Handle the legacy full-screen route app/equipment-dashboard/[equipmentId]/[tag]/full/page.tsx",
+        "details": "Either delete app/equipment-dashboard/[equipmentId]/[tag]/full/page.tsx or implement a 301 redirect to /dashboards/[id]/full using getWorkspaceDashboardIdForTag from lib/workspace-data.ts. If the route is unused, prefer deletion. If still needed, implement proper redirection logic.",
+        "testStrategy": "Test that legacy full-screen URLs either return 404 (if deleted) or properly redirect to the new dashboard full-screen view. Verify no broken links to the legacy route exist.",
+        "priority": "medium",
+        "dependencies": [
+          "33"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.101Z"
+      },
+      {
+        "id": "41",
+        "title": "Ensure data persistence uses WorkspaceDashboard.widgets only",
+        "description": "Verify all layout persistence goes through saveDashboardWidgets and WorkspaceDashboard.widgets",
+        "details": "Audit the codebase to ensure no features depend on local-only grids or customDashboardCards from equipment-dashboard.tsx for authoring. Verify that all layout changes are persisted through saveDashboardWidgets and stored in WorkspaceDashboard.widgets. Remove any parallel persistence mechanisms.",
+        "testStrategy": "Test that dashboard edits are properly saved and persist across sessions. Verify that no local-only state is used for layout persistence.",
+        "priority": "high",
+        "dependencies": [
+          "39"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.115Z"
+      },
+      {
+        "id": "42",
+        "title": "Handle default layouts through Dashboard module only",
+        "description": "Ensure default layouts use DEFAULT_GRIDS/buildDefaultGrid only in seed or explicit reset functionality",
+        "details": "If any flow still needs default layouts, ensure they use DEFAULT_GRIDS or buildDefaultGrid only in seed data or explicit 'reset layout' functionality within the Dashboard module. Remove any parallel default layout generation in the legacy equipment dashboard.",
+        "testStrategy": "Test that default layouts are properly generated when needed. Verify that there's no duplicate default layout logic between old and new systems.",
+        "priority": "medium",
+        "dependencies": [
+          "41"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.121Z"
+      },
+      {
+        "id": "43",
+        "title": "Delete equipment-dashboard.tsx component",
+        "description": "Remove the legacy equipment dashboard component file",
+        "details": "Delete components/views/equipment-dashboard.tsx entirely. If a minimal read-only placeholder is needed for transition, create a simple component that redirects to /dashboard, but prefer complete deletion. Update any imports that reference this component.",
+        "testStrategy": "Verify the file is deleted and no imports reference the removed component. Run build to ensure no compilation errors from missing imports.",
+        "priority": "high",
+        "dependencies": [
+          "42"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.123Z"
+      },
+      {
+        "id": "44",
+        "title": "Reorganize shared utilities and clean imports",
+        "description": "Move shared utilities to neutral paths and clean up import statements",
+        "details": "Keep components/views/equipment-dashboard/layouts.ts and widget-view-resolver.tsx as shared utilities. If imports become messy after component deletion, move these to a neutral path like components/dashboard/. Update all import statements throughout the codebase to reference the new locations.",
+        "testStrategy": "Verify all imports are resolved correctly after reorganization. Run build to ensure no import errors. Test that shared utilities function correctly in their new locations.",
+        "priority": "medium",
+        "dependencies": [
+          "43"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.129Z"
+      },
+      {
+        "id": "45",
+        "title": "Final cleanup and comprehensive testing",
+        "description": "Perform final grep search, manual QA, and fix any remaining issues",
+        "details": "Execute comprehensive grep search to verify no user-facing paths to EquipmentDashboard or currentView: equipment remain for editing. Perform manual QA: create dashboard in Dashboard module, edit widgets, save, open Equipment Home popup and verify layout matches. Test read-only popups, full viewer, and cross-tab presence for regressions. Fix any linting issues.",
+        "testStrategy": "Complete manual testing workflow: dashboard creation → editing → saving → Equipment Home popup verification. Verify no regressions in read-only functionality. Confirm build passes with no errors or warnings.",
+        "priority": "high",
+        "dependencies": [
+          "44"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.132Z"
+      },
+      {
+        "id": "46",
+        "title": "Update documentation and audit trail",
+        "description": "Add implementation notes to documentation and create audit trail",
+        "details": "Add a one-line note in AUDIT.md documenting the removal of the legacy equipment dashboard editor. Verify that domain.ontology.yaml and PROJECT.md are still accurate after the implementation. Document any architectural decisions made during the cleanup process.",
+        "testStrategy": "Review documentation for accuracy and completeness. Verify that the audit trail properly documents the changes made to the codebase architecture.",
+        "priority": "low",
+        "dependencies": [
+          "45"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T05:36:24.135Z"
+      },
+      {
+        "id": "47",
+        "title": "Define Equipment Type Domain Model",
+        "description": "Create the core domain model for Equipment types and their association with knowledge packs",
+        "details": "Implement Equipment model with equipmentType string field. Create EquipmentKnowledgePack model with version, equipmentType, and metadata fields. Establish one-to-one relationship between Equipment and equipment type for catalog resolution. Use TypeScript interfaces and Zod schemas for validation.",
+        "testStrategy": "Unit tests for model validation, relationship constraints, and type safety. Integration tests for equipment type resolution.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.487Z"
+      },
+      {
+        "id": "48",
+        "title": "Create ParameterFamily Data Model",
+        "description": "Implement ParameterFamily storage with stable identifiers and categorization",
+        "details": "Create ParameterFamily model with: stable string id, displayName, category enum (Asset Information, Asset Efficiency, Event Visualization, Other), dataContract metadata. Implement CRUD operations and validation. Use Prisma schema or equivalent ORM.",
+        "testStrategy": "Unit tests for model validation, category constraints, and stable ID uniqueness. Database integration tests for CRUD operations.",
+        "priority": "high",
+        "dependencies": [
+          "47"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.521Z"
+      },
+      {
+        "id": "49",
+        "title": "Create WidgetTemplate Data Model",
+        "description": "Implement WidgetTemplate storage with template definitions and constraints",
+        "details": "Create WidgetTemplate model with: stable string id, displayName, thumbnailRef, defaultWidth/Height, minWidth/Height, kind enum (kpi_card, time_series, gauge, etc.), parameterFamilyId foreign key, optionSchema JSON field. Implement validation for grid constraints.",
+        "testStrategy": "Unit tests for template validation, size constraints, and kind enum validation. Integration tests for parameter family relationships.",
+        "priority": "high",
+        "dependencies": [
+          "47",
+          "48"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.552Z"
+      },
+      {
+        "id": "50",
+        "title": "Implement Dashboard Widget Instance Model",
+        "description": "Create data model for persisting dashboard widget instances with pack versioning",
+        "details": "Extend WorkspaceDashboard.widgets to store: templateId, x, y, w, h, minW, minH, userTitleOverride, optionValues JSON, packVersion. Implement Zustand store updates and persistence. Add migration logic for legacy viewType records.",
+        "testStrategy": "Unit tests for widget instance validation and pack version tracking. Integration tests for Zustand persistence and legacy migration.",
+        "priority": "high",
+        "dependencies": [
+          "49"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.559Z"
+      },
+      {
+        "id": "51",
+        "title": "Create ParameterRequest Data Model",
+        "description": "Implement parameter request system for user submissions to product team",
+        "details": "Create ParameterRequest model with: id, requesterUserId, equipmentId, status enum (submitted, acknowledged, closed), bodyText, createdAt, updatedAt. Implement CRUD operations and status transitions. Add 24-month retention policy.",
+        "testStrategy": "Unit tests for request validation and status transitions. Integration tests for retention policy and user association.",
+        "priority": "medium",
+        "dependencies": [
+          "47"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.571Z"
+      },
+      {
+        "id": "52",
+        "title": "Seed Coker v1 Knowledge Pack Data",
+        "description": "Create initial Coker equipment type with parameter families and widget templates",
+        "details": "Create seed data for Coker v1 pack including all required parameter families and widget templates from FR-24 through FR-48. Implement data seeding script with version 1.0.0. Include mock equipment records for testing.",
+        "testStrategy": "Integration tests for complete pack loading and template resolution. Validation tests for all required templates and parameter families.",
+        "priority": "high",
+        "dependencies": [
+          "48",
+          "49"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.574Z"
+      },
+      {
+        "id": "53",
+        "title": "Implement Coker Theme System",
+        "description": "Create Coker reference theme with design tokens and styling",
+        "details": "Implement Coker theme with CSS custom properties for colors, typography, card chrome, chart styling, and table zebra patterns. Create theme provider component and utility classes. Follow design system best practices with semantic color tokens.",
+        "testStrategy": "Visual regression tests for theme application. Unit tests for theme token resolution and CSS custom property generation.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.576Z"
+      },
+      {
+        "id": "54",
+        "title": "Create Widget Library UI Component",
+        "description": "Build the widget library interface for browsing and adding templates",
+        "details": "Create Widget Library component with category grouping, search functionality, template thumbnails, and drag-to-add capability. Filter templates by equipment type. Show add-on parameters when available. Implement responsive grid layout with template cards.",
+        "testStrategy": "Component tests for filtering, search, and drag interactions. Integration tests for equipment type filtering and add-on display.",
+        "priority": "high",
+        "dependencies": [
+          "49",
+          "53"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.578Z"
+      },
+      {
+        "id": "55",
+        "title": "Implement Dashboard Context Bar",
+        "description": "Create dashboard-level context controls for time range and cycle selection",
+        "details": "Build context bar component with time range picker, cycle selector, and latest update display. Implement context state management in Zustand store. Apply context to widgets marked as follows_dashboard_context. Add validation for context compatibility.",
+        "testStrategy": "Component tests for context controls and state management. Integration tests for context application to compatible widgets.",
+        "priority": "high",
+        "dependencies": [
+          "50"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.585Z"
+      },
+      {
+        "id": "56",
+        "title": "Create Base Widget Template Renderer",
+        "description": "Implement core widget rendering system with template resolution",
+        "details": "Create WidgetRenderer component that resolves templateId to appropriate renderer. Implement template registry pattern with dynamic imports. Handle loading states, error boundaries, and fallback rendering. Support option schema validation and application.",
+        "testStrategy": "Unit tests for template resolution and option validation. Integration tests for renderer registration and error handling.",
+        "priority": "high",
+        "dependencies": [
+          "49",
+          "53"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.604Z"
+      },
+      {
+        "id": "57",
+        "title": "Implement KPI Card Template Renderer",
+        "description": "Create KPI card widget template for single metric display",
+        "details": "Build KPI card component with vertical accent bar, metric value, unit display, and title. Support customizable colors and formatting options. Implement responsive sizing and accessibility features. Follow Coker theme styling.",
+        "testStrategy": "Component tests for metric display and formatting. Visual regression tests for theme compliance and responsive behavior.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.616Z"
+      },
+      {
+        "id": "58",
+        "title": "Implement Time Series Chart Template Renderer",
+        "description": "Create time series chart widget with multi-series support",
+        "details": "Build time series component using Recharts with Y-axis labels, X-axis dates, legend with sensor tags, All/Invert actions, and pagination. Support dashboard context integration. Implement zoom and pan interactions. Handle large datasets efficiently.",
+        "testStrategy": "Component tests for chart interactions and data handling. Integration tests for dashboard context application and pagination.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.620Z"
+      },
+      {
+        "id": "59",
+        "title": "Implement Data Table Template Renderer",
+        "description": "Create data table widget with sorting and pagination",
+        "details": "Build data table component with column sorting, pagination, zebra striping, and responsive design. Support configurable columns and data formatting. Implement accessibility features with proper ARIA labels and keyboard navigation.",
+        "testStrategy": "Component tests for sorting and pagination functionality. Accessibility tests for WCAG 2.1 AA compliance.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.623Z"
+      },
+      {
+        "id": "60",
+        "title": "Implement Gauge Template Renderer",
+        "description": "Create semicircular gauge widget for remaining life display",
+        "details": "Build semicircular gauge component with colored bands, center value display, and configurable thresholds. Use SVG for crisp rendering at all sizes. Support animation and responsive scaling. Implement proper color accessibility.",
+        "testStrategy": "Component tests for gauge rendering and threshold handling. Visual tests for SVG scaling and color accessibility.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.625Z"
+      },
+      {
+        "id": "61",
+        "title": "Implement Heatmap 2D Template Renderer",
+        "description": "Create 2D heatmap widget for elevation vs azimuth visualization",
+        "details": "Build 2D heatmap component with configurable color scales, mode toggles (bulging, PSLF, ovality), and interactive tooltips. Use canvas or SVG for performance. Implement zoom and pan capabilities. Support colorblind-friendly palettes.",
+        "testStrategy": "Component tests for heatmap rendering and mode switching. Performance tests for large datasets and interaction responsiveness.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.631Z"
+      },
+      {
+        "id": "62",
+        "title": "Implement 3D Schematic Template Renderer",
+        "description": "Create 3D equipment model viewer with segment coloring",
+        "details": "Build 3D schematic component with segment-color legend, elevation markers, top-down orientation, and axis triad. Use Three.js or similar 3D library. Implement camera controls and responsive sizing. Support model loading and error states.",
+        "testStrategy": "Component tests for 3D rendering and camera controls. Integration tests for model loading and error handling.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.634Z"
+      },
+      {
+        "id": "63",
+        "title": "Implement Polar Plot Template Renderer",
+        "description": "Create polar plot widget for displacement visualization",
+        "details": "Build polar plot component with lateral and vertical readouts, grid lines, and data point markers. Use D3.js or Recharts polar coordinates. Support interactive tooltips and zoom functionality. Implement proper axis labeling.",
+        "testStrategy": "Component tests for polar coordinate rendering and interactions. Visual tests for axis labeling and data point accuracy.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.636Z"
+      },
+      {
+        "id": "64",
+        "title": "Implement FAD Chart Template Renderer",
+        "description": "Create FAD curve chart with acceptable region visualization",
+        "details": "Build FAD chart component with Lr vs Kr axes, acceptable region fill, FAD line, and current crack point marker. Use Recharts with custom shapes. Support interactive point selection and tooltip details. Implement proper engineering chart styling.",
+        "testStrategy": "Component tests for FAD curve rendering and point interactions. Engineering validation tests for curve accuracy and region calculations.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.638Z"
+      },
+      {
+        "id": "65",
+        "title": "Implement Multi-Tab Panel Template Renderer",
+        "description": "Create tabbed panel widget for media content organization",
+        "details": "Build tabbed panel component with Temperature, Displacement, and Stress tabs. Support placeholder content for missing images. Implement keyboard navigation and accessibility features. Handle dynamic tab content loading.",
+        "testStrategy": "Component tests for tab switching and content loading. Accessibility tests for keyboard navigation and screen reader support.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.643Z"
+      },
+      {
+        "id": "66",
+        "title": "Implement Unwrapped Map Template Renderer",
+        "description": "Create unwrapped shell map widget for crack specification",
+        "details": "Build unwrapped map component with section labels and selectable crack highlights. Use SVG for scalable rendering. Implement interactive selection and highlighting. Support zoom and pan for detailed inspection.",
+        "testStrategy": "Component tests for map rendering and crack selection. Integration tests for highlight functionality and zoom interactions.",
+        "priority": "medium",
+        "dependencies": [
+          "56"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.648Z"
+      },
+      {
+        "id": "67",
+        "title": "Implement Widget Option Inspector",
+        "description": "Create UI for editing widget instance options and titles",
+        "details": "Build option inspector panel with dynamic form generation based on template option schema. Support title override input, option validation, and real-time preview. Implement collapsible sections and responsive design.",
+        "testStrategy": "Component tests for dynamic form generation and validation. Integration tests for option schema compliance and preview updates.",
+        "priority": "high",
+        "dependencies": [
+          "50",
+          "54"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.654Z"
+      },
+      {
+        "id": "68",
+        "title": "Implement Dashboard Grid System",
+        "description": "Enhance dashboard editor with template-aware grid constraints",
+        "details": "Extend existing grid system to enforce template min/max size constraints. Implement drag-from-library functionality with template size defaults. Add grid snapping and collision detection. Support responsive breakpoints.",
+        "testStrategy": "Integration tests for grid constraints and drag interactions. Visual tests for grid snapping and collision handling.",
+        "priority": "high",
+        "dependencies": [
+          "49",
+          "67"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.656Z"
+      },
+      {
+        "id": "69",
+        "title": "Implement Parameter Request Form",
+        "description": "Create form for users to submit parameter requests",
+        "details": "Build parameter request form with description field, category selector, equipment reference, and submission handling. Implement form validation and success feedback. Add request to Widget Library interface. Handle authentication context.",
+        "testStrategy": "Component tests for form validation and submission. Integration tests for request persistence and user feedback.",
+        "priority": "medium",
+        "dependencies": [
+          "51",
+          "54"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.661Z"
+      },
+      {
+        "id": "70",
+        "title": "Implement Dashboard Duplication Feature",
+        "description": "Create dashboard duplication functionality with data rebinding",
+        "details": "Implement dashboard duplication with equipment type validation, layout copying, and data path rebinding. Create duplication UI with target equipment selection. Handle option values and title overrides. Validate equipment type compatibility.",
+        "testStrategy": "Integration tests for duplication logic and data rebinding. Validation tests for equipment type constraints and error handling.",
+        "priority": "medium",
+        "dependencies": [
+          "50",
+          "47"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.667Z"
+      },
+      {
+        "id": "71",
+        "title": "Create Product Team Parameter Request Queue",
+        "description": "Build admin interface for managing parameter requests",
+        "details": "Create admin interface for product team to view, acknowledge, and close parameter requests. Implement filtering, sorting, and status management. Add request details view and bulk actions. Secure with role-based access.",
+        "testStrategy": "Component tests for admin interface functionality. Security tests for role-based access and data protection.",
+        "priority": "medium",
+        "dependencies": [
+          "51"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.676Z"
+      },
+      {
+        "id": "72",
+        "title": "Implement Dashboard Read-Only Viewer",
+        "description": "Create full-screen dashboard viewer for read-only access",
+        "details": "Build full-screen dashboard viewer with same widget renderers as editor. Remove editing controls and add viewer-specific features. Support share links and responsive design. Implement proper loading states and error handling.",
+        "testStrategy": "Integration tests for viewer functionality and widget rendering. Visual tests for full-screen layout and responsive behavior.",
+        "priority": "medium",
+        "dependencies": [
+          "56",
+          "55"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.678Z"
+      },
+      {
+        "id": "73",
+        "title": "Implement PDF Export Functionality",
+        "description": "Create PDF export with theme preservation and layout fidelity",
+        "details": "Implement PDF export using browser print API or headless rendering. Create print stylesheets with Coker theme tokens. Ensure widget positioning accuracy within 2% tolerance. Remove app chrome from export. Handle large dashboards and pagination.",
+        "testStrategy": "Visual regression tests for PDF output fidelity. Performance tests for large dashboard export. Cross-browser compatibility tests.",
+        "priority": "medium",
+        "dependencies": [
+          "72",
+          "53"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.685Z"
+      },
+      {
+        "id": "74",
+        "title": "Implement Pack Version Management",
+        "description": "Create system for handling knowledge pack versioning and compatibility",
+        "details": "Implement pack version tracking and forward compatibility. Handle deprecated template IDs with mapping or incompatible notices. Create version migration utilities. Support semantic versioning for pack releases. Add version display in UI.",
+        "testStrategy": "Integration tests for version compatibility and migration. Unit tests for version comparison and template mapping.",
+        "priority": "medium",
+        "dependencies": [
+          "50",
+          "52"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.688Z"
+      },
+      {
+        "id": "75",
+        "title": "Create Mock Data System for Coker Templates",
+        "description": "Implement comprehensive mock data for all Coker widget templates",
+        "details": "Create mock data generators for all Coker template types. Implement realistic data patterns for time series, KPIs, tables, and visualizations. Support dashboard context integration. Create data binding hooks for template renderers.",
+        "testStrategy": "Unit tests for mock data generation and consistency. Integration tests for data binding and context application.",
+        "priority": "medium",
+        "dependencies": [
+          "52"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.690Z"
+      },
+      {
+        "id": "76",
+        "title": "Implement Widget Library Search and Filtering",
+        "description": "Add search and filtering capabilities to widget library",
+        "details": "Implement search functionality with template name and description matching. Add category filtering with multi-select support. Create search result highlighting and empty states. Support keyboard navigation and accessibility features.",
+        "testStrategy": "Component tests for search and filtering logic. Accessibility tests for keyboard navigation and screen reader support.",
+        "priority": "medium",
+        "dependencies": [
+          "54"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.692Z"
+      },
+      {
+        "id": "77",
+        "title": "Create Dashboard Validation and Error Handling",
+        "description": "Implement comprehensive validation and error handling for dashboard operations",
+        "details": "Create validation system for dashboard save operations, widget configurations, and template compatibility. Implement error boundaries and graceful degradation. Add user-friendly error messages and recovery suggestions. Handle network failures and data inconsistencies.",
+        "testStrategy": "Unit tests for validation logic and error scenarios. Integration tests for error recovery and user experience.",
+        "priority": "medium",
+        "dependencies": [
+          "68",
+          "67"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.694Z"
+      },
+      {
+        "id": "78",
+        "title": "Implement Accessibility Enhancements",
+        "description": "Ensure WCAG 2.1 AA compliance across all dashboard components",
+        "details": "Audit and enhance accessibility for all components. Implement proper ARIA labels, keyboard navigation, focus management, and color contrast. Add screen reader support for complex visualizations. Create accessibility testing utilities and documentation.",
+        "testStrategy": "Automated accessibility testing with axe-core. Manual testing with screen readers. Color contrast validation and keyboard navigation tests.",
+        "priority": "medium",
+        "dependencies": [
+          "56",
+          "54",
+          "72"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-29T07:30:05.700Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-04-28T17:04:12.300Z",
-      "taskCount": 14,
-      "completedCount": 14,
+      "lastModified": "2026-04-29T07:30:05.700Z",
+      "taskCount": 60,
+      "completedCount": 60,
       "tags": [
         "master"
       ]

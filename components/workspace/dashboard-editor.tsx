@@ -24,20 +24,18 @@ import "react-resizable/css/styles.css"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import {
-  ModuleLibrary,
-  SPM_WIDGET_DRAG_TYPE,
-  type LibraryModule,
-} from "@/components/module-library"
+import { ModuleLibrary, SPM_WIDGET_DRAG_TYPE, type LibraryModule } from "@/components/module-library"
+import { CatalogModuleLibrary, type CatalogDragPayload } from "@/components/catalog-module-library"
 import {
   RGL_DROP_PLACEHOLDER_ID,
   SPM_WIDGET_LIBRARY_SPECS,
   type GridWidget,
-} from "@/components/views/equipment-dashboard/layouts"
-import {
-  WidgetErrorBoundary,
-  WidgetViewResolver,
-} from "@/components/views/equipment-dashboard/widget-view-resolver"
+} from "@/components/dashboard/layouts"
+import { WidgetErrorBoundary } from "@/components/dashboard/widget-view-resolver"
+import { DashboardWidgetBody } from "@/components/dashboard/dashboard-widget-body"
+import { DashboardContextBar } from "@/components/workspace/dashboard-context-bar"
+import { LEGACY_COKER_VIEW } from "@/lib/equipment-packs"
+import type { DashboardContextState } from "@/lib/workspace/types"
 import {
   useWorkspaceStore,
   selectMyPermissionOn,
@@ -46,7 +44,7 @@ import { permissionAtLeast } from "@/lib/workspace/types"
 import { findOrgUserById, getCurrentUserId } from "@/lib/workspace/identity"
 import { useDashboardEditLock } from "@/lib/workspace/use-edit-lock"
 import { useAppStore } from "@/lib/store"
-import { sites } from "@/lib/data"
+import { sites, getEquipmentTypeKey } from "@/lib/data"
 
 const ROW_HEIGHT = 70
 const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }
@@ -69,7 +67,12 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
   const renameDashboard = useWorkspaceStore((s) => s.renameDashboard)
   const publishDashboard = useWorkspaceStore((s) => s.publishDashboard)
   const unpublishDashboard = useWorkspaceStore((s) => s.unpublishDashboard)
+  const saveDashboardContext = useWorkspaceStore((s) => s.saveDashboardContext)
   const whatIfRunSessions = useAppStore((s) => s.whatIfRunSessions)
+
+  const equipmentType = dashboard?.equipmentId
+    ? getEquipmentTypeKey(dashboard.equipmentId)
+    : "other"
 
   const lock = useDashboardEditLock(dashboard ? dashboard.id : null)
   const lockNotifiedRef = useRef(false)
@@ -82,6 +85,12 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [draggingFromLibrary, setDraggingFromLibrary] = useState(false)
   const placeholderInsertedRef = useRef(false)
+  const dragModuleRef = useRef<LibraryModule | CatalogDragPayload | null>(null)
+  const [ctx, setCtx] = useState<DashboardContextState>({
+    cycleId: "2751",
+    durationKey: "7d",
+    latestUpdateLabel: "18/04/2026",
+  })
   const [gridWidth, setGridWidth] = useState(1200)
   const gridContainerRef = useCallback((node: HTMLDivElement | null) => {
     if (!node) return
@@ -98,6 +107,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
     if (!dashboard) return
     setWidgets(dashboard.widgets)
     setPendingTitle(dashboard.name)
+    setCtx((prev) => ({ ...prev, ...dashboard.dashboardContext }))
     setDirty(false)
   }, [dashboard?.id])
 
@@ -121,6 +131,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
     if (!dashboard) return
     setSaving(true)
     saveDashboardWidgets(dashboard.id, widgets)
+    saveDashboardContext(dashboard.id, ctx)
     if (pendingTitle.trim() && pendingTitle.trim() !== dashboard.name) {
       renameDashboard(dashboard.id, pendingTitle.trim())
     }
@@ -130,7 +141,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
       setDirty(false)
       toast.success("Dashboard saved")
     }, 200)
-  }, [dashboard, widgets, pendingTitle, saveDashboardWidgets, renameDashboard])
+  }, [dashboard, widgets, pendingTitle, saveDashboardWidgets, saveDashboardContext, renameDashboard])
 
   // Warn on tab close while dirty.
   useEffect(() => {
@@ -166,23 +177,60 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
     })
   }
 
-  /* ── Drag-drop from library ───────────────────────────────────────────── */
+  /* ── Drag-drop from library (RGL legacy onDrop: layout, item, drag Event as 3rd arg) ─ */
   const onDropFromLibrary = (
     _layout: readonly LayoutItem[],
-    item: LayoutItem,
-    _e: Event,
-    e: React.DragEvent
+    item: LayoutItem | undefined,
+    e: Event
   ) => {
-    const moduleId = e.dataTransfer.getData(SPM_WIDGET_DRAG_TYPE)
-    if (!moduleId) return
-    const spec = SPM_WIDGET_LIBRARY_SPECS[moduleId]
+    if (!item) return
+    const de = e as DragEvent
+    let rawPayload: LibraryModule | CatalogDragPayload | null = null
+    try {
+      const raw = de.dataTransfer?.getData(SPM_WIDGET_DRAG_TYPE)
+      if (raw) rawPayload = JSON.parse(raw) as LibraryModule | CatalogDragPayload
+    } catch {
+      rawPayload = null
+    }
+    if (!rawPayload?.id && dragModuleRef.current) rawPayload = dragModuleRef.current
+    dragModuleRef.current = null
+    if (!rawPayload?.id) return
+
+    if ("mode" in rawPayload && rawPayload.mode === "catalog") {
+      const c = rawPayload
+      const id = `w-${Date.now().toString(36)}`
+      const newWidget: GridWidget = {
+        id,
+        viewType: LEGACY_COKER_VIEW,
+        templateKey: c.templateKey,
+        packVersion: c.packVersion,
+        options: {},
+        title: c.name,
+        layout: {
+          i: id,
+          x: item.x,
+          y: item.y,
+          w: Math.min(c.defaultW, 12),
+          h: c.defaultH,
+          minW: c.minW,
+          minH: c.minH,
+        },
+      }
+      setWidgets((p) => [...p, newWidget])
+      setDirty(true)
+      return
+    }
+
+    const module = rawPayload as LibraryModule
+    const spec = SPM_WIDGET_LIBRARY_SPECS[module.id]
     if (!spec) return
+    const id = `w-${Date.now().toString(36)}`
     const newWidget: GridWidget = {
-      id: `w-${Date.now().toString(36)}`,
+      id,
       viewType: spec.viewType,
-      title: humanize(moduleId),
+      title: module.name?.trim() ? module.name : humanize(module.id),
       layout: {
-        i: `w-${Date.now().toString(36)}`,
+        i: id,
         x: item.x,
         y: item.y,
         w: spec.w,
@@ -191,23 +239,67 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
         minH: 2,
       },
     }
-    newWidget.layout.i = newWidget.id
     setWidgets((p) => [...p, newWidget])
     setDirty(true)
   }
 
-  const onDragStartFromLibrary = (_module: LibraryModule) => {
+  const onDragStartFromLibrary = (mod: LibraryModule | CatalogDragPayload) => {
+    dragModuleRef.current = mod
     setDraggingFromLibrary(true)
   }
   const onDragEndFromLibrary = () => {
     setDraggingFromLibrary(false)
     placeholderInsertedRef.current = false
+    dragModuleRef.current = null
   }
 
   const removeWidget = (id: string) => {
     setWidgets((p) => p.filter((w) => w.id !== id))
     setDirty(true)
   }
+
+  const appendLegacy = useCallback((module: LibraryModule) => {
+    const spec = SPM_WIDGET_LIBRARY_SPECS[module.id]
+    if (!spec) return
+    setWidgets((prev) => {
+      const y = nextRowY(prev)
+      const id = `w-${Date.now().toString(36)}`
+      const newWidget: GridWidget = {
+        id,
+        viewType: spec.viewType,
+        title: module.name?.trim() ? module.name : humanize(module.id),
+        layout: { i: id, x: 0, y, w: spec.w, h: spec.h, minW: 2, minH: 2 },
+      }
+      return [...prev, newWidget]
+    })
+    setDirty(true)
+  }, [])
+
+  const appendCatalog = useCallback((c: CatalogDragPayload) => {
+    setWidgets((prev) => {
+      const y = nextRowY(prev)
+      const id = `w-${Date.now().toString(36)}`
+      const w: GridWidget = {
+        id,
+        viewType: LEGACY_COKER_VIEW,
+        templateKey: c.templateKey,
+        packVersion: c.packVersion,
+        options: {},
+        title: c.name,
+        layout: {
+          i: id,
+          x: 0,
+          y,
+          w: Math.min(c.defaultW, 12),
+          h: c.defaultH,
+          minW: c.minW,
+          minH: c.minH,
+        },
+      }
+      return [...prev, w]
+    })
+    setDirty(true)
+  }, [])
 
   const layouts = useMemo(
     () => ({ lg: widgets.map((w) => ({ ...w.layout, i: w.id })) as LayoutItem[] }),
@@ -239,7 +331,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
             <Button variant="outline" onClick={() => router.back()}>
               Back
             </Button>
-            <Button onClick={() => router.push(`/workspace?d=${dashboard.id}`)}>
+            <Button onClick={() => router.push(`/dashboard?d=${dashboard.id}`)}>
               View only
             </Button>
           </div>
@@ -265,7 +357,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
             <Button variant="outline" onClick={() => router.back()}>
               Back
             </Button>
-            <Button onClick={() => router.push(`/workspace?d=${dashboard.id}`)}>
+            <Button onClick={() => router.push(`/dashboard?d=${dashboard.id}`)}>
               <Eye className="w-4 h-4 mr-1.5" /> Open read-only
             </Button>
           </div>
@@ -374,13 +466,34 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
         </div>
       </div>
 
+      {equipmentType === "coker" && (
+        <DashboardContextBar
+          value={ctx}
+          onChange={(v) => {
+            setCtx(v)
+            setDirty(true)
+          }}
+        />
+      )}
+
       <div className="flex-1 min-h-0 flex">
-        {/* Module library */}
         <aside className="w-64 flex-shrink-0 border-r border-border bg-card/30">
-          <ModuleLibrary
-            onWidgetDragStart={onDragStartFromLibrary}
-            onWidgetDragEnd={onDragEndFromLibrary}
-          />
+          {equipmentType === "coker" && dashboard ? (
+            <CatalogModuleLibrary
+              equipmentId={dashboard.equipmentId}
+              onWidgetDragStart={onDragStartFromLibrary}
+              onWidgetDragEnd={onDragEndFromLibrary}
+              onAddModule={(m) => {
+                if ("mode" in m && m.mode === "catalog") appendCatalog(m as CatalogDragPayload)
+              }}
+            />
+          ) : (
+            <ModuleLibrary
+              onWidgetDragStart={onDragStartFromLibrary}
+              onWidgetDragEnd={onDragEndFromLibrary}
+              onAddModule={appendLegacy}
+            />
+          )}
         </aside>
 
         {/* Grid */}
@@ -406,17 +519,39 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
               isDroppable
               droppingItem={
                 draggingFromLibrary
-                  ? { i: RGL_DROP_PLACEHOLDER_ID, w: 4, h: 4, x: 0, y: 0, h_unused: 0 } as unknown as LayoutItem
+                  ? (() => {
+                      const d = dragModuleRef.current
+                      if (d && "mode" in d && d.mode === "catalog")
+                        return {
+                          i: RGL_DROP_PLACEHOLDER_ID,
+                          w: d.defaultW,
+                          h: d.defaultH,
+                          x: 0,
+                          y: 0,
+                        } as unknown as LayoutItem
+                      return {
+                        i: RGL_DROP_PLACEHOLDER_ID,
+                        w: 4,
+                        h: 4,
+                        x: 0,
+                        y: 0,
+                      } as unknown as LayoutItem
+                    })()
                   : undefined
               }
               onLayoutChange={onLayoutChange as unknown as Parameters<typeof ResponsiveGridLayout>[0]["onLayoutChange"]}
-              onDrop={onDropFromLibrary as unknown as Parameters<typeof ResponsiveGridLayout>[0]["onDrop"]}
+              onDrop={onDropFromLibrary}
               compactType="vertical"
             >
               {widgets.map((w) => (
                 <div
                   key={w.id}
-                  className="group bg-card rounded-xl border border-border shadow-sm overflow-hidden"
+                  className={cn(
+                    "group rounded-xl border shadow-sm overflow-hidden",
+                    equipmentType === "coker" && w.templateKey
+                      ? "bg-[hsl(var(--coker-card))] border-[hsl(var(--coker-border))] coker-theme"
+                      : "bg-card border-border"
+                  )}
                 >
                   <div className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between">
                     <span className="truncate">{w.title ?? "Widget"}</span>
@@ -431,10 +566,11 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
                   </div>
                   <div className="h-[calc(100%-30px)] p-2">
                     <WidgetErrorBoundary>
-                      <WidgetViewResolver
-                        viewType={w.viewType}
+                      <DashboardWidgetBody
+                        widget={w}
                         equipmentId={dashboard.equipmentId}
                         scenarioRuns={whatIfRunSessions}
+                        context={ctx}
                       />
                     </WidgetErrorBoundary>
                   </div>
@@ -448,11 +584,15 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
   )
 }
 
+function nextRowY(ws: GridWidget[]): number {
+  let y = 0
+  for (const w of ws) y = Math.max(y, w.layout.y + w.layout.h)
+  return y
+}
+
 function humanize(moduleId: string): string {
   return moduleId
     .split("-")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ")
 }
-
-void cn

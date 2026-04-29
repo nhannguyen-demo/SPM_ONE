@@ -98,7 +98,7 @@ export function DashboardPopup({
 
   const handleEdit = () => {
     onClose()
-    router.push(`/workspace/dashboard/${dashboard.id}/edit`)
+    router.push(`/dashboard/dashboard/${dashboard.id}/edit`)
   }
 
   const handleOpenInNewTab = () => {

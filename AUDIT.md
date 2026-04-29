@@ -407,15 +407,17 @@ Everything in `lib/data.ts` is mock data. Specifically:
 | `"use client"` properly scoped | all interactive files | No accidental RSC/client boundary violations. |
 | Component file grouping | `views/`, `modals/`, `ai/`, `ui/` | Clear intent: where to add things, where to find things. |
 | AI feature isolation | `components/ai/feature{N}-*.tsx` | Each feature is self-contained with file-level comments on how to remove it. Feature 1 comment explicitly says "To remove: delete this file and remove the import." |
-| `WidgetErrorBoundary` class component | `components/views/equipment-dashboard/widget-view-resolver.tsx` | Prevents a single widget crash from taking down the entire dashboard. This is the correct pattern. |
+| `WidgetErrorBoundary` class component | `components/dashboard/widget-view-resolver.tsx` | Prevents a single widget crash from taking down the entire dashboard. This is the correct pattern. |
 | Seed hook pattern (`useSeedDocuments`, `useSeedMockHistory`) | `documents-view.tsx`, `components/views/whatif-tool/shared.tsx` | Cleanly initialises Zustand from static data on first mount using a `ref` guard — no double-seeding. |
 | Two-layer sidebar (Rail + Panel) | `sidebar.tsx` | The 56px always-visible icon rail + sliding 220px panel is a proven pattern for complex tools. It scales to many modules without crowding. |
 | Design token usage | `app/globals.css` + all Tailwind classes | All colours reference `hsl(var(--card))`, `hsl(var(--foreground))` etc., not hardcoded hex. Dark/light mode works for free. |
 | `DashboardCard` reuse | 5 different locations | Same component used correctly in Home recents, Home favourites, SiteOverview, PlantOverview, and EquipmentDashboard tab strip. Props handle display variants cleanly. |
-| `WidgetViewResolver` switch dispatch | `components/views/equipment-dashboard/widget-view-resolver.tsx` | Clean single entry point for all widget types. Adding a new widget = one new `case`. No conditional component trees scattered across files. |
-| `buildDefaultGrid` + `DEFAULT_WIDGET_SETS` | `components/views/equipment-dashboard/layouts.ts` | Declarative widget layout specifications. Each tab's contents and positions are described as plain data, not imperative code. |
+| `WidgetViewResolver` switch dispatch | `components/dashboard/widget-view-resolver.tsx` | Clean single entry point for all widget types. Adding a new widget = one new `case`. No conditional component trees scattered across files. |
+| `buildDefaultGrid` + `DEFAULT_WIDGET_SETS` | `components/dashboard/layouts.ts` | Declarative widget layout specifications. Each tab's contents and positions are described as plain data, not imperative code. |
 | `findAssetPathForEquipment` utility | `components/views/whatif-tool/shared.tsx` | Encapsulates the hierarchical lookup (site → plant from equipment id) rather than inlining it. |
-| `ResponsiveGridLayout` breakpoints | `equipment-dashboard.tsx` | 5-tier responsive grid (lg/md/sm/xs/xxs) with a `ResizeObserver` measuring container width correctly — avoids RGL's known width-calculation bugs. |
+| `ResponsiveGridLayout` breakpoints | `components/workspace/dashboard-editor.tsx` (and read-only grids) | 5-tier responsive grid with measured container width — same pattern as legacy in-shell editor (removed Apr 2026). |
+
+**Update (Apr 29 2026):** Legacy in-shell `EquipmentDashboard` view (`currentView: equipment`, `components/views/equipment-dashboard.tsx`) was removed. Shared widget layout and `WidgetViewResolver` live under `components/dashboard/`. The only interactive authoring surface is `DashboardEditor` at `/dashboard/dashboard/[dashboardId]/edit` with `useWorkspaceStore`. Legacy full-screen URL `/equipment-dashboard/[equipmentId]/[tag]/full` client-redirects to `/dashboards/[WorkspaceDashboard.id]/full`.
 
 ---
 
