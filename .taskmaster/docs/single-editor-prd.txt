@@ -1,0 +1,55 @@
+# PRD: Single editor engine (Option A) — retire legacy Equipment Dashboard editor
+
+## Problem
+The codebase has two interactive dashboard editing paths: (1) legacy `currentView: "equipment"` + `components/views/equipment-dashboard.tsx` with local `grids` state, and (2) `DashboardEditor` at `/dashboard/dashboard/[dashboardId]/edit` persisting to `useWorkspaceStore`. This duplicates UX, risks drift from `WorkspaceDashboard.widgets`, and contradicts the canonical data model in domain.ontology.yaml and PROJECT.md.
+
+## Goal
+Make `DashboardEditor` the **sole** interactive authoring engine. Remove or reduce the legacy path so there is no second editor for the same capability.
+
+## Non-goals (this phase)
+- No backend API; keep Zustand + localStorage for Workspace.
+- No redesign of `WidgetViewResolver` chart mocks unless required for removal.
+- `@dnd-kit` remains for folder tree if already planned; not required for this PRD.
+
+## Requirements
+
+### R1 — Navigation and shell
+- Remove `currentView: "equipment"` from `app/page.tsx` and any sidebar/header links that open the legacy editor.
+- Ensure "Edit" from Equipment Home, Site/Plant stacks, and Dashboard cards deep-links to `/dashboard` or `/dashboard/dashboard/[id]/edit` with correct `WorkspaceDashboard.id` and optional equipment pre-filter.
+- Grep the repo for `equipment`, `EquipmentDashboard`, and legacy full-screen route `/equipment-dashboard/`; update or remove dead routes.
+
+### R2 — Data and state
+- No feature may depend on local-only `grids` / `customDashboardCards` in `equipment-dashboard.tsx` for authoring.
+- All layout persistence goes through `saveDashboardWidgets` / `WorkspaceDashboard.widgets`.
+- If any flow still needs default layouts, use `DEFAULT_GRIDS` / `buildDefaultGrid` only in seed or explicit "reset layout" in Dashboard module, not a parallel editor.
+
+### R3 — Component removal / shrink
+- Delete `components/views/equipment-dashboard.tsx` or replace with a minimal read-only placeholder that redirects to `/dashboard` (prefer delete + route removal).
+- Keep `components/views/equipment-dashboard/layouts.ts` and `widget-view-resolver.tsx` as shared utilities; move to a neutral path if needed (e.g. `components/dashboard/`) in a follow-up task if imports become messy.
+
+### R4 — store.ts / types
+- Remove `"equipment"` from `currentView` union in `lib/store.ts` and related setters if present.
+- Update any `setCurrentView("equipment")` call sites.
+
+### R5 — Legacy full-screen route
+- Remove or 301 redirect `app/equipment-dashboard/[equipmentId]/[tag]/full/page.tsx` to `/dashboards/[id]/full` using `getWorkspaceDashboardIdForTag` from `lib/workspace-data.ts`, or delete if unused.
+
+### R6 — Tests and manual QA
+- Manual: Create dashboard in Dashboard module, edit widgets, save, open Equipment Home popup — layout matches.
+- No regression on read-only popups, full viewer, cross-tab presence.
+
+### R7 — Documentation
+- Already updated: `domain.ontology.yaml`, `PROJECT.md`. After implementation, one-line note in AUDIT.md optional.
+
+## Acceptance criteria
+- Grep shows no user-facing path to `EquipmentDashboard` / `currentView: equipment` for editing.
+- Single code path for interactive grid edit: `DashboardEditor` + `useWorkspaceStore`.
+- Build passes; no broken imports.
+
+## Suggested task order
+1. Inventory references (grep) and document entry points.
+2. Rewire navigation to `/dashboard/.../edit` only.
+3. Remove `equipment` from store and `app/page.tsx`.
+4. Delete legacy component and clean imports.
+5. Handle legacy full-screen route.
+6. Final grep + manual QA + fix lints.

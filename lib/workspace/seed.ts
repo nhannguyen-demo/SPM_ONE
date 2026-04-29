@@ -10,7 +10,7 @@
  */
 
 import { sites } from "@/lib/data"
-import { DEFAULT_GRIDS } from "@/components/views/equipment-dashboard/layouts"
+import { DEFAULT_GRIDS } from "@/components/dashboard/layouts"
 import type {
   DashboardComment,
   DashboardShare,

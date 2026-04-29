@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { useAppStore, type WhatIfRunSession } from "@/lib/store"
+import { useAppStore } from "@/lib/store"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import { useShallow } from "zustand/react/shallow"
 import { useDashboardOpenElsewhereCount } from "@/lib/workspace/use-viewer-tabs"
@@ -20,7 +20,7 @@ import {
   getDashboardById,
   type EquipmentHomeDashCard,
 } from "@/lib/workspace-data"
-import { WidgetErrorBoundary, WidgetViewResolver } from "@/components/views/equipment-dashboard/widget-view-resolver"
+import { ResponsiveDashboardGrid } from "@/components/workspace/read-only-grid"
 import { DashboardCard } from "@/components/dashboard-card"
 import { cn } from "@/lib/utils"
 import {
@@ -45,9 +45,6 @@ import {
   Lock,
   Users,
 } from "lucide-react"
-import { Responsive as ResponsiveGridLayout } from "react-grid-layout/legacy"
-import "react-grid-layout/css/styles.css"
-import "react-resizable/css/styles.css"
 
 /* ═══════════════════════════════════════════════════════════════════════════
    OPEN-ELSEWHERE BADGE — shows on Equipment Home dashboard tabs/cards when
@@ -343,26 +340,12 @@ function DashboardPopup({
     () => getDashboardById(dashboardId, rawDashboards),
     [dashboardId, rawDashboards],
   )
-  const grid = dashboard?.widgets ?? []
-  const layouts = grid.map((gw) => gw.layout)
   const dashboardDisplayName = dashboard?.name ?? dashboardId
 
   const [viewedDataIds, setViewedDataIds] = useState<string[]>(["live"])
   const [visualReportGenerated, setVisualReportGenerated] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareRecipient, setShareRecipient] = useState("")
-  const [gridWidth, setGridWidth] = useState(800)
-
-  const containerRef = useCallback((node: HTMLDivElement | null) => {
-    if (!node) return
-    const observer = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width
-      if (w) setGridWidth(w)
-    })
-    observer.observe(node)
-    setGridWidth(node.getBoundingClientRect().width)
-    return () => observer.disconnect()
-  }, [])
 
   const equipmentRuns = whatIfRunSessions
     .filter((s) => s.equipmentId === equipment.id && s.status === "success")
@@ -476,49 +459,20 @@ function DashboardPopup({
         {/* Body */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Widget grid */}
-          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3" ref={containerRef}>
-            {grid.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
+          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden min-h-0">
+            {!dashboard ? (
+              <div className="flex flex-col items-center justify-center min-h-[16rem] text-muted-foreground gap-3 p-6">
                 <LayoutDashboard className="w-8 h-8 opacity-30" />
-                <p className="text-sm">No widgets configured for this dashboard.</p>
+                <p className="text-sm">Dashboard not found or no longer available.</p>
               </div>
             ) : (
-              <ResponsiveGridLayout
-                className="layout"
-                layouts={{ lg: layouts, md: layouts, sm: layouts }}
-                breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-                cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-                rowHeight={80}
-                width={Math.max(gridWidth - 24, 200)}
-                isDraggable={false}
-                isResizable={false}
-                compactType="vertical"
-                margin={[8, 8]}
-                containerPadding={[4, 4]}
-              >
-                {grid.map((gw) => (
-                  <div
-                    key={gw.id}
-                    className="bg-secondary/30 rounded-xl border border-border/60 flex flex-col overflow-hidden"
-                  >
-                    <div className="flex items-center px-3 py-1.5 flex-shrink-0 bg-background/50 border-b border-border/40">
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
-                        {gw.title || "Widget"}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-h-0 p-2 overflow-hidden">
-                      <WidgetErrorBoundary>
-                        <WidgetViewResolver
-                          viewType={gw.viewType}
-                          equipmentId={equipment.id}
-                          viewedDataIds={viewedDataIds}
-                          scenarioRuns={equipmentRuns}
-                        />
-                      </WidgetErrorBoundary>
-                    </div>
-                  </div>
-                ))}
-              </ResponsiveGridLayout>
+              <ResponsiveDashboardGrid
+                dashboard={dashboard}
+                viewedDataIds={viewedDataIds}
+                scenarioRuns={equipmentRuns}
+                useEmptyFallback={false}
+                emptyStateMessage="No widgets configured for this dashboard."
+              />
             )}
           </div>
 
@@ -873,7 +827,7 @@ export function EquipmentHomeView() {
           <button
             onClick={() => {
               setInitialEquipmentFilter(equipment.id)
-              router.push("/workspace")
+              router.push("/dashboard")
             }}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-all shadow-sm"
           >

@@ -66,7 +66,7 @@ export function WorkspacePage({ initial }: WorkspacePageProps) {
     setSelected(initial)
   }, [initial])
 
-  // Pre-applied equipment filter (set by Equipment Home → Workspace deep link).
+  // Pre-applied equipment filter (set by Equipment Home → Dashboard module deep link).
   const initialEquipmentFilter = useWorkspaceStore((s) => s.initialEquipmentFilter)
   const setInitialEquipmentFilter = useWorkspaceStore((s) => s.setInitialEquipmentFilter)
   const setFilter = useWorkspaceStore((s) => s.setFilter)
@@ -275,7 +275,7 @@ export function WorkspacePage({ initial }: WorkspacePageProps) {
                     key={d.id}
                     dashboard={d}
                     onOpen={() => setPopupDashboardId(d.id)}
-                    onEdit={() => router.push(`/workspace/dashboard/${d.id}/edit`)}
+                    onEdit={() => router.push(`/dashboard/dashboard/${d.id}/edit`)}
                     onShare={() => setShareDashboardId(d.id)}
                     onMoveTo={
                       isShared || isTrash
@@ -338,7 +338,7 @@ function EmptyState({
     switch (location.location) {
       case "all":
         title = "No dashboards yet"
-        body = "Create your first Workspace dashboard."
+        body = "Create your first dashboard."
         primary = <Button onClick={onCreate}>Create dashboard</Button>
         break
       case "shared":

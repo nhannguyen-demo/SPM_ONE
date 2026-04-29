@@ -11,9 +11,11 @@
 
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
-import type { GridWidget } from "@/components/views/equipment-dashboard/layouts"
+import type { GridWidget } from "@/components/dashboard/layouts"
 import type {
+  CatalogParameterRequest,
   DashboardComment,
+  DashboardContextState,
   DashboardLifecycleStatus,
   DashboardShare,
   DashboardSortDir,
@@ -32,6 +34,8 @@ import { EMPTY_FILTERS } from "./types"
 import { ORG_USERS, findOrgUserById, getCurrentUserId } from "./identity"
 import { WORKSPACE_SEED } from "./seed"
 import { generateDashboardThumbnail } from "./thumbnail"
+import { getEquipmentTypeKey } from "@/lib/data"
+import { COKER_V1_VERSION } from "@/lib/equipment-packs/coker-v1"
 
 const RECENT_LIMIT = 20
 const TRASH_TTL_DAYS = 30
@@ -62,13 +66,15 @@ export interface WorkspaceState {
   notifications: Notification[]
   /** LRU dashboardId list, per current user (max RECENT_LIMIT). */
   recentDashboardIds: string[]
+  /** In-app requests for new catalog parameters (product team queue). */
+  catalogParameterRequests: CatalogParameterRequest[]
 
   /* ── UI state (also persisted) ──────────────────────────────────────────── */
   searchQuery: string
   filters: WorkspaceFilters
   sortKey: DashboardSortKey
   sortDir: DashboardSortDir
-  /** When set, /workspace pre-applies this equipmentId filter on mount. */
+  /** When set, /dashboard pre-applies this equipmentId filter on mount. */
   initialEquipmentFilter: string | null
 
   /* ── Actions: data lifecycle ────────────────────────────────────────────── */
@@ -91,6 +97,17 @@ export interface WorkspaceState {
   renameDashboard: (dashboardId: string, name: string) => void
   moveDashboard: (dashboardId: string, folderId: string | null) => void
   saveDashboardWidgets: (dashboardId: string, widgets: GridWidget[]) => void
+  saveDashboardContext: (dashboardId: string, context: DashboardContextState | null) => void
+  duplicateDashboardToEquipment: (dashboardId: string, targetEquipmentId: string) => WorkspaceDashboard | null
+  submitCatalogParameterRequest: (input: {
+    body: string
+    equipmentId: string | null
+    categoryHint: string | null
+  }) => CatalogParameterRequest
+  updateCatalogParameterRequestStatus: (
+    requestId: string,
+    status: CatalogParameterRequest["status"]
+  ) => void
   publishDashboard: (dashboardId: string) => void
   unpublishDashboard: (dashboardId: string) => void
   softDeleteDashboard: (dashboardId: string) => void
@@ -166,6 +183,10 @@ const initialState: Omit<
   | "renameDashboard"
   | "moveDashboard"
   | "saveDashboardWidgets"
+  | "saveDashboardContext"
+  | "duplicateDashboardToEquipment"
+  | "submitCatalogParameterRequest"
+  | "updateCatalogParameterRequestStatus"
   | "publishDashboard"
   | "unpublishDashboard"
   | "softDeleteDashboard"
@@ -198,6 +219,7 @@ const initialState: Omit<
   permissionRequests: SEED.permissionRequests,
   notifications: SEED.notifications,
   recentDashboardIds: [],
+  catalogParameterRequests: [],
   searchQuery: "",
   filters: { ...EMPTY_FILTERS },
   sortKey: "lastChange",
@@ -226,6 +248,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           sortKey: "lastChange",
           sortDir: "desc",
           initialEquipmentFilter: null,
+          catalogParameterRequests: [],
         }),
 
       /* ── Folders ────────────────────────────────────────────────────────── */
@@ -299,6 +322,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           lastChangeByUserId: getCurrentUserId(),
           publishedAt: null,
           deletedAt: null,
+          knowledgePackVersion: null,
+          dashboardContext: null,
           widgets: widgets ?? [],
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -321,6 +346,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           thumbnailUrl: generateDashboardThumbnail(id, `Copy of ${orig.name}`, orig.widgets),
           publishedAt: null,
           deletedAt: null,
+          knowledgePackVersion: orig.knowledgePackVersion ?? null,
+          dashboardContext: orig.dashboardContext ? { ...orig.dashboardContext } : null,
           lastChangeAt: nowIso(),
           lastChangeByUserId: getCurrentUserId(),
           createdAt: nowIso(),
@@ -359,9 +386,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               !isOwner && !d.contributorUserIds.includes(meId)
                 ? [...d.contributorUserIds, meId]
                 : d.contributorUserIds
+            const hasCatalog = widgets.some((w) => w.templateKey)
+            const kType = getEquipmentTypeKey(d.equipmentId)
+            const packVer =
+              hasCatalog && kType === "coker"
+                ? COKER_V1_VERSION
+                : d.knowledgePackVersion ?? null
             return {
               ...d,
               widgets,
+              knowledgePackVersion: packVer,
               contributorUserIds,
               thumbnailUrl: generateDashboardThumbnail(d.id, d.name, widgets),
               lastChangeAt: nowIso(),
@@ -369,6 +403,80 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               updatedAt: nowIso(),
             }
           }),
+        })),
+      saveDashboardContext: (dashboardId, context) =>
+        set((s) => ({
+          dashboards: s.dashboards.map((d) =>
+            d.id === dashboardId
+              ? {
+                  ...d,
+                  dashboardContext: context,
+                  lastChangeAt: nowIso(),
+                  lastChangeByUserId: getCurrentUserId(),
+                  updatedAt: nowIso(),
+                }
+              : d
+          ),
+        })),
+      duplicateDashboardToEquipment: (dashboardId, targetEquipmentId) => {
+        const orig = get().dashboards.find((d) => d.id === dashboardId)
+        if (!orig) return null
+        if (getEquipmentTypeKey(orig.equipmentId) !== getEquipmentTypeKey(targetEquipmentId)) {
+          return null
+        }
+        const id = genId("dash")
+        const newWidgets: GridWidget[] = orig.widgets.map((w) => {
+          const nid = genId("w")
+          return {
+            ...w,
+            id: nid,
+            layout: { ...w.layout, i: nid },
+          }
+        })
+        const k = getEquipmentTypeKey(targetEquipmentId)
+        const copy: WorkspaceDashboard = {
+          ...orig,
+          id,
+          equipmentId: targetEquipmentId,
+          name: `${orig.name} (copy)`,
+          lifecycleStatus: "created",
+          ownerUserId: getCurrentUserId(),
+          contributorUserIds: [],
+          sourceDashboardId: orig.id,
+          widgets: newWidgets,
+          publishedAt: null,
+          deletedAt: null,
+          knowledgePackVersion:
+            k === "coker" && newWidgets.some((w) => w.templateKey) ? COKER_V1_VERSION : orig.knowledgePackVersion,
+          dashboardContext: orig.dashboardContext ? { ...orig.dashboardContext } : null,
+          thumbnailUrl: generateDashboardThumbnail(id, `${orig.name} (copy)`, newWidgets),
+          lastChangeAt: nowIso(),
+          lastChangeByUserId: getCurrentUserId(),
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+        }
+        set((s) => ({ dashboards: [copy, ...s.dashboards] }))
+        return copy
+      },
+      submitCatalogParameterRequest: ({ body, equipmentId, categoryHint }) => {
+        const req: CatalogParameterRequest = {
+          id: genId("cpr"),
+          requesterUserId: getCurrentUserId(),
+          equipmentId,
+          body: body.trim() || "(empty)",
+          categoryHint,
+          status: "submitted",
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+        }
+        set((s) => ({ catalogParameterRequests: [req, ...s.catalogParameterRequests] }))
+        return req
+      },
+      updateCatalogParameterRequestStatus: (requestId, status) =>
+        set((s) => ({
+          catalogParameterRequests: s.catalogParameterRequests.map((r) =>
+            r.id === requestId ? { ...r, status, updatedAt: nowIso() } : r
+          ),
         })),
       publishDashboard: (dashboardId) =>
         set((s) => ({
@@ -709,6 +817,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         comments: s.comments,
         permissionRequests: s.permissionRequests,
         notifications: s.notifications,
+        catalogParameterRequests: s.catalogParameterRequests,
         recentDashboardIds: s.recentDashboardIds,
         searchQuery: s.searchQuery,
         filters: s.filters,

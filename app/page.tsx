@@ -4,9 +4,8 @@ import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { SiteOverview } from "@/components/views/site-overview"
 import { PlantOverview } from "@/components/views/plant-overview"
-import { EquipmentDashboard } from "@/components/views/equipment-dashboard"
 import { EquipmentHomeView } from "@/components/views/equipment-home"
-import { WorkspaceView } from "@/components/views/workspace-view"
+import { WorkspaceView } from "@/components/views/dashboard-view"
 import { DataSyncView } from "@/components/views/data-sync"
 import { HomeView } from "@/components/views/home-view"
 import { WhatIfToolView } from "@/components/views/whatif-tool-view"
@@ -29,7 +28,6 @@ export default function Home() {
           {currentView === "site"            && <SiteOverview />}
           {currentView === "plant"           && <PlantOverview />}
           {currentView === "equipment-home"  && <EquipmentHomeView />}
-          {currentView === "equipment"       && <EquipmentDashboard />}
           {currentView === "workspace"       && <WorkspaceView />}
           {currentView === "data-sync"       && <DataSyncView />}
           {currentView === "whatIfTool"      && <WhatIfToolView />}
@@ -42,7 +40,7 @@ export default function Home() {
       <WhatIfResultModal />
 
       {/* FEATURE 1 — Global Floating AI Spark Button
-          Only renders on site/plant/equipment views; self-excludes on data-sync and modals */}
+          Only renders on site/plant/equipment-home views; self-excludes on data-sync and modals */}
       <AISparkButton />
     </div>
   )

@@ -1,7 +1,7 @@
 // FEATURE 6 - AI Insight Overlay (activated via FEATURE 1's "AI Insight" button)
 // Sub-components:
-//   6A — AIKPIBadges: KPI pill badges + popovers (equipment-dashboard.tsx)
-//   6B — AIChartMarkers: Chart anomaly markers (equipment-dashboard.tsx)
+//   6A — AIKPIBadges: KPI pill badges + popovers (dashboard widget views)
+//   6B — AIChartMarkers: Chart anomaly markers (dashboard widget views)
 //   6C — AIMapBadges: Site map plant status badges (site-overview.tsx)
 // To remove this feature: delete this file and remove all usages from the 3 files above.
 
@@ -22,7 +22,7 @@ function SparkIcon14() {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FEATURE 6A — KPI Pill AI Explainer Badges
-// Usage: wrap each <KPIPill> in equipment-dashboard.tsx with <AIKPIBadgeWrapper kpiKey="dmg">
+// Usage: wrap each <KPIPill> in widget views with <AIKPIBadgeWrapper kpiKey="dmg">
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const KPI_INSIGHTS: Record<string, { title: string; text: string }> = {

@@ -9,6 +9,12 @@ export type SiteEquipment = {
   tabs: string[]
   /** When true, asset menu shows the node but click does not navigate. */
   isPlaceholder?: boolean
+  /**
+   * Drives catalog Widget Library (e.g. coker for Coker units). Other types use generic chart library.
+   */
+  equipmentTypeKey?: "coker" | "hcu" | "smr" | "other"
+  /** Product-team add-on parameter family keys (library). */
+  parameterAddonKeys?: string[]
 }
 
 export type SiteUnit = { id: string; name: string; equipment: SiteEquipment[] }
@@ -25,6 +31,7 @@ export const sites: Array<{ id: string; name: string; units: SiteUnit[] }> = [
           {
             id: "equipment-a",
             name: "Coker 01",
+            equipmentTypeKey: "coker",
             tabs: [
               "Demo Engineer Team's Dashboard",
               "Monitoring",
@@ -45,6 +52,7 @@ export const sites: Array<{ id: string; name: string; units: SiteUnit[] }> = [
           {
             id: "equipment-b",
             name: "HCU 01",
+            equipmentTypeKey: "hcu",
             tabs: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
           },
           { id: "equipment-f", name: "HCU 02", tabs: [], isPlaceholder: true },
@@ -54,13 +62,28 @@ export const sites: Array<{ id: string; name: string; units: SiteUnit[] }> = [
         id: "unit-2008-h2",
         name: "Unit 2008 - Hydrogen Unit",
         equipment: [
-          { id: "equipment-c", name: "SMR Pigtails", tabs: ["SMR Pigtail Integrity"] },
+          { id: "equipment-c", name: "SMR Pigtails", equipmentTypeKey: "smr", tabs: ["SMR Pigtail Integrity"] },
           { id: "equipment-g", name: "SMR Catalyst Tubes", tabs: [], isPlaceholder: true },
         ],
       },
     ],
   },
 ]
+
+/** Resolve equipment row; used for catalog + equipmentTypeKey. */
+export function getSiteEquipment(equipmentId: string): SiteEquipment | undefined {
+  for (const site of sites) {
+    for (const unit of site.units) {
+      const e = unit.equipment.find((x) => x.id === equipmentId)
+      if (e) return e
+    }
+  }
+  return undefined
+}
+
+export function getEquipmentTypeKey(equipmentId: string): "coker" | "hcu" | "smr" | "other" {
+  return getSiteEquipment(equipmentId)?.equipmentTypeKey ?? "other"
+}
 
 /** Unit id (`sites[].units[].id`) for an equipment, if present. */
 export function getUnitIdForEquipment(equipmentId: string): string | undefined {
@@ -93,7 +116,7 @@ export const plantDocuments = [
  * Add your files under public/images/thumbnails/ using these filenames (or edit paths below).
  */
 export const equipmentDashboardThumbnails: Record<string, string> = {
-  "equipment-a": "/images/thumbnails/coke-drum.jpg",
+  "equipment-a": "/images/thumbnails/coke-drum.png",
   "equipment-b": "/images/thumbnails/hcu.png",
   "equipment-c": "/images/thumbnails/smr.png",
 }

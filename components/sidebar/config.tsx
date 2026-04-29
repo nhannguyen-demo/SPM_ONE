@@ -11,7 +11,7 @@ export const MODULES: {
 }[] = [
   { key: "home", icon: <Home className="w-5 h-5" />, label: "Home" },
   { key: "assets", icon: <Building2 className="w-5 h-5" />, label: "Assets" },
-  { key: "workspace", icon: <LayoutDashboard className="w-5 h-5" />, label: "Workspace" },
+  { key: "workspace", icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard" },
   { key: "insights", icon: <BarChart3 className="w-5 h-5" />, label: "Tools" },
   { key: "comms", icon: <MessageSquare className="w-5 h-5" />, label: "Comms" },
   { key: "settings", icon: <Settings className="w-5 h-5" />, label: "Settings" },
@@ -20,7 +20,7 @@ export const MODULES: {
 export const NAV_SEARCH_PLACEHOLDERS: Record<ActiveModule, string> = {
   home: "Search home…",
   assets: "Search assets…",
-  workspace: "Search workspace…",
+  workspace: "Search dashboards…",
   insights: "Search tools…",
   comms: "Search messages…",
   settings: "Search settings…",

@@ -12,7 +12,7 @@
  * Puppeteer-on-server) when product wants pixel-perfect previews.
  */
 
-import type { GridWidget } from "@/components/views/equipment-dashboard/layouts"
+import type { GridWidget } from "@/components/dashboard/layouts"
 
 /** Deterministic palette — same name → same colors. */
 const PALETTES: Array<{ bg: string; fg: string; accent: string }> = [

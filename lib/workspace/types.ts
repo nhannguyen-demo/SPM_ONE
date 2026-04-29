@@ -9,11 +9,36 @@
  *     these types are scoped to the Workspace surface.
  */
 
-import type { GridWidget } from "@/components/views/equipment-dashboard/layouts"
+import type { GridWidget } from "@/components/dashboard/layouts"
+
+/* ─── Catalog parameter requests (product team queue) ───────────────────── */
+
+export type CatalogParameterRequestStatus = "submitted" | "acknowledged" | "closed"
+
+/** User-submitted request for a new parameter in a future pack release. */
+export interface CatalogParameterRequest {
+  id: string
+  requesterUserId: string
+  equipmentId: string | null
+  body: string
+  categoryHint: string | null
+  status: CatalogParameterRequestStatus
+  createdAt: string
+  updatedAt: string
+}
+
+/** Global time/cycle context for catalog dashboards (optional per dashboard). */
+export interface DashboardContextState {
+  cycleId?: string
+  fromIso?: string
+  toIso?: string
+  durationKey?: string
+  latestUpdateLabel?: string
+}
 
 /* ─── Identity ─────────────────────────────────────────────────────────────── */
 
-export type UserRole = "integrity_engineer" | "process_engineer" | "admin"
+export type UserRole = "integrity_engineer" | "process_engineer" | "admin" | "product_team"
 
 export interface OrgUser {
   id: string
@@ -74,8 +99,12 @@ export interface WorkspaceDashboard {
   publishedAt: string | null
   /** Soft-delete; null = active. */
   deletedAt: string | null
-  /** Widget grid layout (compatible with legacy dashboard editor). */
+  /** Widget grid — supports legacy `viewType` and catalog `templateKey`. */
   widgets: GridWidget[]
+  /** Knowledge pack version last saved (Coker v1+). */
+  knowledgePackVersion?: string | null
+  /** Dashboard-level time/cycle context for templates that follow it. */
+  dashboardContext?: DashboardContextState | null
   createdAt: string
   updatedAt: string
 }

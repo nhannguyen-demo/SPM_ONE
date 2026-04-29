@@ -265,7 +265,7 @@ function FolderRow({
               onClick={() => {
                 if (
                   window.confirm(
-                    "Delete this folder? Subfolders will also be removed; dashboards inside will move to your Workspace root."
+                    "Delete this folder? Subfolders will also be removed; dashboards inside will move to your Dashboard root."
                   )
                 ) {
                   deleteFolder(node.id, "move-to-root")
@@ -370,7 +370,7 @@ export function FolderTree({
   searchQuery = "",
 }: FolderTreeProps) {
   const router = useRouter()
-  const pathname = usePathname() || "/workspace"
+  const pathname = usePathname() || "/dashboard"
   // useShallow prevents new-array-on-every-call from triggering infinite renders.
   const { rawFolders, shares, dashboards } = useWorkspaceStore(
     useShallow((s) => ({
@@ -402,10 +402,10 @@ export function FolderTree({
 
   const tree = useMemo(() => buildTree(folders), [folders])
   const selectedFromRoute = useMemo<WorkspaceSelection>(() => {
-    if (pathname === "/workspace/shared") return { kind: "virtual", location: "shared" }
-    if (pathname === "/workspace/recent") return { kind: "virtual", location: "recent" }
-    if (pathname === "/workspace/trash") return { kind: "virtual", location: "trash" }
-    const folderPrefix = "/workspace/folder/"
+    if (pathname === "/dashboard/shared") return { kind: "virtual", location: "shared" }
+    if (pathname === "/dashboard/recent") return { kind: "virtual", location: "recent" }
+    if (pathname === "/dashboard/trash") return { kind: "virtual", location: "trash" }
+    const folderPrefix = "/dashboard/folder/"
     if (pathname.startsWith(folderPrefix)) {
       return { kind: "folder", folderId: pathname.slice(folderPrefix.length) }
     }
@@ -431,9 +431,9 @@ export function FolderTree({
     onSelect?.(sel)
     if (!onSelect) {
       if (sel.kind === "virtual") {
-        router.push(sel.location === "all" ? "/workspace" : `/workspace/${sel.location}`)
+        router.push(sel.location === "all" ? "/dashboard" : `/dashboard/${sel.location}`)
       } else {
-        router.push(`/workspace/folder/${sel.folderId}`)
+        router.push(`/dashboard/folder/${sel.folderId}`)
       }
     }
   }
@@ -472,7 +472,7 @@ export function FolderTree({
         )}
       >
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Workspace
+          Dashboard
         </span>
         <button
           type="button"

@@ -7,7 +7,7 @@ import type { ReactNode } from "react"
 
 /**
  * Shared chrome (sidebar + header) for App Router pages outside the legacy
- * single-page shell at `/`. Used by `/workspace/*` and `/comms/*`.
+ * single-page shell at `/`. Used by `/dashboard/*` and `/comms/*`.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   return (

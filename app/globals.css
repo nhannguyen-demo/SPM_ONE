@@ -38,6 +38,14 @@
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.75 0.15 80);
   --warning-foreground: oklch(0.2 0.02 80);
+  /* Coker v1 catalog dashboard (light industrial UI) */
+  --coker-bg: 210 40% 97%;
+  --coker-card: 0 0% 100%;
+  --coker-fg: 222 47% 11%;
+  --coker-border: 214 32% 88%;
+  --coker-accent: 221 83% 40%;
+  --coker-row: 210 20% 98%;
+  --coker-track: 214 32% 90%;
 }
 
 .dark {
@@ -242,3 +250,20 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
+/* Coker catalog dashboard background helper */
+.coker-bg {
+  background: hsl(var(--coker-bg));
+}
+
+/* Full-screen dashboard print / Save as PDF */
+@media print {
+  body {
+    background: white !important;
+  }
+  .spm-print-hide {
+    display: none !important;
+  }
+  .spm-dashboard-print-root {
+    break-inside: avoid;
+  }
+}

@@ -77,14 +77,14 @@ function PanelSearchInput({
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Cross-routing helpers — bridge legacy `currentView` SPA with new App Router
-   surfaces (/workspace, /comms/alerts, etc.).
+   surfaces (/dashboard, /comms/alerts, etc.).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Modules that own dedicated App Router pages. Clicking the rail icon for one
  *  of these performs a `router.push` instead of just toggling the legacy
  *  in-page view. */
 const APP_ROUTER_MODULES: Partial<Record<ActiveModule, string>> = {
-  workspace: "/workspace",
+  workspace: "/dashboard",
   comms: "/comms/alerts",
 }
 
@@ -221,7 +221,7 @@ function ContextualPanel() {
   const MODULE_LABELS: Record<ActiveModule, string> = {
     home:      "Home",
     assets: "Assets",
-    workspace: "Workspace",
+    workspace: "Dashboard",
     insights:  "Tools",
     comms:     "Comms",
     settings:  "Settings",
@@ -472,7 +472,7 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
                                       "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
                                       isPlaceholder
                                         ? "text-sidebar-muted/80 cursor-default"
-                                        : isEquipActive && (currentView === "equipment" || currentView === "equipment-home" || currentView === "workspace")
+                                        : isEquipActive && (currentView === "equipment-home" || currentView === "workspace")
                                         ? "bg-sidebar-active text-white"
                                         : "hover:bg-sidebar-hover text-sidebar-foreground"
                                     )}
@@ -500,7 +500,7 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   WORKSPACE PANEL — clean 4-entry submenu (per Task 24)
+   DASHBOARD MODULE PANEL — UI label for AppModule `workspace` (folder tree)
    ═══════════════════════════════════════════════════════════════════════════ */
 function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
   return (

@@ -77,6 +77,13 @@ export const ORG_USERS: OrgUser[] = [
     initials: "YT",
     role: "integrity_engineer",
   },
+  {
+    id: "user-pm",
+    name: "Product Team",
+    email: "product@spm-one.com",
+    initials: "PM",
+    role: "product_team",
+  },
 ]
 
 const DEFAULT_CURRENT_USER_ID = "user-nhan"

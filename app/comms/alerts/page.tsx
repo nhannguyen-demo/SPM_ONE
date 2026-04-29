@@ -107,7 +107,7 @@ export default function CommsAlertsPage() {
   const handleClick = (n: Notification) => {
     if (!n.readAt) markRead(n.id)
     if (n.dashboardId) {
-      router.push(`/workspace?d=${n.dashboardId}`)
+      router.push(`/dashboard?d=${n.dashboardId}`)
     }
   }
 
@@ -202,7 +202,7 @@ export default function CommsAlertsPage() {
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     if (!n.readAt) markRead(n.id)
-                                    router.push(`/workspace?d=${n.dashboardId}`)
+                                    router.push(`/dashboard?d=${n.dashboardId}`)
                                   }}
                                   className="text-xs gap-1"
                                 >

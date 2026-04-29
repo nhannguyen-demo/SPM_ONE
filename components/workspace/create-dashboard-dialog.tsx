@@ -51,7 +51,7 @@ export function CreateDashboardDialog({
     })
     setName("")
     onOpenChange(false)
-    router.push(`/workspace/dashboard/${dash.id}/edit`)
+    router.push(`/dashboard/dashboard/${dash.id}/edit`)
   }
 
   return (
