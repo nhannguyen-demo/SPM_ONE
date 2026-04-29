@@ -31,6 +31,9 @@
 # `EquipmentKnowledgePack`, `ParameterFamily`, `CatalogWidgetTemplate`, `ParameterRequest`;
 # `WorkspaceDashboard.widgets` shall evolve to templateId + options + displayTitle; see
 # `scripts/prd.txt` (Coker catalog PRD) and PROJECT.md.
+# Updated Apr 30 2026 (rev 2): Coker **raster_image** template kind — selected
+# catalog tiles render from static files in `public/coker/widgets/` (code-mapped
+# paths in `lib/equipment-packs/coker-widget-images.ts`).
 
 entities:
   User:
@@ -291,6 +294,7 @@ entities:
           - multi_tab_panel
           - empty_state
           - composite_kpi_strip
+          - raster_image
       followsDashboardContext: { type: boolean, default: true }
       optionSchema: { type: json, comment: "Whitelisted options; no style keys." }
       defaultW: { type: integer }
@@ -766,6 +770,7 @@ business_rules:
   - "Users may submit a **ParameterRequest** from the app; requests are listed only for **product_team** (or a designated admin surface), not for general share-link recipients."
   - "Duplicating a dashboard to another **Equipment** requires the same **equipmentTypeKey**; cross-type duplicate is blocked with a user-visible message."
   - "Full-screen dashboard viewer and export/print must use the same **CatalogWidgetTemplate** renderers and **Coker** (or type) **theme** as the editor preview for pixel-consistent reports (see NFR in PRD)."
+  - "Coker v1 templates of **kind** `raster_image` (3D model, bulging inspection heatmap, total fatigue damage shell, crack inspection / unwrapped map) render from **static image files** under the app’s `public/coker/widgets/` directory; canonical URL paths are defined in `lib/equipment-packs/coker-widget-images.ts` until a CMS or API provides assets."
   # ── (end catalog-driven) ─────────────────────────────────────────────────
   - "DashboardShare grants are per-recipient and may be revoked; revoked shares no longer grant access and are hidden from the recipient's 'Shared with me'."
   - "ShareLink grants permission to any signed-in user that opens the link; if revoked, the link refuses access."

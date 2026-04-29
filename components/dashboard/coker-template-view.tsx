@@ -1,8 +1,10 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { getCokerTemplateDef } from "@/lib/equipment-packs/coker-v1"
+import { COKER_WIDGET_IMAGE } from "@/lib/equipment-packs/coker-widget-images"
 import {
   mockBulgeRows,
   mockCrackRows,
@@ -79,7 +81,12 @@ function renderByKey(key: string, ctxNote: string) {
     case "coker_equipment_data_table":
       return <TableZebra rows={mockEquipmentDataRows} />
     case "coker_model_3d":
-      return <PlaceholderSchematic label="3D shell segments (C1–C11) + legend + top-down" />
+      return (
+        <CokerWidgetRaster
+          src={COKER_WIDGET_IMAGE.model3d}
+          alt="Coker 3D shell model and legend"
+        />
+      )
     case "coker_kpi_max_strip":
       return (
         <KpiStrip
@@ -183,17 +190,10 @@ function renderByKey(key: string, ctxNote: string) {
       )
     case "coker_fatigue_vessel_heatmap":
       return (
-        <div className="flex flex-col h-full gap-1">
-          <div className="text-[10px] flex justify-between">
-            <span>Facings</span>
-            <select className="text-[10px] bg-card border rounded px-1" defaultValue="North">
-              <option>North</option>
-              <option>East</option>
-            </select>
-          </div>
-          <div className="flex-1 rounded border border-border bg-gradient-to-b from-blue-900/30 via-amber-500/20 to-rose-700/40 min-h-[120px]" />
-          <div className="h-2 w-full rounded bg-gradient-to-r from-blue-800 to-rose-700" />
-        </div>
+        <CokerWidgetRaster
+          src={COKER_WIDGET_IMAGE.totalFatigueDamage}
+          alt="Total fatigue damage shell heatmap"
+        />
       )
     case "coker_pslf_card":
       return <SingleKpi label="Max PSLF" value="142.35" />
@@ -237,9 +237,11 @@ function renderByKey(key: string, ctxNote: string) {
       )
     case "coker_bulging_heatmap":
       return (
-        <div className="h-full min-h-[140px] rounded bg-gradient-to-br from-slate-200/30 via-rose-200/20 to-amber-100/30 border border-border relative">
-          <span className="absolute bottom-1 right-1 text-[9px] text-muted-foreground">Bulging / PSLF / Ovality</span>
-        </div>
+        <CokerWidgetRaster
+          src={COKER_WIDGET_IMAGE.bulgingInspection}
+          alt="Bulging inspection PSLF and ovality heatmap"
+          footnote="Bulging / PSLF / Ovality"
+        />
       )
     case "coker_crack_details_table":
       return (
@@ -272,9 +274,11 @@ function renderByKey(key: string, ctxNote: string) {
       return <FadMock />
     case "coker_crack_unwrapped_map":
       return (
-        <div className="h-full min-h-[160px] rounded border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground">
-          Unwrapped shell — sections C1–C11 (select crack R4)
-        </div>
+        <CokerWidgetRaster
+          src={COKER_WIDGET_IMAGE.crackInspection}
+          alt="Crack inspection unwrapped shell map"
+          footnote="C1–C11 · shell"
+        />
       )
     case "coker_cycles_info_block":
       return (
@@ -493,6 +497,47 @@ function FadMock() {
           <Line type="monotone" dataKey="kr" stroke="hsl(221,83%,40%)" dot={false} name="FAD" />
         </LineChart>
       </ResponsiveContainer>
+    </div>
+  )
+}
+
+function CokerWidgetRaster({
+  src,
+  alt,
+  footnote,
+}: {
+  src: string
+  alt: string
+  footnote?: string
+}) {
+  const [failed, setFailed] = React.useState(false)
+  if (failed) {
+    return (
+      <div className="flex h-full min-h-[100px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/20 p-3 text-center">
+        <p className="text-[11px] text-muted-foreground">Could not load image</p>
+        <p className="max-w-full break-all font-mono text-[9px] text-muted-foreground">{src}</p>
+        <p className="text-[9px] text-muted-foreground">
+          Add the file under <code className="font-mono">public/coker/widgets/</code> (see README).
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div className="relative h-full w-full min-h-[100px]">
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className="object-contain"
+        onError={() => setFailed(true)}
+        sizes="(max-width: 1400px) 90vw, 1000px"
+        unoptimized
+      />
+      {footnote ? (
+        <span className="pointer-events-none absolute bottom-0.5 right-0.5 text-[8px] text-muted-foreground/90">
+          {footnote}
+        </span>
+      ) : null}
     </div>
   )
 }

@@ -27,6 +27,8 @@ export type CatalogTemplateKind =
   | "multi_tab_panel"
   | "empty_state"
   | "composite_kpi_strip"
+  /** Full-widget static image from app `public/` (Coker reference art, etc.) */
+  | "raster_image"
 
 export interface CatalogParameterFamily {
   key: string
