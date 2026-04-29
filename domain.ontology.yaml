@@ -366,7 +366,9 @@ entities:
         nullable: true
         references: Dashboard.id
         comment: "ID of the dashboard currently open in the read-only popup overlay.
-          Null when no popup is open. At most one popup open at a time."
+          Null when no popup is open. At most one popup open at a time. The popup
+          must use the same WorkspaceDashboard widget grid + catalog resolution
+          as the Dashboard module read-only surfaces (see rules: read-only grid parity)."
       viewedDataScenarioId:
         type: uuid
         nullable: true
@@ -792,6 +794,7 @@ business_rules:
   - "The legacy static dashboardCards array in lib/data.ts is deprecated; it must not be consulted as the primary source for dashboard identity, name, widget content, or display metadata in any module. Equipment Home Page, Home Page, Site Overview, and Plant Overview derive dashboard data from WorkspaceDashboard records."
   - "Equipment Home Page Dashboard collections are derived exclusively from WorkspaceDashboard records where lifecycleStatus = 'published' and deletedAt is null, filtered by equipmentId. The adapter lib/workspace-data.ts provides getPublishedDashboardsForEquipment() for this derivation."
   - "The EquipmentHomeDashCard adapter type (id: WorkspaceDashboard.id, equipment: equipment.name, equipId: WorkspaceDashboard.equipmentId, tag: WorkspaceDashboard.name, metrics: deterministic mock) is the cross-module display shape for published dashboards; it is structurally compatible with the legacy dashboardCards shape to preserve rendering in DashboardCard, DashboardTabStack, and Home Page DashboardCardRow."
+  - "The Equipment Home Page Dashboard Popup must render `WorkspaceDashboard.widgets` using the **same read-only grid component and widget body resolution** as the Workspace module popup and the Full-Screen Dashboard Viewer (`/dashboards/[dashboardId]/full`): catalog tiles resolve via `templateKey` + `DashboardWidgetBody` (e.g. Coker `CokerTemplateView`), with matching `react-grid-layout` column/row/breakpoint settings and equipment-type theming. A separate code path that invokes only `WidgetViewResolver` from `viewType` (omitting `templateKey` / catalog renderers) does not satisfy this rule — it breaks layout and shows placeholder or legacy content for catalog-backed dashboards."
   - "WorkspaceDashboard.widgets is the single widget layout source for Equipment Home Dashboard Popup, Full-Screen Viewer (/dashboards/[id]/full), and Workspace popup viewer. DEFAULT_WIDGET_SETS and buildDefaultGrid from layouts.ts are used only during Workspace seed generation; they must not be imported at render time by Equipment Home or Home modules."
   - "Home Page Recent Dashboards and Favorite Dashboards sections store WorkspaceDashboard.id values in useAppStore; display metadata (name, thumbnail, equipment name) is resolved from useWorkspaceStore at render time via getDashboardById."
   - "Site Overview and Plant Overview Dashboard Tab Stacks derive their card lists from published WorkspaceDashboard records using the same getPublishedDashboardsForEquipment adapter; dashboardCards is not consulted."

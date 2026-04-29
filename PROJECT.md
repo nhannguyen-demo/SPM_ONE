@@ -66,7 +66,7 @@ Business behavior reflected in ontology:
 - ✅ Home view with modules: Global Search, AI Summary, Recents, Favorites, Change Log, Documents preview.
 - ✅ Site Overview view (map, plant markers, KPIs/charts, docs panel, dashboard tab stack).
 - ✅ Plant Overview view (equipment context, P&ID panel, charts, AI health overlays).
-- ✅ Read-only dashboard preview on Asset surfaces (Equipment Home popup, full-screen viewer) using `WorkspaceDashboard.widgets` and shared `WidgetViewResolver`.
+- ✅ Read-only dashboard preview: Full-Screen Viewer, **Dashboard** module popup, and **Equipment Home** popup all use `ResponsiveDashboardGrid` + `DashboardWidgetBody` (catalog `templateKey` → `CokerTemplateView`). Equipment Home passes `viewedDataIds` and equipment-scoped What-If runs; empty published dashboards use `useEmptyFallback={false}` with asset-appropriate copy.
 - 🚧 **Catalog-driven Coker dashboard library (in design / build):** See `scripts/prd.txt`, `domain.ontology.yaml` (new entities), `.taskmaster/docs/coker-catalog-rebuild-layers.md`. Replaces ad-hoc `viewType` widgets with **template key + options**; adds **ParameterRequest** queue, **dashboard context** bar, **duplicate across same equipment type**, **export/print** parity.
 - ✅ Data & Sync view table screens with equipment pre-filter support from Equipment Home tool entry.
 - ✅ Centralized What-If Scenario Tool v2 (scenario list, configure/run/history/results/compare, animated run steps).
@@ -139,7 +139,7 @@ Routing principles:
 - AI safety constraint: AI Summary content is mock/advisory and should avoid unsafe operational guidance.
 - Strong reusable UI patterns identified in audit: `WidgetErrorBoundary`, seed hooks for store initialization, declarative default widget set/layout maps, two-layer sidebar architecture.
 - **Equipment Home Page entry point**: navigating to an equipment from the asset hierarchy sets `currentView: "equipment-home"`. **Edit** uses the **Dashboard** module only: links go to `/dashboard` (filtered) or `/dashboard/dashboard/[id]/edit` — not to `currentView: "equipment"`.
-- **Dashboard Popup**: implemented as a Dialog overlay inside the Equipment Home Page; popup state (`activeDashboardPopupId`) is local component state (not Zustand) since it is transient per-view.
+- **Dashboard Popup (Equipment Home)**: state lives in local `EquipmentHomeView` (`activePopupDashboardId`); the popup reuses `ResponsiveDashboardGrid` with `viewedDataIds` and equipment-scoped `scenarioRuns` so layout and Coker catalog tiles match the **Dashboard** module and full-screen viewer.
 - **Cross-view auto-open behavior**: Site/Plant dashboard stack tab clicks set one-shot popup targeting (`equipmentHomeAutoOpenTab`) so Equipment Home opens directly into the selected read-only dashboard popup.
 - **Equipment pre-filter for Tools**: when navigating from Equipment Home Page tool tiles, the target equipment `id` is written to a Zustand slice (`preFilterEquipmentId`) so the destination tool page can read and apply it on mount.
 - **Data & Sync filter**: `DataSyncView` will accept `preFilterEquipmentId` from Zustand to auto-select the equipment filter on entry.

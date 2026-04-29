@@ -12,13 +12,21 @@ type Props = {
   widget: GridWidget
   equipmentId: string
   scenarioRuns?: WhatIfRunSession[]
+  /** When set, drives What-If overlay series in legacy `WidgetViewResolver` tiles. */
+  viewedDataIds?: string[]
   context?: DashboardTimeContext
 }
 
 /**
  * Resolves a grid tile: Coker catalog templates vs legacy `WidgetViewResolver`.
  */
-export function DashboardWidgetBody({ widget, equipmentId, scenarioRuns, context }: Props) {
+export function DashboardWidgetBody({
+  widget,
+  equipmentId,
+  scenarioRuns,
+  viewedDataIds,
+  context,
+}: Props) {
   if (widget.viewType === LEGACY_COKER_VIEW && !widget.templateKey) {
     return (
       <div className="text-xs text-muted-foreground p-2">Catalog widget is missing a template key.</div>
@@ -37,6 +45,7 @@ export function DashboardWidgetBody({ widget, equipmentId, scenarioRuns, context
     <WidgetViewResolver
       viewType={widget.viewType}
       equipmentId={equipmentId}
+      viewedDataIds={viewedDataIds}
       scenarioRuns={scenarioRuns}
     />
   )
