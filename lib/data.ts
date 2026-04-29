@@ -116,7 +116,7 @@ export const plantDocuments = [
  * Add your files under public/images/thumbnails/ using these filenames (or edit paths below).
  */
 export const equipmentDashboardThumbnails: Record<string, string> = {
-  "equipment-a": "/images/thumbnails/coke-drum.jpg",
+  "equipment-a": "/images/thumbnails/coke-drum.png",
   "equipment-b": "/images/thumbnails/hcu.png",
   "equipment-c": "/images/thumbnails/smr.png",
 }
