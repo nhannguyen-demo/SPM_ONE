@@ -9,8 +9,39 @@ type GlobalPrisma = {
 
 const globalForPrisma = globalThis as unknown as GlobalPrisma
 
+/**
+ * During `next build`, Next collects route data and imports server modules. Vercel
+ * (and many PR previews) often omit `DATABASE_URL` at build time — Prisma client
+ * init must not throw; the Pool does not connect until the first query.
+ */
+const PRISMA_BUILD_PLACEHOLDER_URL =
+  "postgresql://build_placeholder:build_placeholder@127.0.0.1:5432/build_placeholder?sslmode=disable"
+
+function isNextProductionBuildPhase(): boolean {
+  return process.env.NEXT_PHASE === "phase-production-build"
+}
+
+function resolveDatabaseUrl(): string {
+  const url = process.env.DATABASE_URL
+  if (url?.startsWith("postgres")) return url
+
+  const building =
+    isNextProductionBuildPhase() ||
+    process.env.npm_lifecycle_event === "build"
+
+  if (building) {
+    return PRISMA_BUILD_PLACEHOLDER_URL
+  }
+
+  throw new Error(
+    "DATABASE_URL must be a PostgreSQL URL (postgresql:// or postgres://), e.g. from Supabase. " +
+      "Set it in Vercel Project → Settings → Environment Variables for Preview and Production."
+  )
+}
+
 /** Supabase direct DB host is often IPv6-only; IPv4 / Vercel need the pooler URI. */
 function assertDatabaseUrlReachableForSpmOne(url: string): void {
+  if (url === PRISMA_BUILD_PLACEHOLDER_URL) return
   if (process.env.SPM_ALLOW_SUPABASE_DIRECT === "1") return
   if (!url.includes(".supabase.co")) return
   if (/@db\.[a-z0-9-]+\.supabase\.co/i.test(url)) {
@@ -23,13 +54,7 @@ function assertDatabaseUrlReachableForSpmOne(url: string): void {
 }
 
 function createPrismaClient(): PrismaClient {
-  const url = process.env.DATABASE_URL
-  if (!url?.startsWith("postgres")) {
-    throw new Error(
-      "DATABASE_URL must be a PostgreSQL URL (postgresql:// or postgres://), e.g. from Supabase."
-    )
-  }
-
+  const url = resolveDatabaseUrl()
   assertDatabaseUrlReachableForSpmOne(url)
 
   const pool = globalForPrisma.pool ?? new Pool({ connectionString: url })
