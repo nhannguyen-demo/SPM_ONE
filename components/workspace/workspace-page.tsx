@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Inbox, Clock, Trash2, Folder as FolderIcon, Home as HomeIcon, FolderOpen as FolderOpenIcon } from "lucide-react"
 import { WorkspaceToolbar } from "./workspace-toolbar"
 import { DashboardCard } from "./dashboard-card"
@@ -20,7 +21,7 @@ import type {
   WorkspaceDashboard,
   WorkspaceVirtualLocation,
 } from "@/lib/workspace/types"
-import { getCurrentUserId } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 
 export interface WorkspacePageProps {
   /** Which virtual location is active (or "folder" when a specific folder is selected). */
@@ -55,6 +56,7 @@ const VIRTUAL_TITLES: Record<WorkspaceVirtualLocation, { title: string; subtitle
 export function WorkspacePage({ initial }: WorkspacePageProps) {
   const router = useRouter()
   const setActiveModule = useAppStore((s) => s.setActiveModule)
+  const me = useWorkspaceCurrentUserId()
 
   // Set the rail's active module to "workspace" while we're here.
   useEffect(() => {
@@ -106,7 +108,6 @@ export function WorkspacePage({ initial }: WorkspacePageProps) {
   )
 
   /* ── Derived data (computed here to avoid unstable selector references) ─ */
-  const me = getCurrentUserId()
 
   const allActive = useMemo(
     () => rawDashboards.filter((d) => !d.deletedAt),
@@ -280,7 +281,10 @@ export function WorkspacePage({ initial }: WorkspacePageProps) {
                     onMoveTo={
                       isShared || isTrash
                         ? undefined
-                        : (folderId) => moveDashboard(d.id, folderId)
+                        : (folderId) =>
+                            void moveDashboard(d.id, folderId).catch((e) =>
+                              toast.error(e instanceof Error ? e.message : "Could not move dashboard")
+                            )
                     }
                     variant={isTrash ? "trash" : "default"}
                     badgeOverride={

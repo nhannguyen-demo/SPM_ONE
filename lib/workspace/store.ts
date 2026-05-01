@@ -3,8 +3,9 @@
  *
  * Holds folders, dashboards, shares, links, comments, permission requests,
  * notifications, and Workspace UI state (filters/sort/search/recent/selection).
- * Persisted to localStorage so reloads preserve workspace state. Exposes a
- * `resetWorkspace()` action that re-seeds.
+ * Persisted to localStorage for UI preferences and mock-only slices; core
+ * workspace collections hydrate from GET /api/workspace/bootstrap when signed in
+ * (Tasks 6–7) and are not the persisted source of truth.
  */
 
 "use client"
@@ -36,6 +37,14 @@ import { WORKSPACE_SEED } from "./seed"
 import { generateDashboardThumbnail } from "./thumbnail"
 import { getEquipmentTypeKey } from "@/lib/data"
 import { COKER_V1_VERSION } from "@/lib/equipment-packs/coker-v1"
+import { workspaceApiPaths } from "./api-paths"
+import { getWorkspaceRemoteMode } from "./remote-mode"
+import {
+  fetchWorkspaceBootstrap,
+  parseJsonOk,
+  workspaceFetch,
+  type WorkspaceBootstrapPayload,
+} from "./workspace-fetch"
 
 const RECENT_LIMIT = 20
 const TRASH_TTL_DAYS = 30
@@ -76,15 +85,22 @@ export interface WorkspaceState {
   sortDir: DashboardSortDir
   /** When set, /dashboard pre-applies this equipmentId filter on mount. */
   initialEquipmentFilter: string | null
+  /**
+   * Incremented when session identity syncs so selectors that call `getCurrentUserId()`
+   * refresh for subscribed Zustand consumers.
+   */
+  workspaceIdentityRevision: number
 
   /* ── Actions: data lifecycle ────────────────────────────────────────────── */
   resetWorkspace: () => void
+  /** Replace server-backed workspace collections from GET /api/workspace/bootstrap. */
+  hydrateWorkspaceFromServer: (payload: WorkspaceBootstrapPayload) => void
 
   /* ── Actions: folders ──────────────────────────────────────────────────── */
-  createFolder: (input: { name: string; parentFolderId: string | null }) => WorkspaceFolder
-  renameFolder: (folderId: string, name: string) => void
-  moveFolder: (folderId: string, parentFolderId: string | null) => void
-  deleteFolder: (folderId: string, mode: "move-to-root" | "cascade") => void
+  createFolder: (input: { name: string; parentFolderId: string | null }) => Promise<WorkspaceFolder>
+  renameFolder: (folderId: string, name: string) => Promise<void>
+  moveFolder: (folderId: string, parentFolderId: string | null) => Promise<void>
+  deleteFolder: (folderId: string, mode: "move-to-root" | "cascade") => Promise<void>
 
   /* ── Actions: dashboards ────────────────────────────────────────────────── */
   createDashboard: (input: {
@@ -92,13 +108,16 @@ export interface WorkspaceState {
     equipmentId: string
     folderId: string | null
     widgets?: GridWidget[]
-  }) => WorkspaceDashboard
-  duplicateDashboard: (dashboardId: string) => WorkspaceDashboard | null
-  renameDashboard: (dashboardId: string, name: string) => void
-  moveDashboard: (dashboardId: string, folderId: string | null) => void
-  saveDashboardWidgets: (dashboardId: string, widgets: GridWidget[]) => void
-  saveDashboardContext: (dashboardId: string, context: DashboardContextState | null) => void
-  duplicateDashboardToEquipment: (dashboardId: string, targetEquipmentId: string) => WorkspaceDashboard | null
+  }) => Promise<WorkspaceDashboard>
+  duplicateDashboard: (dashboardId: string) => Promise<WorkspaceDashboard | null>
+  renameDashboard: (dashboardId: string, name: string) => Promise<void>
+  moveDashboard: (dashboardId: string, folderId: string | null) => Promise<void>
+  saveDashboardWidgets: (dashboardId: string, widgets: GridWidget[]) => Promise<void>
+  saveDashboardContext: (dashboardId: string, context: DashboardContextState | null) => Promise<void>
+  duplicateDashboardToEquipment: (
+    dashboardId: string,
+    targetEquipmentId: string
+  ) => Promise<WorkspaceDashboard | null>
   submitCatalogParameterRequest: (input: {
     body: string
     equipmentId: string | null
@@ -108,11 +127,11 @@ export interface WorkspaceState {
     requestId: string,
     status: CatalogParameterRequest["status"]
   ) => void
-  publishDashboard: (dashboardId: string) => void
-  unpublishDashboard: (dashboardId: string) => void
-  softDeleteDashboard: (dashboardId: string) => void
-  restoreDashboard: (dashboardId: string) => void
-  permanentlyDeleteDashboard: (dashboardId: string) => void
+  publishDashboard: (dashboardId: string) => Promise<void>
+  unpublishDashboard: (dashboardId: string) => Promise<void>
+  softDeleteDashboard: (dashboardId: string) => Promise<void>
+  restoreDashboard: (dashboardId: string) => Promise<void>
+  permanentlyDeleteDashboard: (dashboardId: string) => Promise<void>
   recordDashboardOpened: (dashboardId: string) => void
 
   /* ── Actions: sharing ───────────────────────────────────────────────────── */
@@ -122,33 +141,35 @@ export interface WorkspaceState {
     permission: SharePermission
     message?: string
     notifyOnFirstView?: boolean
-  }) => DashboardShare
+  }) => Promise<DashboardShare>
   updateShare: (
     shareId: string,
     updates: { permission?: SharePermission; revokedAt?: string | null }
-  ) => void
+  ) => Promise<void>
   generateShareLink: (input: {
     dashboardId: string
     permission: SharePermission
-  }) => ShareLink
-  revokeShareLink: (linkId: string) => void
-  regenerateShareLink: (linkId: string) => ShareLink | null
-  /** Marks first view; returns true if a notification was generated. */
-  markShareFirstViewed: (shareId: string) => boolean
+  }) => Promise<ShareLink>
+  revokeShareLink: (linkId: string) => Promise<void>
+  regenerateShareLink: (linkId: string) => Promise<ShareLink | null>
+  /** Marks first view; returns true if owner should be notified (mock path only). */
+  markShareFirstViewed: (shareId: string) => Promise<boolean>
+  /** Redeem a share link token for the signed-in user (remote API only). */
+  acceptShareFromLink: (token: string) => Promise<DashboardShare>
 
   /* ── Actions: comments ──────────────────────────────────────────────────── */
-  addComment: (input: { dashboardId: string; body: string }) => DashboardComment | null
+  addComment: (input: { dashboardId: string; body: string }) => Promise<DashboardComment | null>
 
   /* ── Actions: permission requests ───────────────────────────────────────── */
   requestPermission: (input: {
     dashboardId: string
     requestedPermission: "comment" | "edit"
     message?: string
-  }) => PermissionRequest | null
+  }) => Promise<PermissionRequest | null>
   resolvePermissionRequest: (
     requestId: string,
     status: Exclude<PermissionRequestStatus, "pending">
-  ) => void
+  ) => Promise<void>
 
   /* ── Actions: notifications ─────────────────────────────────────────────── */
   pushNotification: (
@@ -156,8 +177,8 @@ export interface WorkspaceState {
       readAt?: string | null
     }
   ) => Notification
-  markNotificationRead: (notificationId: string) => void
-  markAllNotificationsRead: () => void
+  markNotificationRead: (notificationId: string) => Promise<void>
+  markAllNotificationsRead: () => Promise<void>
 
   /* ── Actions: filters & sort ────────────────────────────────────────────── */
   setSearchQuery: (q: string) => void
@@ -174,6 +195,7 @@ const SEED = WORKSPACE_SEED
 const initialState: Omit<
   WorkspaceState,
   | "resetWorkspace"
+  | "hydrateWorkspaceFromServer"
   | "createFolder"
   | "renameFolder"
   | "moveFolder"
@@ -199,6 +221,7 @@ const initialState: Omit<
   | "revokeShareLink"
   | "regenerateShareLink"
   | "markShareFirstViewed"
+  | "acceptShareFromLink"
   | "addComment"
   | "requestPermission"
   | "resolvePermissionRequest"
@@ -225,6 +248,7 @@ const initialState: Omit<
   sortKey: "lastChange",
   sortDir: "desc",
   initialEquipmentFilter: null,
+  workspaceIdentityRevision: 0,
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -249,10 +273,34 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           sortDir: "desc",
           initialEquipmentFilter: null,
           catalogParameterRequests: [],
+          workspaceIdentityRevision: 0,
+        }),
+
+      hydrateWorkspaceFromServer: (payload) =>
+        set({
+          folders: payload.folders,
+          dashboards: payload.dashboards,
+          shares: payload.shares,
+          shareLinks: payload.shareLinks,
+          comments: payload.comments,
+          permissionRequests: payload.permissionRequests,
+          notifications: payload.notifications,
         }),
 
       /* ── Folders ────────────────────────────────────────────────────────── */
-      createFolder: ({ name, parentFolderId }) => {
+      createFolder: async ({ name, parentFolderId }) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.folders, {
+            method: "POST",
+            body: JSON.stringify({
+              name: name.trim() || "Untitled folder",
+              parentFolderId,
+            }),
+          })
+          const folder = await parseJsonOk<WorkspaceFolder>(res)
+          set((s) => ({ folders: [...s.folders, folder] }))
+          return folder
+        }
         const folder: WorkspaceFolder = {
           id: genId("folder"),
           ownerUserId: getCurrentUserId(),
@@ -264,21 +312,61 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set((s) => ({ folders: [...s.folders, folder] }))
         return folder
       },
-      renameFolder: (folderId, name) =>
+      renameFolder: async (folderId, name) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.folder(folderId), {
+            method: "PATCH",
+            body: JSON.stringify({ name: name.trim() || "Untitled folder" }),
+          })
+          const folder = await parseJsonOk<WorkspaceFolder>(res)
+          set((s) => ({
+            folders: s.folders.map((f) => (f.id === folderId ? folder : f)),
+          }))
+          return
+        }
         set((s) => ({
           folders: s.folders.map((f) =>
             f.id === folderId ? { ...f, name: name.trim() || f.name, updatedAt: nowIso() } : f
           ),
-        })),
-      moveFolder: (folderId, parentFolderId) =>
+        }))
+      },
+      moveFolder: async (folderId, parentFolderId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.folder(folderId), {
+            method: "PATCH",
+            body: JSON.stringify({ parentFolderId }),
+          })
+          const folder = await parseJsonOk<WorkspaceFolder>(res)
+          set((s) => ({
+            folders: s.folders.map((f) => (f.id === folderId ? folder : f)),
+          }))
+          return
+        }
         set((s) => ({
           folders: s.folders.map((f) =>
-            f.id === folderId
-              ? { ...f, parentFolderId, updatedAt: nowIso() }
-              : f
+            f.id === folderId ? { ...f, parentFolderId, updatedAt: nowIso() } : f
           ),
-        })),
-      deleteFolder: (folderId, mode) =>
+        }))
+      },
+      deleteFolder: async (folderId, mode) => {
+        if (getWorkspaceRemoteMode()) {
+          const q = mode === "cascade" ? "?mode=cascade" : ""
+          const res = await workspaceFetch(`${workspaceApiPaths.folder(folderId)}${q}`, {
+            method: "DELETE",
+          })
+          await parseJsonOk<{ deletedFolderIds: string[] }>(res)
+          const data = await fetchWorkspaceBootstrap()
+          set({
+            folders: data.folders,
+            dashboards: data.dashboards,
+            shares: data.shares,
+            shareLinks: data.shareLinks,
+            comments: data.comments,
+            permissionRequests: data.permissionRequests,
+            notifications: data.notifications,
+          })
+          return
+        }
         set((s) => {
           const descendantIds = new Set<string>()
           const stack = [folderId]
@@ -303,10 +391,25 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                     : d
                 )
           return { folders, dashboards }
-        }),
+        })
+      },
 
       /* ── Dashboards ────────────────────────────────────────────────────── */
-      createDashboard: ({ name, equipmentId, folderId, widgets }) => {
+      createDashboard: async ({ name, equipmentId, folderId, widgets }) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboards, {
+            method: "POST",
+            body: JSON.stringify({
+              name: name.trim() || "Untitled dashboard",
+              equipmentId,
+              folderId,
+              widgets: widgets ?? [],
+            }),
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({ dashboards: [dash, ...s.dashboards] }))
+          return dash
+        }
         const id = genId("dash")
         const dash: WorkspaceDashboard = {
           id,
@@ -331,9 +434,23 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set((s) => ({ dashboards: [dash, ...s.dashboards] }))
         return dash
       },
-      duplicateDashboard: (dashboardId) => {
+      duplicateDashboard: async (dashboardId) => {
         const orig = get().dashboards.find((d) => d.id === dashboardId)
         if (!orig) return null
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboards, {
+            method: "POST",
+            body: JSON.stringify({
+              name: `Copy of ${orig.name}`,
+              equipmentId: orig.equipmentId,
+              folderId: orig.folderId,
+              widgets: orig.widgets,
+            }),
+          })
+          const copy = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({ dashboards: [copy, ...s.dashboards] }))
+          return copy
+        }
         const id = genId("dash")
         const copy: WorkspaceDashboard = {
           ...orig,
@@ -356,7 +473,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set((s) => ({ dashboards: [copy, ...s.dashboards] }))
         return copy
       },
-      renameDashboard: (dashboardId, name) =>
+      renameDashboard: async (dashboardId, name) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboard(dashboardId), {
+            method: "PATCH",
+            body: JSON.stringify({ name: name.trim() || "Untitled dashboard" }),
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({
+            dashboards: s.dashboards.map((d) => (d.id === dashboardId ? dash : d)),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.map((d) =>
             d.id === dashboardId
@@ -369,14 +497,38 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 }
               : d
           ),
-        })),
-      moveDashboard: (dashboardId, folderId) =>
+        }))
+      },
+      moveDashboard: async (dashboardId, folderId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboard(dashboardId), {
+            method: "PATCH",
+            body: JSON.stringify({ folderId }),
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({
+            dashboards: s.dashboards.map((d) => (d.id === dashboardId ? dash : d)),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.map((d) =>
             d.id === dashboardId ? { ...d, folderId, updatedAt: nowIso() } : d
           ),
-        })),
-      saveDashboardWidgets: (dashboardId, widgets) =>
+        }))
+      },
+      saveDashboardWidgets: async (dashboardId, widgets) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboard(dashboardId), {
+            method: "PATCH",
+            body: JSON.stringify({ widgets }),
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({
+            dashboards: s.dashboards.map((d) => (d.id === dashboardId ? dash : d)),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.map((d) => {
             if (d.id !== dashboardId) return d
@@ -403,8 +555,23 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               updatedAt: nowIso(),
             }
           }),
-        })),
-      saveDashboardContext: (dashboardId, context) =>
+        }))
+      },
+      saveDashboardContext: async (dashboardId, context) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboard(dashboardId), {
+            method: "PATCH",
+            body: JSON.stringify({
+              dashboardContext:
+                context === null ? null : (context as unknown as Record<string, unknown>),
+            }),
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({
+            dashboards: s.dashboards.map((d) => (d.id === dashboardId ? dash : d)),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.map((d) =>
             d.id === dashboardId
@@ -417,14 +584,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 }
               : d
           ),
-        })),
-      duplicateDashboardToEquipment: (dashboardId, targetEquipmentId) => {
+        }))
+      },
+      duplicateDashboardToEquipment: async (dashboardId, targetEquipmentId) => {
         const orig = get().dashboards.find((d) => d.id === dashboardId)
         if (!orig) return null
         if (getEquipmentTypeKey(orig.equipmentId) !== getEquipmentTypeKey(targetEquipmentId)) {
           return null
         }
-        const id = genId("dash")
         const newWidgets: GridWidget[] = orig.widgets.map((w) => {
           const nid = genId("w")
           return {
@@ -433,6 +600,21 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             layout: { ...w.layout, i: nid },
           }
         })
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboards, {
+            method: "POST",
+            body: JSON.stringify({
+              name: `${orig.name} (copy)`,
+              equipmentId: targetEquipmentId,
+              folderId: orig.folderId,
+              widgets: newWidgets,
+            }),
+          })
+          const copy = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({ dashboards: [copy, ...s.dashboards] }))
+          return copy
+        }
+        const id = genId("dash")
         const k = getEquipmentTypeKey(targetEquipmentId)
         const copy: WorkspaceDashboard = {
           ...orig,
@@ -478,7 +660,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             r.id === requestId ? { ...r, status, updatedAt: nowIso() } : r
           ),
         })),
-      publishDashboard: (dashboardId) =>
+      publishDashboard: async (dashboardId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboard(dashboardId), {
+            method: "PATCH",
+            body: JSON.stringify({ lifecycleStatus: "published" }),
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({
+            dashboards: s.dashboards.map((d) => (d.id === dashboardId ? dash : d)),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.map((d) =>
             d.id === dashboardId
@@ -490,8 +683,20 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 }
               : d
           ),
-        })),
-      unpublishDashboard: (dashboardId) =>
+        }))
+      },
+      unpublishDashboard: async (dashboardId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboard(dashboardId), {
+            method: "PATCH",
+            body: JSON.stringify({ lifecycleStatus: "created" }),
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({
+            dashboards: s.dashboards.map((d) => (d.id === dashboardId ? dash : d)),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.map((d) =>
             d.id === dashboardId
@@ -504,22 +709,63 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 }
               : d
           ),
-        })),
-      softDeleteDashboard: (dashboardId) =>
+        }))
+      },
+      softDeleteDashboard: async (dashboardId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboard(dashboardId), {
+            method: "DELETE",
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({
+            dashboards: s.dashboards.map((d) => (d.id === dashboardId ? dash : d)),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.map((d) =>
             d.id === dashboardId
               ? { ...d, deletedAt: nowIso(), updatedAt: nowIso() }
               : d
           ),
-        })),
-      restoreDashboard: (dashboardId) =>
+        }))
+      },
+      restoreDashboard: async (dashboardId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboardRestore(dashboardId), {
+            method: "POST",
+          })
+          const dash = await parseJsonOk<WorkspaceDashboard>(res)
+          set((s) => ({
+            dashboards: s.dashboards.map((d) => (d.id === dashboardId ? dash : d)),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.map((d) =>
             d.id === dashboardId ? { ...d, deletedAt: null, updatedAt: nowIso() } : d
           ),
-        })),
-      permanentlyDeleteDashboard: (dashboardId) =>
+        }))
+      },
+      permanentlyDeleteDashboard: async (dashboardId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(
+            `${workspaceApiPaths.dashboard(dashboardId)}?permanent=1`,
+            { method: "DELETE" }
+          )
+          await parseJsonOk<{ deleted: true }>(res)
+          set((s) => ({
+            dashboards: s.dashboards.filter((d) => d.id !== dashboardId),
+            shares: s.shares.filter((sh) => sh.dashboardId !== dashboardId),
+            shareLinks: s.shareLinks.filter((l) => l.dashboardId !== dashboardId),
+            comments: s.comments.filter((c) => c.dashboardId !== dashboardId),
+            permissionRequests: s.permissionRequests.filter(
+              (r) => r.dashboardId !== dashboardId
+            ),
+            notifications: s.notifications.filter((n) => n.dashboardId !== dashboardId),
+          }))
+          return
+        }
         set((s) => ({
           dashboards: s.dashboards.filter((d) => d.id !== dashboardId),
           shares: s.shares.filter((sh) => sh.dashboardId !== dashboardId),
@@ -529,7 +775,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             (r) => r.dashboardId !== dashboardId
           ),
           notifications: s.notifications.filter((n) => n.dashboardId !== dashboardId),
-        })),
+        }))
+      },
       recordDashboardOpened: (dashboardId) =>
         set((s) => {
           const dedup = s.recentDashboardIds.filter((id) => id !== dashboardId)
@@ -537,15 +784,34 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }),
 
       /* ── Sharing ────────────────────────────────────────────────────────── */
-      shareWithUser: ({
+      shareWithUser: async ({
         dashboardId,
         sharedWithUserId,
         permission,
         message,
         notifyOnFirstView,
       }) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.shares, {
+            method: "POST",
+            body: JSON.stringify({
+              dashboardId,
+              sharedWithUserId,
+              permission,
+              message: message ?? null,
+              notifyOnFirstView,
+            }),
+          })
+          const share = await parseJsonOk<DashboardShare>(res)
+          set((s) => ({
+            shares: s.shares.some((sh) => sh.id === share.id)
+              ? s.shares.map((sh) => (sh.id === share.id ? share : sh))
+              : [share, ...s.shares],
+          }))
+          return share
+        }
+
         const me = getCurrentUserId()
-        // Replace existing non-revoked share for this (dashboard, recipient).
         const existing = get().shares.find(
           (sh) =>
             sh.dashboardId === dashboardId &&
@@ -579,7 +845,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             : [share, ...s.shares],
         }))
 
-        // Generate "shared with you" notification for the recipient.
         const dash = get().dashboards.find((d) => d.id === dashboardId)
         const actor = findOrgUserById(me)
         if (dash && actor) {
@@ -597,7 +862,21 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         return share
       },
 
-      updateShare: (shareId, updates) =>
+      updateShare: async (shareId, updates) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.share(shareId), {
+            method: "PATCH",
+            body: JSON.stringify({
+              ...(updates.permission !== undefined ? { permission: updates.permission } : {}),
+              ...(updates.revokedAt !== undefined ? { revokedAt: updates.revokedAt } : {}),
+            }),
+          })
+          const share = await parseJsonOk<DashboardShare>(res)
+          set((s) => ({
+            shares: s.shares.map((sh) => (sh.id === shareId ? share : sh)),
+          }))
+          return
+        }
         set((s) => ({
           shares: s.shares.map((sh) =>
             sh.id === shareId
@@ -609,9 +888,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 }
               : sh
           ),
-        })),
+        }))
+      },
 
-      generateShareLink: ({ dashboardId, permission }) => {
+      generateShareLink: async ({ dashboardId, permission }) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.shareLinks, {
+            method: "POST",
+            body: JSON.stringify({ dashboardId, permission }),
+          })
+          const link = await parseJsonOk<ShareLink>(res)
+          set((s) => ({ shareLinks: [link, ...s.shareLinks] }))
+          return link
+        }
         const link: ShareLink = {
           id: genId("link"),
           dashboardId,
@@ -625,13 +914,35 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set((s) => ({ shareLinks: [link, ...s.shareLinks] }))
         return link
       },
-      revokeShareLink: (linkId) =>
+      revokeShareLink: async (linkId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.shareLink(linkId), {
+            method: "PATCH",
+            body: JSON.stringify({}),
+          })
+          const link = await parseJsonOk<ShareLink>(res)
+          set((s) => ({
+            shareLinks: s.shareLinks.map((l) => (l.id === linkId ? link : l)),
+          }))
+          return
+        }
         set((s) => ({
           shareLinks: s.shareLinks.map((l) =>
             l.id === linkId ? { ...l, revokedAt: nowIso(), updatedAt: nowIso() } : l
           ),
-        })),
-      regenerateShareLink: (linkId) => {
+        }))
+      },
+      regenerateShareLink: async (linkId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.shareLinkRegenerate(linkId), {
+            method: "POST",
+          })
+          const link = await parseJsonOk<ShareLink>(res)
+          set((s) => ({
+            shareLinks: s.shareLinks.map((l) => (l.id === linkId ? link : l)),
+          }))
+          return link
+        }
         const orig = get().shareLinks.find((l) => l.id === linkId)
         if (!orig) return null
         const fresh: ShareLink = {
@@ -646,16 +957,28 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         return fresh
       },
 
-      markShareFirstViewed: (shareId) => {
+      markShareFirstViewed: async (shareId) => {
         const share = get().shares.find((sh) => sh.id === shareId)
         if (!share || share.firstViewedAt) return false
-        const updated: DashboardShare = {
+
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.shareFirstView(shareId), {
+            method: "POST",
+          })
+          const updated = await parseJsonOk<DashboardShare>(res)
+          set((s) => ({
+            shares: s.shares.map((sh) => (sh.id === shareId ? updated : sh)),
+          }))
+          return !!(share.notifyOnFirstView && share.firstViewedAt === null && updated.firstViewedAt)
+        }
+
+        const next: DashboardShare = {
           ...share,
           firstViewedAt: nowIso(),
           updatedAt: nowIso(),
         }
         set((s) => ({
-          shares: s.shares.map((sh) => (sh.id === shareId ? updated : sh)),
+          shares: s.shares.map((sh) => (sh.id === shareId ? next : sh)),
         }))
         if (share.notifyOnFirstView) {
           const dash = get().dashboards.find((d) => d.id === share.dashboardId)
@@ -677,10 +1000,36 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         return false
       },
 
+      acceptShareFromLink: async (token) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.shareLinkAccept, {
+            method: "POST",
+            body: JSON.stringify({ token }),
+          })
+          const share = await parseJsonOk<DashboardShare>(res)
+          set((s) => ({
+            shares: s.shares.some((x) => x.id === share.id)
+              ? s.shares.map((x) => (x.id === share.id ? share : x))
+              : [share, ...s.shares],
+          }))
+          return share
+        }
+        throw new Error("acceptShareFromLink requires remote workspace mode")
+      },
+
       /* ── Comments ──────────────────────────────────────────────────────── */
-      addComment: ({ dashboardId, body }) => {
+      addComment: async ({ dashboardId, body }) => {
         const trimmed = body.trim()
         if (!trimmed) return null
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.dashboardComments(dashboardId), {
+            method: "POST",
+            body: JSON.stringify({ body: trimmed }),
+          })
+          const cmt = await parseJsonOk<DashboardComment>(res)
+          set((s) => ({ comments: [cmt, ...s.comments] }))
+          return cmt
+        }
         const cmt: DashboardComment = {
           id: genId("cmt"),
           dashboardId,
@@ -694,10 +1043,25 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       /* ── Permission requests ───────────────────────────────────────────── */
-      requestPermission: ({ dashboardId, requestedPermission, message }) => {
+      requestPermission: async ({ dashboardId, requestedPermission, message }) => {
         const me = getCurrentUserId()
         const dash = get().dashboards.find((d) => d.id === dashboardId)
         if (!dash) return null
+
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.permissionRequests, {
+            method: "POST",
+            body: JSON.stringify({
+              dashboardId,
+              requestedPermission,
+              message: message?.trim() || null,
+            }),
+          })
+          const req = await parseJsonOk<PermissionRequest>(res)
+          set((s) => ({ permissionRequests: [req, ...s.permissionRequests] }))
+          return req
+        }
+
         const req: PermissionRequest = {
           id: genId("req"),
           dashboardId,
@@ -727,9 +1091,20 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
         return req
       },
-      resolvePermissionRequest: (requestId, status) => {
+      resolvePermissionRequest: async (requestId, status) => {
         const req = get().permissionRequests.find((r) => r.id === requestId)
         if (!req || req.status !== "pending") return
+
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.permissionRequest(requestId), {
+            method: "PATCH",
+            body: JSON.stringify({ status }),
+          })
+          await parseJsonOk<PermissionRequest>(res)
+          await refreshWorkspaceFromServer()
+          return
+        }
+
         const resolvedAt = nowIso()
         set((s) => ({
           permissionRequests: s.permissionRequests.map((r) =>
@@ -737,16 +1112,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           ),
         }))
 
-        // If granted, upgrade or create the corresponding share.
         if (status === "granted") {
-          get().shareWithUser({
+          await get().shareWithUser({
             dashboardId: req.dashboardId,
             sharedWithUserId: req.requestedByUserId,
             permission: req.requestedPermission,
           })
         }
 
-        // Notify the requester of the resolution.
         const dash = get().dashboards.find((d) => d.id === req.dashboardId)
         const me = getCurrentUserId()
         const actor = findOrgUserById(me)
@@ -776,15 +1149,33 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set((s) => ({ notifications: [n, ...s.notifications] }))
         return n
       },
-      markNotificationRead: (notificationId) =>
+      markNotificationRead: async (notificationId) => {
+        if (getWorkspaceRemoteMode()) {
+          const res = await workspaceFetch(workspaceApiPaths.notification(notificationId), {
+            method: "PATCH",
+          })
+          const updated = await parseJsonOk<Notification>(res)
+          set((s) => ({
+            notifications: s.notifications.map((n) =>
+              n.id === notificationId ? updated : n
+            ),
+          }))
+          return
+        }
         set((s) => ({
           notifications: s.notifications.map((n) =>
             n.id === notificationId && !n.readAt
               ? { ...n, readAt: nowIso(), updatedAt: nowIso() }
               : n
           ),
-        })),
-      markAllNotificationsRead: () => {
+        }))
+      },
+      markAllNotificationsRead: async () => {
+        if (getWorkspaceRemoteMode()) {
+          await workspaceFetch(workspaceApiPaths.notificationsReadAll, { method: "POST" })
+          await refreshWorkspaceFromServer()
+          return
+        }
         const me = getCurrentUserId()
         set((s) => ({
           notifications: s.notifications.map((n) =>
@@ -805,29 +1196,49 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: "spm-one:workspace-store-v1",
-      version: 1,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
-      // Persist data + UI state. Filters/search/sort are intentionally persisted
-      // so the user resumes mid-session; identity is keyed off identity.ts.
+      migrate: (persisted, fromVersion) => {
+        if (!persisted || typeof persisted !== "object") return persisted
+        const next = { ...(persisted as Record<string, unknown>) }
+        if (fromVersion < 2) {
+          delete next.folders
+          delete next.dashboards
+          delete next.shares
+        }
+        if (fromVersion < 3) {
+          delete next.shareLinks
+          delete next.comments
+          delete next.permissionRequests
+          delete next.notifications
+        }
+        return next as typeof persisted
+      },
+      // Server-backed collections hydrate from GET /api/workspace/bootstrap; keep UI prefs local only.
       partialize: (s) => ({
-        folders: s.folders,
-        dashboards: s.dashboards,
-        shares: s.shares,
-        shareLinks: s.shareLinks,
-        comments: s.comments,
-        permissionRequests: s.permissionRequests,
-        notifications: s.notifications,
         catalogParameterRequests: s.catalogParameterRequests,
         recentDashboardIds: s.recentDashboardIds,
         searchQuery: s.searchQuery,
         filters: s.filters,
         sortKey: s.sortKey,
         sortDir: s.sortDir,
-        // initialEquipmentFilter is transient
       }),
     }
   )
 )
+
+/** Bump after Auth.js session ↔ workspace identity sync so selectors recompute. */
+export function bumpWorkspaceIdentityRevision(): void {
+  useWorkspaceStore.setState((s) => ({
+    workspaceIdentityRevision: s.workspaceIdentityRevision + 1,
+  }))
+}
+
+/** Refetch workspace collections from `GET /api/workspace/bootstrap`. */
+export async function refreshWorkspaceFromServer(): Promise<void> {
+  const data = await fetchWorkspaceBootstrap()
+  useWorkspaceStore.getState().hydrateWorkspaceFromServer(data)
+}
 
 /* ─── Selectors used widely (kept here to avoid deep selectors per component) */
 
@@ -837,6 +1248,7 @@ export function selectActiveDashboards(s: WorkspaceState): WorkspaceDashboard[] 
 
 /** Dashboards owned by the current user (active only). */
 export function selectMyDashboards(s: WorkspaceState): WorkspaceDashboard[] {
+  void s.workspaceIdentityRevision
   const me = getCurrentUserId()
   return selectActiveDashboards(s).filter((d) => d.ownerUserId === me)
 }
@@ -845,6 +1257,7 @@ export function selectMyDashboards(s: WorkspaceState): WorkspaceDashboard[] {
 export function selectSharedWithMeDashboards(
   s: WorkspaceState
 ): Array<{ dashboard: WorkspaceDashboard; share: DashboardShare }> {
+  void s.workspaceIdentityRevision
   const me = getCurrentUserId()
   const out: Array<{ dashboard: WorkspaceDashboard; share: DashboardShare }> = []
   for (const sh of s.shares) {
@@ -858,11 +1271,13 @@ export function selectSharedWithMeDashboards(
 }
 
 export function selectMyFolders(s: WorkspaceState): WorkspaceFolder[] {
+  void s.workspaceIdentityRevision
   const me = getCurrentUserId()
   return s.folders.filter((f) => f.ownerUserId === me)
 }
 
 export function selectMyNotifications(s: WorkspaceState): Notification[] {
+  void s.workspaceIdentityRevision
   const me = getCurrentUserId()
   return s.notifications
     .filter((n) => n.userId === me)
@@ -870,6 +1285,7 @@ export function selectMyNotifications(s: WorkspaceState): Notification[] {
 }
 
 export function selectMyUnreadCount(s: WorkspaceState): number {
+  void s.workspaceIdentityRevision
   const me = getCurrentUserId()
   return s.notifications.reduce((n, x) => (x.userId === me && !x.readAt ? n + 1 : n), 0)
 }
@@ -885,6 +1301,7 @@ export function selectMyPermissionOn(
   s: WorkspaceState,
   dashboardId: string
 ): SharePermission | null {
+  void s.workspaceIdentityRevision
   const me = getCurrentUserId()
   const dash = s.dashboards.find((d) => d.id === dashboardId)
   if (!dash) return null
@@ -900,6 +1317,7 @@ export function selectMyPermissionOn(
 
 /** Trash purge — soft-deleted past TTL becomes permanently deleted on read. */
 export function selectTrashDashboards(s: WorkspaceState): WorkspaceDashboard[] {
+  void s.workspaceIdentityRevision
   const me = getCurrentUserId()
   const cutoff = Date.now() - TRASH_TTL_DAYS * 24 * 3_600_000
   return s.dashboards.filter(

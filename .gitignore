@@ -7,8 +7,10 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 next.user-config.*
 
-# Environment variables
+# Environment variables (never commit secrets)
+.env
 .env*.local
+!.env.example
 
 # Common ignores
 node_modules

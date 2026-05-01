@@ -1,16 +1,24 @@
 /**
  * Mock identity + organization user directory for the Workspace Module.
  *
- * Replaces real authentication for the prototype. The "current user" is one
- * row in `ORG_USERS` flagged via localStorage; every Workspace ownership /
- * sharing / contributor decision keys off this id.
- *
- * Org directory is a fixed list (per resolved open question — no invite flow).
+ * Development: the current user id may persist in `localStorage` for mock flows.
+ * Production (`NODE_ENV === "production"`): identity comes only from the Auth.js
+ * session (`syncWorkspaceUserFromSession`); manual `setCurrentUserId` is ignored.
  */
 
 import type { OrgUser } from "./types"
 
 const STORAGE_KEY = "spm-one:current-user-id"
+
+function isProductionBuild(): boolean {
+  return typeof process !== "undefined" && process.env.NODE_ENV === "production"
+}
+
+/** Fallback when no session / stored selection (SSR + first paint). */
+export const WORKSPACE_DEFAULT_USER_ID = "user-nhan"
+
+/** Session mirror set by `syncWorkspaceUserFromSession` (production). */
+let sessionMirroredUserId: string | null = null
 
 /**
  * Fixed mock organization directory.
@@ -86,31 +94,68 @@ export const ORG_USERS: OrgUser[] = [
   },
 ]
 
-const DEFAULT_CURRENT_USER_ID = "user-nhan"
-
 /** Returns true on the client, false during SSR. */
 function isBrowser(): boolean {
   return typeof window !== "undefined"
 }
 
-/** Read the current user id from localStorage; falls back to default. */
+/**
+ * Align workspace identity with the Auth.js session user id (must match a seeded
+ * `ORG_USERS` id). Call from `AuthIdentitySync` on session changes.
+ */
+export function syncWorkspaceUserFromSession(userId: string | null): void {
+  if (userId && ORG_USERS.some((u) => u.id === userId)) {
+    sessionMirroredUserId = userId
+  } else {
+    sessionMirroredUserId = null
+  }
+  if (!isBrowser() || isProductionBuild()) return
+  try {
+    if (userId && ORG_USERS.some((u) => u.id === userId)) {
+      window.localStorage.setItem(STORAGE_KEY, userId)
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY)
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Read the current user id: production uses session mirror only; dev may use localStorage. */
 export function getCurrentUserId(): string {
-  if (!isBrowser()) return DEFAULT_CURRENT_USER_ID
+  if (!isBrowser()) return WORKSPACE_DEFAULT_USER_ID
+  if (isProductionBuild()) {
+    return sessionMirroredUserId ?? WORKSPACE_DEFAULT_USER_ID
+  }
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (stored && ORG_USERS.some((u) => u.id === stored)) return stored
   } catch {
     /* ignore localStorage errors (private mode, etc.) */
   }
-  return DEFAULT_CURRENT_USER_ID
+  return WORKSPACE_DEFAULT_USER_ID
 }
 
-/** Persist a new current-user selection. */
+/**
+ * Persist a mock current-user selection (development only).
+ * In production this is a no-op — identity comes from the session.
+ */
 export function setCurrentUserId(userId: string): void {
-  if (!isBrowser()) return
+  if (!isBrowser() || isProductionBuild()) return
   if (!ORG_USERS.some((u) => u.id === userId)) return
   try {
     window.localStorage.setItem(STORAGE_KEY, userId)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Clear mock storage and session mirror (e.g. sign-out). */
+export function clearCurrentUserId(): void {
+  sessionMirroredUserId = null
+  if (!isBrowser()) return
+  try {
+    window.localStorage.removeItem(STORAGE_KEY)
   } catch {
     /* ignore */
   }

@@ -41,7 +41,7 @@ import {
   selectMyPermissionOn,
 } from "@/lib/workspace/store"
 import { permissionAtLeast } from "@/lib/workspace/types"
-import { findOrgUserById, getCurrentUserId } from "@/lib/workspace/identity"
+import { findOrgUserById } from "@/lib/workspace/identity"
 import { useDashboardEditLock } from "@/lib/workspace/use-edit-lock"
 import { useAppStore } from "@/lib/store"
 import { sites, getEquipmentTypeKey } from "@/lib/data"
@@ -127,21 +127,27 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
   const canEdit = permissionAtLeast(myPermission, "edit")
 
   /* ── Save ─────────────────────────────────────────────────────────────── */
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!dashboard) return
     setSaving(true)
-    saveDashboardWidgets(dashboard.id, widgets)
-    saveDashboardContext(dashboard.id, ctx)
-    if (pendingTitle.trim() && pendingTitle.trim() !== dashboard.name) {
-      renameDashboard(dashboard.id, pendingTitle.trim())
-    }
-    setTimeout(() => {
-      setSaving(false)
+    try {
+      const pending: Promise<void>[] = [
+        saveDashboardWidgets(dashboard.id, widgets),
+        saveDashboardContext(dashboard.id, ctx),
+      ]
+      if (pendingTitle.trim() && pendingTitle.trim() !== dashboard.name) {
+        pending.push(renameDashboard(dashboard.id, pendingTitle.trim()))
+      }
+      await Promise.all(pending)
       setSavedAt(Date.now())
       setDirty(false)
       toast.success("Dashboard saved")
-    }, 200)
-  }, [dashboard, widgets, pendingTitle, saveDashboardWidgets, saveDashboardContext, renameDashboard])
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed")
+    } finally {
+      setSaving(false)
+    }
+  }, [dashboard, widgets, pendingTitle, saveDashboardWidgets, saveDashboardContext, renameDashboard, ctx])
 
   // Warn on tab close while dirty.
   useEffect(() => {
@@ -430,8 +436,14 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
               variant="outline"
               size="sm"
               onClick={() => {
-                publishDashboard(dashboard.id)
-                toast.success("Dashboard published to Asset Module")
+                void (async () => {
+                  try {
+                    await publishDashboard(dashboard.id)
+                    toast.success("Dashboard published to Asset Module")
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Publish failed")
+                  }
+                })()
               }}
               className="gap-1"
             >
@@ -442,8 +454,14 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
               variant="outline"
               size="sm"
               onClick={() => {
-                unpublishDashboard(dashboard.id)
-                toast.success("Dashboard unpublished")
+                void (async () => {
+                  try {
+                    await unpublishDashboard(dashboard.id)
+                    toast.success("Dashboard unpublished")
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Unpublish failed")
+                  }
+                })()
               }}
               className="gap-1"
             >

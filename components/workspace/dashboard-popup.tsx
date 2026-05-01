@@ -22,7 +22,8 @@ import {
   selectMyPermissionOn,
 } from "@/lib/workspace/store"
 import { permissionAtLeast } from "@/lib/workspace/types"
-import { findOrgUserById, getCurrentUserId } from "@/lib/workspace/identity"
+import { findOrgUserById } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { sites } from "@/lib/data"
 
 export interface DashboardPopupProps {
@@ -50,6 +51,7 @@ export function DashboardPopup({
   initialMode = "view",
 }: DashboardPopupProps) {
   const router = useRouter()
+  const me = useWorkspaceCurrentUserId()
 
   const dashboard = useWorkspaceStore((s) =>
     dashboardId ? s.dashboards.find((d) => d.id === dashboardId) ?? null : null
@@ -61,8 +63,8 @@ export function DashboardPopup({
   const markFirstViewed = useWorkspaceStore((s) => s.markShareFirstViewed)
   const requestPermission = useWorkspaceStore((s) => s.requestPermission)
   const incomingShare = useWorkspaceStore((s) => {
+    void s.workspaceIdentityRevision
     if (!dashboardId) return null
-    const me = getCurrentUserId()
     return (
       s.shares.find(
         (sh) =>
@@ -81,7 +83,7 @@ export function DashboardPopup({
     if (!dashboardId) return
     recordOpened(dashboardId)
     if (incomingShare && !incomingShare.firstViewedAt) {
-      markFirstViewed(incomingShare.id)
+      void markFirstViewed(incomingShare.id).catch(() => {})
     }
   }, [open, dashboardId, incomingShare, markFirstViewed, recordOpened])
 
@@ -92,7 +94,6 @@ export function DashboardPopup({
   if (!open || !dashboard) return null
 
   const owner = findOrgUserById(dashboard.ownerUserId)
-  const me = getCurrentUserId()
   const isOwner = dashboard.ownerUserId === me
   const canEdit = permissionAtLeast(myPermission, "edit")
 
@@ -110,16 +111,15 @@ export function DashboardPopup({
     if (!dashboard) return
     const desired: "comment" | "edit" =
       myPermission === "comment" ? "edit" : "comment"
-    const req = requestPermission({
+    void requestPermission({
       dashboardId: dashboard.id,
       requestedPermission: desired,
       message: undefined,
+    }).then((req) => {
+      if (req) {
+        toast.success(`Requested ${desired} access from ${owner?.name ?? "owner"}`)
+      }
     })
-    if (req) {
-      toast.success(
-        `Requested ${desired} access from ${owner?.name ?? "owner"}`
-      )
-    }
   }
 
   return (

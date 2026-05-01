@@ -21,7 +21,7 @@
 
 import { useEffect, useState } from "react"
 import { getTabId, openEditLockChannel, type EditLockMessage } from "./cross-tab"
-import { getCurrentUserId } from "./identity"
+import { useWorkspaceCurrentUserId } from "./use-workspace-user-id"
 
 const LOCK_SENTINEL_PREFIX = "spm-one:edit-lock:"
 const PROBE_WAIT_MS = 250
@@ -72,6 +72,7 @@ function writeSentinel(dashboardId: string, rec: SentinelRecord | null): void {
  * automatically on unmount.
  */
 export function useDashboardEditLock(dashboardId: string | null): EditLockState {
+  const currentUserId = useWorkspaceCurrentUserId()
   const [state, setState] = useState<EditLockState>({
     status: "probing",
     holderUserId: null,
@@ -82,7 +83,7 @@ export function useDashboardEditLock(dashboardId: string | null): EditLockState 
     if (!dashboardId || typeof window === "undefined") return
 
     const tabId = getTabId()
-    const userId = getCurrentUserId()
+    const userId = currentUserId
     const ch = openEditLockChannel()
     const claimAt = Date.now()
     let acquired = false
@@ -213,7 +214,7 @@ export function useDashboardEditLock(dashboardId: string | null): EditLockState 
       unsubscribe()
       ch.close()
     }
-  }, [dashboardId])
+  }, [dashboardId, currentUserId])
 
   return state
 }

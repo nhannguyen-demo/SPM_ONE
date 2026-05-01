@@ -35,7 +35,8 @@ import { Label } from "@/components/ui/label"
 import {
   useWorkspaceStore,
 } from "@/lib/workspace/store"
-import { getCurrentUserId, ORG_USERS } from "@/lib/workspace/identity"
+import { ORG_USERS } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { sites } from "@/lib/data"
 import type {
   DashboardSortDir,
@@ -102,7 +103,7 @@ export function WorkspaceToolbar({
     }))
   )
 
-  const meId = getCurrentUserId()
+  const meId = useWorkspaceCurrentUserId()
   const folders = useMemo(
     () => rawFolders.filter((f) => f.ownerUserId === meId),
     [rawFolders, meId]

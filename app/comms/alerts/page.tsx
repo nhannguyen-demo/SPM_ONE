@@ -21,7 +21,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { UserAvatar } from "@/components/workspace/avatar"
 import { useAppStore } from "@/lib/store"
 import { useWorkspaceStore } from "@/lib/workspace/store"
-import { findOrgUserById, getCurrentUserId } from "@/lib/workspace/identity"
+import { findOrgUserById } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import type {
   Notification,
   NotificationCategory,
@@ -51,6 +52,7 @@ function relativeTime(iso: string): string {
 export default function CommsAlertsPage() {
   const router = useRouter()
   const setActiveModule = useAppStore((s) => s.setActiveModule)
+  const me = useWorkspaceCurrentUserId()
   useEffect(() => {
     setActiveModule("comms")
   }, [setActiveModule])
@@ -74,7 +76,6 @@ export default function CommsAlertsPage() {
     }))
   )
 
-  const me = getCurrentUserId()
   const notifications = useMemo(
     () =>
       rawNotifications
@@ -105,7 +106,7 @@ export default function CommsAlertsPage() {
   }, [tab, notifications])
 
   const handleClick = (n: Notification) => {
-    if (!n.readAt) markRead(n.id)
+    if (!n.readAt) void markRead(n.id).catch(() => {})
     if (n.dashboardId) {
       router.push(`/dashboard?d=${n.dashboardId}`)
     }
@@ -124,7 +125,12 @@ export default function CommsAlertsPage() {
         </div>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <Button variant="outline" size="sm" onClick={markAllRead} className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void markAllRead().catch(() => {})}
+              className="gap-1.5"
+            >
               <CheckCheck className="w-4 h-4" /> Mark all read
             </Button>
           )}
@@ -189,7 +195,7 @@ export default function CommsAlertsPage() {
                                 <PermissionRequestActions
                                   request={req}
                                   onResolve={(status) => {
-                                    resolveRequest(req.id, status)
+                                    void resolveRequest(req.id, status).catch(() => {})
                                   }}
                                 />
                               )}
@@ -201,7 +207,7 @@ export default function CommsAlertsPage() {
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    if (!n.readAt) markRead(n.id)
+                                    if (!n.readAt) void markRead(n.id).catch(() => {})
                                     router.push(`/dashboard?d=${n.dashboardId}`)
                                   }}
                                   className="text-xs gap-1"
@@ -215,7 +221,7 @@ export default function CommsAlertsPage() {
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    markRead(n.id)
+                                    void markRead(n.id).catch(() => {})
                                   }}
                                   className="text-xs gap-1"
                                 >

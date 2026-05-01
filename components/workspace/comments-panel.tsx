@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { Send } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -47,8 +48,16 @@ export function CommentsPanel({
 
   const submit = () => {
     if (!body.trim()) return
-    addComment({ dashboardId, body })
-    setBody("")
+    void addComment({ dashboardId, body })
+      .then((c) => {
+        if (c) setBody("")
+        else toast.error("Could not post comment")
+      })
+      .catch((e) =>
+        toast.error("Could not post comment", {
+          description: e instanceof Error ? e.message : "Unknown error",
+        })
+      )
   }
 
   return (

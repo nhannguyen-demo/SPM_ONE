@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import {
   Dialog,
   DialogContent,
@@ -41,17 +42,21 @@ export function CreateDashboardDialog({
     defaultEquipmentId ?? allEquipment[0]?.id ?? ""
   )
 
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim() || !equipmentId) return
-    const dash = createDashboard({
-      name: name.trim(),
-      equipmentId,
-      folderId: defaultFolderId ?? null,
-      widgets: [],
-    })
-    setName("")
-    onOpenChange(false)
-    router.push(`/dashboard/dashboard/${dash.id}/edit`)
+    try {
+      const dash = await createDashboard({
+        name: name.trim(),
+        equipmentId,
+        folderId: defaultFolderId ?? null,
+        widgets: [],
+      })
+      setName("")
+      onOpenChange(false)
+      router.push(`/dashboard/dashboard/${dash.id}/edit`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create dashboard")
+    }
   }
 
   return (

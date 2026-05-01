@@ -1,5 +1,5 @@
 ## Product
-SPM ONE is an industrial Asset Performance Management (APM) web application prototype for Integrity Engineers. It gives users a hierarchical portfolio view (Site -> Plant -> Equipment), an Equipment Home Page for browsing dashboards and scoped tools, a per-user **Workspace** feature (AppModule key `workspace`) for managing dashboards (folders, drafts, sharing, commenting, publishing, editing), a Comms Module with an in-app Alerts page, a centralized What-If Scenario (WIS) tool, document management, and AI-assisted insights.
+SPM ONE is an industrial Asset Performance Management (APM) web application prototype for Integrity Engineers. It gives users a hierarchical portfolio view (Site -> Plant -> Equipment), an Equipment Home Page for browsing dashboards and scoped tools, a per-user **Workspace** feature (AppModule key `workspace`) for managing dashboards (folders, drafts, sharing, commenting, publishing, editing), a Comms Module with an in-app Alerts page, a centralized What-If Scenario (WIS) tool, document management, and AI-assisted insights. **Navigation requirement (May 1 2026):** all primary module experiences shall be **URL-backed** (App Router pages with real browser history), matching the Workspace (**Dashboard**) module pattern — **without** altering visible UI/UX (layout, styling, copy, control behavior) except as needed to preserve parity under routing.
 
 **UI naming:** The Workspace module is labeled **Dashboard** in the product UI (module rail, sidebar panel header, search placeholder, and related navigation copy). App Router URLs live under **`/dashboard/*`**; Zustand (`useWorkspaceStore`), `lib/workspace/`, and types such as `WorkspaceDashboard` keep **Workspace** in code to distinguish the module from individual `Dashboard` records.
 
@@ -21,10 +21,10 @@ Key entities:
 - Workspace Module entities (UI: **Dashboard** module): `WorkspaceFolder` (per-user nested folder tree), `DashboardShare` (per-recipient grant), `ShareLink` (token-based grant), `DashboardComment`, `PermissionRequest`.
 - Comms Module entities: `Notification` (in-app alert).
 - Cross-tab UI context: `DashboardViewerTabSession` (non-persisted; broadcast cross-tab) and `EquipmentHomeView.externalOpenTabCounts`.
-- Navigation/tooling: `AppModule` (keys: `home`, `assets`, `workspace`, `insights`, `comms`, `settings`; the `workspace` entry is shown as **Dashboard** in the UI), `Tool` (canonical keys: `data_sync`, `shift_log`, `documents`, `whatif`).
+- Navigation/tooling: `AppModule` (keys: `home`, `assets`, `workspace`, `insights`, `comms`, `settings`; the `workspace` entry is shown as **Dashboard** in the UI), `Tool` (canonical keys: `data_sync`, `shift_log`, `documents`, `whatif`). **May 1 2026:** every primary module surface (except chromeless/full-screen exceptions) shall be reachable via a **stable App Router URL** with real navigation semantics, matching the **Dashboard** module — routing-only; no UI redesign.
 - UI context (non-persisted): `EquipmentHomeView` — tracks active dashboard popup, viewed-data scenario, and external-open-tab counts for the Equipment Home Page.
 - What-If domain: `WhatIfScenario`, `WhatIfScenarioParameter`, `WhatIfRunSession`, `WhatIfRunInput`, `WhatIfRunResult`.
-- Supporting operational data: `User` (now with `isCurrentUser` mock-auth flag and `avatarUrl`), `UserDocument`, `ChangeLogEntry`, `DataSyncStatus`, `SyncJob`.
+- Supporting operational data: `User` (role, optional `passwordHash` / `emailVerified` for production auth; `isCurrentUser` **mock-only** until real login; **Account** / **Session** for OAuth and cookie sessions per ontology), `UserDocument`, `ChangeLogEntry`, `DataSyncStatus`, `SyncJob`.
 
 Key relationships:
 - A `Site` has many `Unit`; a `Unit` has many `Equipment`. Placeholder equipment rows (`isPlaceholder`) appear in the asset menu only and do not navigate.
@@ -62,7 +62,7 @@ Business behavior reflected in ontology:
 - **Canonical data source (Apr 27 2026)**: `WorkspaceDashboard` (from `useWorkspaceStore`) is the single source of truth for dashboard metadata. Equipment Home Page, Home Page Recents/Favorites, and Site/Plant Overview Tab Stacks derive their dashboard lists from published `WorkspaceDashboard` records via `lib/workspace-data.ts` adapters. The static `dashboardCards` array in `lib/data.ts` is deprecated. Dashboard identity across Asset surfaces is keyed on `WorkspaceDashboard.id`.
 
 ## Current Build State
-- ✅ App shell and manual view router (`currentView`) with two-layer sidebar + header.
+- ✅ App shell with two-layer sidebar + header; main modules use App Router URLs (`/home`, `/assets/*`, `/tools/*`) with Zustand `currentView` synced from the pathname (`MainRouteSync`).
 - ✅ Home view with modules: Global Search, AI Summary, Recents, Favorites, Change Log, Documents preview.
 - ✅ Site Overview view (map, plant markers, KPIs/charts, docs panel, dashboard tab stack).
 - ✅ Plant Overview view (equipment context, P&ID panel, charts, AI health overlays).
@@ -87,7 +87,7 @@ Business behavior reflected in ontology:
 - 🚧 **Dashboard module (Workspace) — full content management (in design)**: per-user dashboards, nested folders, search/filter/sort, drafts vs. published lifecycle, popup viewer with Comments + Edit + Open-in-new-tab, Workspace-native editor reusing Widget Library, sharing with named users and copyable links with permission levels (view/comment/edit), Shared-with-me, permission requests.
 - 🚧 **Comms Module Alerts page (in design)**: notifications for `dashboard_shared_with_you`, `dashboard_first_view`, `permission_request_received`, `permission_request_resolved`; deep-link "View" actions back to `/dashboard`; live unread-count badge on module rail.
 - 🚧 **Equipment Home Page deep-linking & multi-tab (in design)**: `Edit Dashboards` button now navigates to **Dashboard** (`/dashboard`) pre-scoped to the originating equipment; Dashboard Popup gains `Open in new tab`; Full-Screen Dashboard Viewer route renders chromeless; `open elsewhere` indicator on dashboard tabs uses `BroadcastChannel` cross-tab signalling.
-- 🚧 **App Router migration (in design)**: real Next.js routes (`/dashboard`, `/dashboard/folder/[id]`, `/dashboard/shared`, `/dashboard/recent`, `/dashboard/trash`, `/dashboard/dashboard/[id]/edit`, `/dashboards/[id]/full`, `/share/[token]`); legacy `currentView` router stays for Home / Site / Plant / Equipment Home / Tools during transition. Old `/workspace/*` URLs redirect to `/dashboard/*`.
+- ✅ **App Router — main shell URL parity (May 2026):** `/` → `/home`; `/assets/site|plant|equipment/...`; `/tools/data-sync`, `/tools/what-if`, `/tools/documents`; query params for equipment pre-filter and equipment-home popup/tab. Dashboard (`/dashboard/*`), full-screen viewer, share link, and Comms Alerts unchanged.
 
 ## Tech Stack
 Actually used in the frontend:
@@ -99,19 +99,28 @@ Actually used in the frontend:
 - Icons: `lucide-react`.
 - Package manager/build: pnpm, Next build pipeline.
 - Hosting/analytics: Vercel + `@vercel/analytics`.
-- Backend/data layer: none yet (static mock data in `lib/data.ts`).
+- **Data layer (current):** no production API; mock data in `lib/data.ts`, Workspace in **Zustand + `localStorage`**. **Target (initiative):** PostgreSQL + Prisma + server session auth — see **Cloud backend & auth (initiative)** and `prisma/schema.prisma`.
 
 Notable installed-but-not-actively-used packages from audit: `@dnd-kit/*`, `cmdk`, `date-fns`, `react-day-picker`, `input-otp`, `embla-carousel-react`, `sonner` (in app views).
 
 Note: `@dnd-kit/*` will be activated for the Workspace folder tree drag-and-drop and dashboard "Move to folder" interactions.
 
 ## Routes & Pages
-Existing single-page shell (`app/page.tsx`) renders the legacy `currentView` switcher for Home, Site, Plant, Equipment Home, Tools (Data & Sync, What-If, Documents). **Dashboard widget editing** is not routed through this shell; it uses the App Router **Dashboard** module at `/dashboard/dashboard/[id]/edit`. The legacy `currentView: "equipment"` surface (in-shell equipment dashboard with tab strip and local grid) is **deprecated** and will be removed per Option A.
+The **main app shell** (Home, Site / Plant / Equipment Home, Tools) is URL-backed under `app/(main)/` with `MainRouteSync` keeping Zustand `currentView` / `currentPath` aligned to the address bar. **`/`** redirects to **`/home`**. Canonical path map: `.taskmaster/docs/module-url-parity.md`.
 
-New App Router pages introduced by the Workspace + multi-tab work:
+**Dashboard widget editing** is not routed through the main shell; it uses the App Router **Dashboard** module at `/dashboard/dashboard/[id]/edit`. The legacy `currentView: "equipment"` surface (in-shell equipment dashboard with tab strip and local grid) is **deprecated** and removed per Option A.
+
+App Router pages (main shell + Workspace + Comms + viewer):
 
 | Route | Purpose | Chrome |
 |---|---|---|
+| `/home` | Home (`HomeView`) | Sidebar + Header |
+| `/assets/site/[siteId]` | Site Overview | Sidebar + Header |
+| `/assets/plant/[siteId]/[unitId]` | Plant Overview | Sidebar + Header |
+| `/assets/equipment/[siteId]/[unitId]/[equipmentId]` | Equipment Home (`?tab`, `?openDashboard`) | Sidebar + Header |
+| `/tools/data-sync` | Data & Sync (`?equipment`) | Sidebar + Header |
+| `/tools/what-if` | What-If Scenario tool | Sidebar + Header |
+| `/tools/documents` | Documents tool (`?equipment`) | Sidebar + Header |
 | `/dashboard` | Workspace Module main view (All Dashboards) | Sidebar + Header |
 | `/dashboard/folder/[folderId]` | Folder-scoped Workspace view | Sidebar + Header |
 | `/dashboard/shared` | Shared-with-me view | Sidebar + Header |
@@ -123,13 +132,13 @@ New App Router pages introduced by the Workspace + multi-tab work:
 | `/comms/alerts` | Comms Module Alerts page | Sidebar + Header |
 
 Routing principles:
-- New surfaces are URL-driven; deep links survive reload and external sharing.
-- Legacy `currentView` router remains for the listed legacy surfaces during the transition.
-- Cross-tab navigation (e.g. `Open in new tab`) only works correctly with real URLs — hence the routing migration.
+- **Dashboard / Workspace**, **main shell** (`/home`, `/assets/*`, `/tools/*`), share/viewer, and Comms Alerts are URL-driven; deep links survive reload where encoded in the path or query string.
+- Zustand remains the in-session source of truth for navigation and feature state; **`MainRouteSync`** hydrates it from the URL on main-shell routes.
+- Cross-tab navigation (e.g. `Open in new tab`) relies on real URLs — same pattern across modules.
 
 ## Key Technical Decisions
-- Default landing is `currentView: "home"`.
-- View routing is manual (store-driven render switching in `app/page.tsx`, not URL-driven route transitions).
+- Default landing is **`/home`** (server redirect from `/`); Zustand `currentView` is synced from the pathname on main-shell routes via `MainRouteSync`.
+- View routing for Home / Site / Plant / Equipment Home / Tools is **pathname-driven** under `app/(main)/*`, with the same Zustand slices for data and UI state as before.
 - Zustand is the cross-view source of truth for navigation, WIS sessions, and saved documents.
 - WIS v2 is centralized (`whatif-tool-view.tsx`); dashboard “Run WIS” navigates into the tool with preselected tab/context.
 - WIS report generation writes to the same documents store with equipment-aware tagging.
@@ -138,26 +147,26 @@ Routing principles:
 - Home recents/favorites are in-memory state (reset on hard refresh by design today).
 - AI safety constraint: AI Summary content is mock/advisory and should avoid unsafe operational guidance.
 - Strong reusable UI patterns identified in audit: `WidgetErrorBoundary`, seed hooks for store initialization, declarative default widget set/layout maps, two-layer sidebar architecture.
-- **Equipment Home Page entry point**: navigating to an equipment from the asset hierarchy sets `currentView: "equipment-home"`. **Edit** uses the **Dashboard** module only: links go to `/dashboard` (filtered) or `/dashboard/dashboard/[id]/edit` — not to `currentView: "equipment"`.
+- **Equipment Home Page entry point**: navigating to an equipment from the asset hierarchy opens **`/assets/equipment/...`** (store `currentView: "equipment-home"` synced from URL). **Edit** uses the **Dashboard** module only: links go to `/dashboard` (filtered) or `/dashboard/dashboard/[id]/edit` — not to legacy in-shell equipment editor.
 - **Dashboard Popup (Equipment Home)**: state lives in local `EquipmentHomeView` (`activePopupDashboardId`); the popup reuses `ResponsiveDashboardGrid` with `viewedDataIds` and equipment-scoped `scenarioRuns` so layout and Coker catalog tiles match the **Dashboard** module and full-screen viewer.
 - **Cross-view auto-open behavior**: Site/Plant dashboard stack tab clicks set one-shot popup targeting (`equipmentHomeAutoOpenTab`) so Equipment Home opens directly into the selected read-only dashboard popup.
 - **Equipment pre-filter for Tools**: when navigating from Equipment Home Page tool tiles, the target equipment `id` is written to a Zustand slice (`preFilterEquipmentId`) so the destination tool page can read and apply it on mount.
 - **Data & Sync filter**: `DataSyncView` will accept `preFilterEquipmentId` from Zustand to auto-select the equipment filter on entry.
 - **Stack label navigation UX**: equipment labels in dashboard tab stacks are explicit link-style controls with dedicated click handling (separate from stack expand/collapse interaction).
-- **Mock current-user identity (Workspace)**: in lieu of real auth, exactly one `User` row carries `isCurrentUser=true`; the value persists in `localStorage` and can be switched via a debug user-switcher. All ownership / sharing / contributor logic keys off this id.
-- **Workspace persistence**: Workspace mock data (folders, dashboards, shares, links, comments, notifications) lives in a `localStorage`-backed Zustand slice; reload preserves state. A debug "Reset Workspace" action re-seeds.
+- **Workspace identity (Workspace UI)**: **Production builds** (`NODE_ENV === 'production'`): effective user id follows the signed-in Auth.js session (`session.user.id` must match a seeded `ORG_USERS` id); **manual localStorage overrides are ignored**. **Development**: mock flows may still read/write `spm-one:current-user-id` when not in production. Directory lookups (`findOrgUserById`, Share typeahead) remain client-side against `ORG_USERS`. Server APIs enforce ownership/shares independently.
+- **Workspace persistence**: **Signed-in users:** folders, dashboards, and shares are loaded from PostgreSQL via `/api/workspace/bootstrap` and mutated through `/api/workspace/*` (Zustand holds a client cache; localStorage does **not** store those collections — see persist v2 in `lib/workspace/store.ts`). **`pnpm db:seed`** upserts the deterministic **`WORKSPACE_SEED`** bundle (`lib/workspace/seed.ts` → `prisma/seed-workspace.ts`) plus **`lib/data.ts`** asset hierarchy so **equipment-a / equipment-b / equipment-c** exist and dashboard lists are populated. **Signed-out / failure fallback:** the same seed shapes hydrate the store from mock data. Debug **Reset Workspace** still reverts the client slice to `WORKSPACE_SEED`.
 - **Dashboard module editor (sole authoring engine)**: `components/workspace/dashboard-editor.tsx` at `/dashboard/dashboard/[dashboardId]/edit` is the **only** surface for add/remove/drag/resize/save of widget layout. The legacy `equipment-dashboard.tsx` editor is **retired**; shared building blocks remain (`ModuleLibrary`, `layouts.ts` for seed/defaults, `WidgetViewResolver`). External widget drops: `react-grid-layout` `onDrop`; HTML5 payload `application/x-spm-widget` (JSON) from `ModuleLibrary`.
 - **Cross-tab open-state signalling**: `BroadcastChannel('spm-one:viewer-tabs')` with `localStorage` `storage`-event fallback; viewer tab broadcasts JOIN on mount, LEAVE on `pagehide`, heartbeat every 5s. Equipment Home Page derives `externalOpenTabCounts` from these signals and renders an indicator on each dashboard tab/card.
-- **Routing strategy (phased)**: new Workspace, Full-Screen Viewer, and Share-link surfaces are URL-driven via App Router; legacy surfaces continue to use `currentView`. Cross-module navigation that must survive reload (folder, dashboard popup target, full-screen viewer, share-link landing) goes through real URLs.
+- **Routing strategy:** Workspace, Full-Screen Viewer, Share-link, Comms Alerts, and the **main shell** (Home, Assets, Tools) are URL-driven via App Router. Zustand `currentView` / `currentPath` stay the working navigation state and are hydrated from the URL on main-shell routes.
 - **Workspace module rail submenu** (UI: **Dashboard** module): cleaned to a single-level list — "All Dashboards", "Shared with me", "Recent", "Trash". No nested submenu permitted. Replaces previous "Favorite" / "Share with me" stubs.
 - **Workspace in-page menu unification** (shown inside **Dashboard**): Workspace must render a single in-module navigation panel (no duplicate white + blue menus). The unified panel uses the dark-blue submenu visual style used across modules, while retaining all functional behavior currently provided by the white Workspace menu (locations, folder tree interactions, and badges/counters).
-- **Canonical dashboard data source**: `WorkspaceDashboard` records (via `useWorkspaceStore`) are the single source of truth for dashboard metadata. `lib/workspace-data.ts` provides the `EquipmentHomeDashCard` adapter type and bridge functions (`getPublishedDashboardsForEquipment`, `getDashboardById`, `getWorkspaceDashboardIdForTag`) that Asset and Home modules consume. The legacy `dashboardCards` static array is deprecated. Cross-tab presence and Site/Plant one-shot auto-open use `WorkspaceDashboard.id`. What-If result **View Data** navigates to Equipment Home only (no auto-open popup); `whatIfDashboardAutoSelectRunId` still primes Viewed Data when the user opens a dashboard.
+- **Canonical dashboard data source**: **`WorkspaceDashboard`** is the single source of truth for dashboard metadata. For authenticated sessions the authoritative rows live in **PostgreSQL** and are synced into `useWorkspaceStore`; unauthenticated clients use the same shapes from **`WORKSPACE_SEED`**. `lib/workspace-data.ts` provides the `EquipmentHomeDashCard` adapter type and bridge functions (`getPublishedDashboardsForEquipment`, `getDashboardById`, `getWorkspaceDashboardIdForTag`) that Asset and Home modules consume. The legacy `dashboardCards` static array is deprecated. Cross-tab presence and Site/Plant one-shot auto-open use `WorkspaceDashboard.id`. What-If result **View Data** navigates to Equipment Home only (no auto-open popup); `whatIfDashboardAutoSelectRunId` still primes Viewed Data when the user opens a dashboard.
 
 ## Known Tech Debt
 Prioritized from audit:
 
 1) High
-- URL-less navigation (`currentView` only) for many legacy surfaces: no deep links/back-button semantics for those flows. **Exception (resolved for editing):** dashboard authoring uses real URLs under `/dashboard/*` (Option A: single editor).
+- ~~URL-less navigation for Home / Site / Plant / Equipment Home / Tools~~ — **addressed** with `/home`, `/assets/*`, `/tools/*` + `MainRouteSync`. **Exception (resolved for editing):** dashboard authoring uses real URLs under `/dashboard/*` (Option A: single editor).
 - No persistence for recents/favourites (session reset on refresh).
 - Global single `equipmentKPIs` constant still used in UI (not per-equipment data model).
 - Static `dashboardCards` array in `lib/data.ts` (deprecated; active migration to `WorkspaceDashboard` canonical source underway).
@@ -183,39 +192,62 @@ Prioritized from audit:
 - Some packages installed but not used in app views.
 - Randomized widget values in render path (`Math.random()` in flaw widget) can cause UI instability.
 
-## What Needs Backend
-- Asset hierarchy source (`Site`, `Plant`, `Equipment`) and metadata services.
-- Dashboard persistence:
-  - `Dashboard` CRUD per equipment.
-  - `Dashboard.isFavorite` and `Dashboard.lastAccessedAt` per user (Equipment Home Page grouping).
-  - `Widget` catalog registry and versioning.
-  - `DashboardWidget` layout persistence and per-user/team permissions.
-- Real equipment performance/health data pipelines for widget rendering (replace static chart arrays/constants).
-- What-If backend:
-  - Scenario definitions and parameter schemas.
-  - Run orchestration queue/executor and status tracking.
-  - Run inputs/results storage.
-  - Run history retrieval and viewed-data serving for dashboard overlays.
-- Documents backend:
-  - File upload/storage URLs.
-  - Share permissions and recipient resolution.
-  - Report generation artifacts linked to source run sessions.
-- Authentication and user identity:
-  - Replace hardcoded names/avatar initials.
-  - Role-based authorization for edit/run/share actions.
-- Change Log backend event ingestion (immutable audit records from real actions).
-- Data & Sync backend:
-  - Ingestion status and job history endpoints.
-  - Log retrieval, failure diagnostics, retry actions.
-  - Equipment-level filtering API (to support Equipment Home Page tile preview + tool filter).
-- Persistent user state (recents/favourites/preferences) beyond in-memory Zustand.
-- **Workspace module backend (spec defined Apr 27 2026)**:
-  - Per-user ownership; row-level access control; Site/Plant/Equipment authorization for published dashboards.
-  - `Dashboard` lifecycle (`created` ↔ `published`) with audit, dashboard version history, collaborative editing.
-  - Folder tree CRUD (`WorkspaceFolder`).
-  - `DashboardShare` (named recipients) and `ShareLink` (token-based) with permission levels (`view`/`comment`/`edit`), revoke, regenerate.
-  - `DashboardComment` storage and (eventually) realtime fan-out.
-  - `PermissionRequest` workflow (request, grant/deny, audit).
-  - `Notification` storage, fan-out, and read-state tracking.
-  - "First view" detection per share for `dashboard_first_view` alerts.
-  - Cross-tab `DashboardViewerTabSession` aggregation (currently client-only via `BroadcastChannel`; eventual server-side presence may be desired).
+## What Needs Backend (initiative: cloud state + accounts)
+
+This section is scoped to **(a)** server-persisted app state so any device sees the same data, **(b)** real sign-in (email/password + future OAuth), and **(c)** seed users aligned with `lib/workspace/identity.ts` `ORG_USERS`. It **does not** require replacing free-text mock strings in change log / activity / What-If display (explicitly deferred).
+
+### Audit — backend capabilities required (only for this scope)
+
+| Area | Today | Required |
+|------|--------|----------|
+| **Identity** | **Delivered:** Auth.js session + User table; production clients cannot spoof workspace user via localStorage; dev may use legacy storage when `NODE_ENV !== 'production'`. | OAuth providers optional later |
+| **Workspace** | **Delivered (phase 1):** REST `/api/workspace/*` + client hydration; **seed** promotes **`WORKSPACE_SEED`** + asset hierarchy into Postgres via **`pnpm db:seed`**. Persist v2 excludes server-backed collections from localStorage. **Remaining:** some Comms/notifications flows may still read mock slices until fully wired (see initiative tasks). | CRUD API for **folders**, **dashboards** (incl. `widgets` JSON, `dashboardContext`, `knowledgePackVersion`), **shares**, **share links**, **comments**, **permission requests**, **notifications**; app-layer checks by `ownerUserId` / share grants |
+| **Comms** | In-store notifications | Persist **Notification**; optional SSE/polling for unread; keep category semantics from `lib/workspace/types.ts` |
+| **AuthZ** | Client-side permission helpers | Replicate **view < comment < edit** on the server for every mutating route; `product_team` gate for **ParameterRequest** queue |
+| **Account lifecycle** | N/A (mock) | Sign-in, sign-out, **optional:** email verify, password reset, session expiry, **optional:** rate limits on auth routes |
+| **Infra** | Vercel static+SSR | **PostgreSQL** (Vercel Postgres, Neon, Supabase, RDS, …), `DATABASE_URL`, migrations (`prisma migrate`), secrets in Vercel project settings |
+| **Asset hierarchy** | **`lib/data.ts` + DB sync** — `pnpm db:seed` upserts `Site` / `Unit` / `Equipment` from the same tree (ids **equipment-a** / **equipment-b** / **equipment-c** for the three primary units). Placeholder equipment rows remain in JSON for UI density; functional surfaces use primary ids. | **Optional later:** CMS or multi-tenant admin if product needs editable hierarchy |
+| **Recents / favorites (Home)** | In-memory / non-persisted in `useAppStore` | **User**-scoped recents + favorites in DB or user-preferences JSON column (post-MVP if timeboxed) |
+| **What-If, Documents, Data sync, Change log UI text** | Mock / free-text | **Out of scope** for “first real login + workspace sync” unless explicitly added; no requirement to backfill free-text from `lib/data.ts` in this initiative |
+
+### Manual setup (owner — you) — do when implementation starts
+
+1. **Create a PostgreSQL database on Supabase** (product default for this initiative):  
+   - Open [https://supabase.com](https://supabase.com) and sign up or log in.  
+   - Click **New project**. Pick an **organization**, a **project name** (e.g. `spm-one-dev`), a **database password** (save it in a password manager — you cannot see it again in plain text easily). Choose a **region** close to you. Create the project and wait until the dashboard says the database is ready (usually 1–2 minutes).  
+   - In the left sidebar: **Project Settings** (gear) → **Database**. Scroll to **Connection string**.  
+   - For **`DATABASE_URL` in `.env`**, use the **Session pooler** URI (Supabase often labels it “Session mode” / pooler host such as `*.pooler.supabase.com`). **Do not** use the **Direct connection** host `db.<ref>.supabase.co:5432` for local dev or Vercel: it is often **IPv6-only**, which causes Prisma **P1001** (“Can’t reach database”) and breaks **login** on typical IPv4 networks. If the dashboard shows “Not IPv4 compatible”, that is the same issue.  
+   - Paste the pooler URI into a text editor. Replace the placeholder password with your **database password**. The string must start with `postgresql://` or `postgres://`.  
+   - Put that line in **`.env`** as `DATABASE_URL="..."` (see **`.env.example`**). The app validates this at startup and will error if a direct `db.*.supabase.co` URL is detected (override only with `SPM_ALLOW_SUPABASE_DIRECT=1` if you truly need it).  
+   - When you deploy to Vercel (later): add the same variable name **`DATABASE_URL`** under **Project → Settings → Environment Variables** for **Production** (and **Preview** if you want preview deployments to hit a DB). Never commit `.env` to git.
+2. **Apply migrations to Supabase:** The repo includes a **PostgreSQL** baseline migration (`prisma/migrations/*_postgresql_baseline/`). With **`DATABASE_URL`** set in `.env`, run **`pnpm exec prisma migrate deploy`** (or `pnpm db:deploy` if added to `package.json`) against your Supabase database. Use the same command in CI/Vercel after deploy. On a **fresh** empty database this creates all tables; if you ever need to wipe and recreate (dev only), use Supabase SQL or dashboard to drop the `public` schema objects — **never** do that on production without a backup.
+3. **Auth secret:** set **`AUTH_SECRET`** (or provider-specific secrets) in Vercel for Auth.js — generate with `openssl rand -base64 32`.
+4. **Seeded passwords + workspace data:** set **`SEED_DEFAULT_PASSWORD`** (and optionally per-user **`SEED_PASSWORD_*`** — see `.env.example`) in `.env`, then run **`pnpm db:seed`**. This loads **users**, **Site/Unit/Equipment** from **`lib/data.ts`**, and the full **Workspace** bundle (**folders, dashboards, shares**, plus seed rows for share links, comments, permission requests, notifications) from **`WORKSPACE_SEED`** via **`prisma/seed-workspace.ts`**. Re-run after schema changes or when you need to refresh demo data (upserts by deterministic ids). Plain passwords never go in git; `prisma/seed.ts` hashes with **bcryptjs** (same as Auth.js). **If dashboards are empty or “Equipment not found” appears when creating a dashboard,** the DB likely has no seed data — run **`pnpm db:seed`** against the same **`DATABASE_URL`** the app uses.
+5. **CORS / cookies:** ensure session cookies are **Secure**, **HttpOnly**, **SameSite** appropriate to your domain (Vercel custom domain vs `*.vercel.app`). Set **`AUTH_URL`** to the canonical HTTPS origin in production. Optional tuning: **`AUTH_RATE_LIMIT_MAX`** / **`AUTH_RATE_LIMIT_WINDOW_SEC`** (defaults documented in `.env.example`) throttle POST **`/api/auth/*`** in Edge middleware; **`AUTH_REQUIRE_EMAIL_VERIFICATION=true`** only if you populate **`User.emailVerified`** (no outbound verification email is shipped yet).
+
+### What stays mock for now (per product direction)
+
+- **Change log, recent activity, What-If run display labels,** and similar **free-text** in `lib/data.ts` and fixtures: **do not change** in the first delivery; they remain UI mock until a later “audit / activity hardening” epic.
+- **Cross-tab** “open elsewhere” can remain **BroadcastChannel**-based until server presence is prioritized.
+
+## Cloud backend & auth (initiative) — requirements analysis & phased plan
+
+**Goal:** production-quality **SaaS-style** auth and **one global source of truth** for Workspace data so **any device** signed in as the same user sees the same dashboards, folders, and sharing.
+
+**Phases (recommended):**
+
+1. **Foundation** — Prisma + PostgreSQL wired; `User` + `Session` + `Account` (Auth.js adapter); email/password **Credentials** provider; protected route layout; sign-in / sign-out pages; **seed** the nine `ORG_USERS`-aligned accounts (hashed passwords from env). **Manual:** create DB, set env vars, run migrate + seed. **Out:** no Zustand replacement yet (can dual-read in dev).
+2. **Workspace API** — REST or **Server Actions** for folders + dashboards + widget JSON; migrate off `localStorage` workspace store for authenticated users; conflict strategy (last-write-wins or version column). **Manual:** data backfill from existing `localStorage` is optional; most users re-seed.
+3. **Sharing & comms** — server persistence for `DashboardShare`, `ShareLink`, `PermissionRequest`, `Notification`; enforce permissions on every API. Link `/share/[token]` to real token lookup.
+4. **Hardening** — rate limits (Upstash or Edge middleware), `emailVerified` policy, optional **OAuth** providers (Google) via `Account` table, audit logging for security-sensitive actions.
+5. **Deferred** — asset hierarchy in DB, file uploads to S3, What-If + documents backends, replacing mock free-text — separate epics.
+
+**Layer-by-layer implementation order (for engineers):**  
+**DB** → **Prisma client** → **auth middleware** (Edge or Node) → **API / server actions** → **replace `useWorkspaceStore` hydration** (SSR + client invalidation) → **remove or gate mock user switcher** → **E2E tests** on auth + one dashboard save.  
+Spaces for **you** are in **Manual setup** above and at the start of each phase (provision services, set secrets, run migrations).
+
+`domain.ontology.yaml` and `prisma/schema.prisma` are the **structural** contract for this initiative; application code is updated only in follow-up tasks, not in the same commit as this documentation pass.
+
+---
+
+**Legacy / superseded (pre-initiative) bullet list** — the following are rolled into the table + phases above: generic “Dashboard CRUD,” “Auth,” and “Workspace module backend (Apr 27 2026 spec)” are **one program of work** with PostgreSQL as system of record; cross-tab presence and mock UI strings remain as previously documented in **What stays mock**.

@@ -1,45 +1,337 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// SPM ONE — Prisma schema (target production model)
+// Synced with domain.ontology.yaml, lib/workspace/types.ts, and the cloud auth initiative.
+// Run: `pnpm prisma generate` / `pnpm prisma migrate dev` when DATABASE_URL is set.
+// Legacy note: an older sqlite-oriented draft used per-widget join tables; the app now
+// persists the dashboard grid as JSON (`widgets`) on `Dashboard` (Workspace model).
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
+
+// ─── Auth (Auth.js / NextAuth compatible) ───────────────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  /// Display initials (e.g. chips); optional if derived from name in app
+  initials      String?
+  role          UserRole    @default(integrity_engineer)
+  /// Argon2/bcrypt; null if OAuth-only user
+  passwordHash  String?
+  lastLoginAt   DateTime?
+
+  accounts            Account[]
+  sessions            Session[]
+  /// Workspace ownership
+  ownedFolders        WorkspaceFolder[]      @relation("FolderOwner")
+  ownedDashboards     Dashboard[]            @relation("DashboardOwner")
+  /// @relation for shares, comments, etc. — named relations below
+  runSessions         WhatIfRunSession[]     @relation("RunRequestedBy")
+  changeLogs          ChangeLogEntry[]
+  syncJobs            SyncJob[]
+
+  @@index([email])
+}
+
+/// OAuth provider link (optional if credentials-only in v1)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId     String
+  expires    DateTime
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Asset hierarchy (stable string ids to align with `lib/data.ts` mocks) ─
+
+model Site {
+  id        String  @id
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  units     Unit[]
+  documents UserDocument[] @relation("DocumentSite")
+}
+
+model Unit {
+  id        String      @id
+  siteId    String
+  site      Site        @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  name      String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  equipment Equipment[]
+
+  @@index([siteId])
+}
+
+model Equipment {
+  id                String           @id
+  unitId            String
+  unit              Unit             @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  name              String
+  type              EquipmentType    @default(other)
+  isPlaceholder     Boolean          @default(false)
+  hasWhatIfTool     Boolean          @default(false)
+  /// e.g. coker, hcu, smr, other
+  equipmentTypeKey  String           @default("other")
+  /// JSON array of add-on param keys (optional)
+  parameterAddonJson Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  dashboards        Dashboard[]
+  whatIfScenarios   WhatIfScenario[]
+  runSessions       WhatIfRunSession[]
+  documents         UserDocument[]
+  dataSyncStatus    DataSyncStatus[]
+  syncJobs          SyncJob[]
+  /// Parameter requests that reference this equipment
+  paramRequests     CatalogParameterRequest[]
+
+  @@index([unitId])
+}
+
+// ─── Workspace (Dashboard = canonical workspace record) ───────────────────
+
+model WorkspaceFolder {
+  id             String            @id @default(cuid())
+  ownerUserId    String
+  owner          User              @relation("FolderOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  parentFolderId String?
+  parent         WorkspaceFolder?  @relation("FolderTree", fields: [parentFolderId], references: [id], onDelete: SetNull)
+  children       WorkspaceFolder[] @relation("FolderTree")
+  name           String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  dashboards     Dashboard[]
+
+  @@index([ownerUserId])
+  @@index([parentFolderId])
+}
+
+model Dashboard {
+  id                 String   @id @default(cuid())
+  equipmentId        String
+  equipment          Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  name               String
+  lifecycleStatus    DashboardLifecycle @default(created)
+  ownerUserId        String
+  owner              User     @relation("DashboardOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  contributorUserIds String[] /// Prisma 5+ native list on Postgres, or use Json in older stacks
+  folderId           String?
+  folder             WorkspaceFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  sourceDashboardId  String?
+  sourceDashboard    Dashboard?  @relation("CloneOf", fields: [sourceDashboardId], references: [id], onDelete: SetNull)
+  clonedFromHere     Dashboard[]  @relation("CloneOf")
+  /// GridWidget[] including templateKey, layout, viewType (JSON)
+  widgets            Json
+  thumbnailUrl       String?
+  knowledgePackVersion String?
+  /// DashboardContextState JSON
+  dashboardContext   Json?
+  lastChangeAt       DateTime   @default(now())
+  lastChangeByUserId String?
+  publishedAt        DateTime?
+  deletedAt          DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  shares             DashboardShare[]
+  shareLinks         ShareLink[]
+  comments           DashboardComment[]
+  permissionRequests PermissionRequest[]
+
+  @@index([equipmentId])
+  @@index([ownerUserId])
+  @@index([folderId])
+  @@index([deletedAt])
+}
+
+model DashboardShare {
+  id                 String   @id @default(cuid())
+  dashboardId        String
+  dashboard          Dashboard  @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  sharedByUserId     String
+  sharedWithUserId   String
+  permission         SharePermission
+  message            String?  @db.VarChar(500)
+  notifyOnFirstView  Boolean  @default(false)
+  firstViewedAt      DateTime?
+  revokedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([dashboardId])
+  @@index([sharedWithUserId])
+}
+
+model ShareLink {
+  id              String    @id @default(cuid())
+  dashboardId     String
+  dashboard       Dashboard  @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  token           String   @unique
+  permission      SharePermission
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model DashboardComment {
+  id            String   @id @default(cuid())
+  dashboardId   String
+  dashboard     Dashboard  @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  authorUserId  String
+  body          String   @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([dashboardId])
+}
+
+model PermissionRequest {
+  id                    String   @id @default(cuid())
+  dashboardId           String
+  dashboard             Dashboard  @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  requestedByUserId     String
+  requestedToUserId     String
+  /// Only comment or edit
+  requestedPermission  PermissionRequestLevel
+  status                PermissionRequestStatus
+  message               String?  @db.Text
+  resolvedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([dashboardId])
+  @@index([requestedToUserId])
+}
+
+model Notification {
+  id                String   @id @default(cuid())
+  userId            String
+  category          NotificationCategory
+  dashboardId       String?
+  relatedShareId    String?
+  relatedRequestId  String?
+  actorUserId      String?
+  title             String
+  body              String?  @db.Text
+  readAt            DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([readAt])
+}
+
+/// Product-team queue; maps to `CatalogParameterRequest` in app types
+model CatalogParameterRequest {
+  id                String   @id @default(cuid())
+  requesterUserId   String
+  equipmentId       String?
+  equipment         Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  body              String   @db.Text
+  categoryHint      String?
+  status            ParamRequestStatus @default(submitted)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status])
+}
+
+// ─── Enums (aligned with ontology + workspace types) ─────────────────────
 
 enum UserRole {
   integrity_engineer
   process_engineer
   admin
+  product_team
 }
 
 enum EquipmentType {
   vessel
   reactor
   pump
+  smr
   other
 }
 
-enum WidgetKind {
-  kpi
-  chart
-  table
-  model_view
-  summary
-  generic
+enum DashboardLifecycle {
+  created
+  published
 }
 
-enum WidgetDataSourceType {
-  live_equipment
-  whatif_result
-  mixed
-  static_mock
+enum SharePermission {
+  view
+  comment
+  edit
 }
+
+enum PermissionRequestStatus {
+  pending
+  granted
+  denied
+  cancelled
+}
+
+enum PermissionRequestLevel {
+  comment
+  edit
+}
+
+enum NotificationCategory {
+  dashboard_shared_with_you
+  dashboard_first_view
+  permission_request_received
+  permission_request_resolved
+  edit_lock_blocked
+}
+
+enum ParamRequestStatus {
+  submitted
+  acknowledged
+  closed
+}
+
+// ─── App config (optional static seed) ────────────────────────────────────
 
 enum AppModuleKey {
   home
@@ -49,6 +341,32 @@ enum AppModuleKey {
   comms
   settings
 }
+
+model AppModule {
+  id          String      @id @default(cuid())
+  key         AppModuleKey @unique
+  displayName String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  tools       Tool[]
+}
+
+model Tool {
+  id                     String    @id @default(cuid())
+  moduleId               String
+  module                 AppModule @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  key                    String
+  name                   String
+  isEnabled              Boolean   @default(true)
+  supportsEquipmentFilter Boolean  @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  whatIfScenarios        WhatIfScenario[]
+
+  @@index([moduleId])
+}
+
+// ─── What-If (existing domain, User-linked) ────────────────────────────────
 
 enum WhatIfRunStatus {
   queued
@@ -83,6 +401,87 @@ enum WhatIfRunResultStatus {
   fail
 }
 
+model WhatIfScenario {
+  id            String   @id @default(cuid())
+  toolId        String
+  tool          Tool     @relation(fields: [toolId], references: [id], onDelete: Restrict)
+  equipmentId   String
+  equipment     Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  name          String
+  description   String
+  details       String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  parameters    WhatIfScenarioParameter[]
+  runSessions   WhatIfRunSession[]
+}
+
+model WhatIfScenarioParameter {
+  id            String   @id @default(cuid())
+  scenarioId  String
+  scenario      WhatIfScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  name          String
+  unit          String?
+  defaultValue  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  runInputs     WhatIfRunInput[]
+}
+
+model WhatIfRunSession {
+  id                   String   @id @default(cuid())
+  scenarioId           String
+  scenario             WhatIfScenario  @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  equipmentId          String
+  equipment            Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  requestedById        String?
+  requestedBy          User?     @relation("RunRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  runName              String
+  status                WhatIfRunStatus
+  progressStep         Int
+  source                WhatIfRunSource
+  parameterInputMode   WhatIfParameterInputMode
+  startedAt            DateTime?
+  completedAt          DateTime?
+  durationSeconds      Int?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  inputs               WhatIfRunInput[]
+  results              WhatIfRunResult[]
+  documents            UserDocument[]
+
+  @@index([equipmentId])
+  @@index([requestedById])
+}
+
+model WhatIfRunInput {
+  id                    String   @id @default(cuid())
+  runSessionId         String
+  runSession            WhatIfRunSession @relation(fields: [runSessionId], references: [id], onDelete: Cascade)
+  parameterId          String?
+  parameter             WhatIfScenarioParameter? @relation(fields: [parameterId], references: [id], onDelete: SetNull)
+  parameterNameSnapshot  String
+  value                 String
+  sourceType            WhatIfRunInputSourceType
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model WhatIfRunResult {
+  id            String   @id @default(cuid())
+  runSessionId  String
+  runSession     WhatIfRunSession @relation(fields: [runSessionId], references: [id], onDelete: Cascade)
+  metricName    String
+  value         String
+  status        WhatIfRunResultStatus
+  included      Boolean  @default(true)
+  orderIndex     Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── Documents, change log, data sync (legacy / extended) ───────────────────
+
 enum UserDocumentFileType {
   pdf
   docx
@@ -114,265 +513,59 @@ enum SyncJobStatus {
   cancelled
 }
 
-model User {
-  id          String             @id @default(uuid())
-  name        String
-  email       String             @unique
-  role        UserRole
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  runSessions WhatIfRunSession[] @relation("RunSessionRequestedBy")
-  changeLogs  ChangeLogEntry[]
-  syncJobs    SyncJob[]
-}
-
-model Site {
-  id        String         @id @default(uuid())
-  name      String
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  plants    Plant[]
-  documents UserDocument[]
-}
-
-model Plant {
-  id        String         @id @default(uuid())
-  siteId    String
-  name      String
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  site      Site           @relation(fields: [siteId], references: [id], onDelete: Restrict)
-  equipment Equipment[]
-  documents UserDocument[]
-}
-
-model Equipment {
-  id              String           @id @default(uuid())
-  plantId         String
-  name            String
-  type            EquipmentType
-  hasWhatIfTool   Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  plant           Plant            @relation(fields: [plantId], references: [id], onDelete: Restrict)
-  dashboards      Dashboard[]
-  whatIfScenarios WhatIfScenario[]
-  runSessions     WhatIfRunSession[]
-  documents       UserDocument[]
-  dataSyncStatus  DataSyncStatus[]
-  syncJobs        SyncJob[]
-}
-
-model Dashboard {
-  id                String            @id @default(uuid())
-  equipmentId       String
-  name              String
-  orderIndex        Int
-  sourceDashboardId String?
-  isSystemDashboard Boolean           @default(false)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  equipment         Equipment         @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  sourceDashboard   Dashboard?        @relation("DashboardClone", fields: [sourceDashboardId], references: [id], onDelete: SetNull)
-  clonedDashboards  Dashboard[]       @relation("DashboardClone")
-  dashboardWidgets  DashboardWidget[]
-
-  @@unique([equipmentId, name])
-}
-
-model Widget {
-  id               String              @id @default(uuid())
-  key              String              @unique
-  name             String
-  kind             WidgetKind
-  dataSourceType   WidgetDataSourceType
-  defaultConfig    Json?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  dashboardWidgets DashboardWidget[]
-  libraryItems     WidgetLibraryItem[]
-}
-
-model DashboardWidget {
-  id             String    @id @default(uuid())
-  dashboardId    String
-  widgetId       String
-  x              Int
-  y              Int
-  w              Int
-  h              Int
-  minW           Int       @default(2)
-  minH           Int       @default(2)
-  configOverride Json?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  dashboard      Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
-  widget         Widget    @relation(fields: [widgetId], references: [id], onDelete: Restrict)
-}
-
-model WidgetLibraryItem {
-  id          String   @id @default(uuid())
-  widgetId    String
-  displayName String
-  category    String
-  defaultW    Int
-  defaultH    Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  widget      Widget   @relation(fields: [widgetId], references: [id], onDelete: Restrict)
-}
-
-model AppModule {
-  id          String       @id @default(uuid())
-  key         AppModuleKey @unique
-  displayName String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  tools       Tool[]
-}
-
-model Tool {
-  id        String           @id @default(uuid())
-  moduleId  String
-  key       String
-  name      String
-  isEnabled Boolean          @default(true)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  module    AppModule        @relation(fields: [moduleId], references: [id], onDelete: Restrict)
-  scenarios WhatIfScenario[]
-}
-
-model WhatIfScenario {
-  id          String                   @id @default(uuid())
-  toolId      String
-  equipmentId String
-  name        String
-  description String
-  details     String?
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-  tool        Tool                     @relation(fields: [toolId], references: [id], onDelete: Restrict)
-  equipment   Equipment                @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
-  parameters  WhatIfScenarioParameter[]
-  runSessions WhatIfRunSession[]
-}
-
-model WhatIfScenarioParameter {
-  id           String         @id @default(uuid())
-  scenarioId   String
-  name         String
-  unit         String?
-  defaultValue String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  scenario     WhatIfScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
-  runInputs    WhatIfRunInput[]
-}
-
-model WhatIfRunSession {
-  id                 String                   @id @default(uuid())
-  scenarioId         String
-  equipmentId        String
-  requestedById      String?
-  runName            String
-  status             WhatIfRunStatus
-  progressStep       Int
-  source             WhatIfRunSource
-  parameterInputMode WhatIfParameterInputMode
-  startedAt          DateTime?
-  completedAt        DateTime?
-  durationSeconds    Int?
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
-  scenario           WhatIfScenario           @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
-  equipment          Equipment                @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
-  requestedBy        User?                    @relation("RunSessionRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
-  inputs             WhatIfRunInput[]
-  results            WhatIfRunResult[]
-  documents          UserDocument[]
-}
-
-model WhatIfRunInput {
-  id                    String                  @id @default(uuid())
-  runSessionId          String
-  parameterId           String?
-  parameterNameSnapshot String
-  value                 String
-  sourceType            WhatIfRunInputSourceType
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
-  runSession            WhatIfRunSession        @relation(fields: [runSessionId], references: [id], onDelete: Cascade)
-  parameter             WhatIfScenarioParameter? @relation(fields: [parameterId], references: [id], onDelete: SetNull)
-}
-
-model WhatIfRunResult {
-  id          String               @id @default(uuid())
-  runSessionId String
-  metricName  String
-  value       String
-  status      WhatIfRunResultStatus
-  included    Boolean              @default(true)
-  orderIndex  Int
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  runSession  WhatIfRunSession     @relation(fields: [runSessionId], references: [id], onDelete: Cascade)
-}
-
 model UserDocument {
-  id                 String               @id @default(uuid())
+  id                 String   @id @default(cuid())
   name               String
-  fileType           UserDocumentFileType
-  category           UserDocumentCategory
-  subType            UserDocumentSubType  @default(general)
-  siteId             String?
-  plantId            String?
-  equipmentId        String?
-  sourceRunSessionId String?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  site               Site?                @relation(fields: [siteId], references: [id], onDelete: SetNull)
-  plant              Plant?               @relation(fields: [plantId], references: [id], onDelete: SetNull)
-  equipment          Equipment?           @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
-  sourceRunSession   WhatIfRunSession?    @relation(fields: [sourceRunSessionId], references: [id], onDelete: SetNull)
+  fileType            UserDocumentFileType
+  category            UserDocumentCategory
+  subType              UserDocumentSubType @default(general)
+  siteId              String?
+  site                 Site?     @relation("DocumentSite", fields: [siteId], references: [id], onDelete: SetNull)
+  plantId             String?   // legacy: optional if Plant reintroduced
+  equipmentId         String?
+  equipment           Equipment?  @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  sourceRunSessionId  String?
+  sourceRunSession     WhatIfRunSession?  @relation(fields: [sourceRunSessionId], references: [id], onDelete: SetNull)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model ChangeLogEntry {
-  id            String        @id @default(uuid())
+  id            String   @id @default(cuid())
   type          ChangeLogType
   action        String
   locationLabel String
   userId        String?
+  user          User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   occurredAt    DateTime
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model DataSyncStatus {
-  id            String    @id @default(uuid())
-  equipmentId   String
-  totalFiles    Int
+  id            String   @id @default(cuid())
+  equipmentId  String
+  equipment     Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  totalFiles     Int
   loadedFiles   Int
-  errorFiles    Int
+  errorFiles     Int
   lastUpdatedAt DateTime
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  equipment     Equipment @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
 }
 
 model SyncJob {
-  id             String        @id @default(uuid())
-  equipmentId    String
+  id             String   @id @default(cuid())
+  equipmentId   String
+  equipment      Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
   userId         String?
-  description    String
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  description   String
   status         SyncJobStatus
   startedAt      DateTime?
-  completedAt    DateTime?
+  completedAt   DateTime?
   elapsedSeconds Int?
-  tokenCount     Int           @default(0)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  equipment      Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
-  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tokenCount     Int     @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

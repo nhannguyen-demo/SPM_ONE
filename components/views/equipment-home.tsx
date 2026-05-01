@@ -22,6 +22,7 @@ import {
 } from "@/lib/workspace-data"
 import { ResponsiveDashboardGrid } from "@/components/workspace/read-only-grid"
 import { DashboardCard } from "@/components/dashboard-card"
+import { mainRoutes } from "@/lib/main-routes"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
@@ -324,6 +325,7 @@ function DashboardPopup({
   unit: { id: string; name: string }
   onClose: () => void
 }) {
+  const router = useRouter()
   const {
     whatIfRunSessions,
     addDocument,
@@ -487,6 +489,7 @@ function DashboardPopup({
                     onClick={() => {
                       setWhatIfSelectedScenarioId(scenarioForEquipment.id)
                       setWhatIfInitialTab("history")
+                      router.push(mainRoutes.whatIf())
                       setCurrentView("whatIfTool")
                       setViewMode("view")
                       onClose()
@@ -601,6 +604,7 @@ function ToolsSection({
 }: {
   equipment: { id: string; name: string; tabs: string[] }
 }) {
+  const router = useRouter()
   const {
     setCurrentView,
     setViewMode,
@@ -646,6 +650,7 @@ function ToolsSection({
       ),
       onClick: () => {
         setPreFilterEquipmentId(equipment.id)
+        router.push(mainRoutes.dataSync(equipment.id))
         setCurrentView("data-sync")
         setViewMode("view")
       },
@@ -687,6 +692,7 @@ function ToolsSection({
       ),
       onClick: () => {
         setPreFilterEquipmentId(equipment.id)
+        router.push(mainRoutes.documents(equipment.id))
         setCurrentView("documents-tool")
         setViewMode("view")
       },
@@ -719,6 +725,7 @@ function ToolsSection({
       onClick: scenario
         ? () => {
             setWhatIfSelectedScenarioId(scenario.id)
+            router.push(mainRoutes.whatIf())
             setCurrentView("whatIfTool")
             setViewMode("view")
           }

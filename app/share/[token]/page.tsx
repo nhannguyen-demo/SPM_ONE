@@ -1,62 +1,155 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { useEffect, useMemo, useState } from "react"
-import { Lock, ShieldAlert, ExternalLink, ArrowRight } from "lucide-react"
+import { Lock, ShieldAlert, ExternalLink, ArrowRight, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { ResponsiveDashboardGrid } from "@/components/workspace/read-only-grid"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import {
   ORG_USERS,
   findOrgUserById,
-  getCurrentUserId,
 } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { permissionAtLeast } from "@/lib/workspace/types"
+import { fetchShareLinkResolve } from "@/lib/workspace/workspace-fetch"
 
 /**
  * Share-link landing page.
  *
- * Authorization model (per resolved open question):
- *   - Token must exist and be non-revoked.
- *   - The current user MUST be a member of the organization directory; non-org
- *     users are blocked with a "not authorised" state.
- *   - On a successful "Open in Dashboard" action with edit/comment permission,
- *     the user becomes a contributor on first save (handled by the editor, not
- *     here — this landing only routes them in).
+ * Authenticated users resolve the token via GET /api/workspace/share-link/resolve.
+ * Unauthenticated users fall back to mock seed share links in the Zustand store.
  */
 export default function ShareLandingPage() {
   const params = useParams<{ token: string }>()
   const router = useRouter()
+  const { status } = useSession()
   const token = (params?.token as string) ?? ""
 
-  const link = useWorkspaceStore((s) =>
+  const storeLink = useWorkspaceStore((s) =>
     s.shareLinks.find((l) => l.token === token && !l.revokedAt) ?? null
   )
-  const dashboard = useWorkspaceStore((s) =>
-    link ? s.dashboards.find((d) => d.id === link.dashboardId && !d.deletedAt) ?? null : null
+  const storeDashboard = useWorkspaceStore((s) =>
+    storeLink ? s.dashboards.find((d) => d.id === storeLink.dashboardId && !d.deletedAt) ?? null : null
   )
   const shareWithUser = useWorkspaceStore((s) => s.shareWithUser)
+  const acceptShareFromLink = useWorkspaceStore((s) => s.acceptShareFromLink)
 
-  const meId = getCurrentUserId()
+  const [remoteLoading, setRemoteLoading] = useState(false)
+  const [remoteErr, setRemoteErr] = useState(false)
+  const [remoteLink, setRemoteLink] = useState<
+    Awaited<ReturnType<typeof fetchShareLinkResolve>> | null
+  >(null)
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      setRemoteLink(null)
+      setRemoteErr(false)
+      setRemoteLoading(false)
+      return
+    }
+    if (!token) {
+      setRemoteErr(true)
+      setRemoteLoading(false)
+      return
+    }
+    let cancelled = false
+    setRemoteLoading(true)
+    setRemoteErr(false)
+    fetchShareLinkResolve(token)
+      .then((data) => {
+        if (!cancelled) {
+          setRemoteLink(data)
+          setRemoteLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRemoteErr(true)
+          setRemoteLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [status, token])
+
+  const link = status === "authenticated" ? remoteLink?.link ?? null : storeLink
+  const dashboard = status === "authenticated" ? remoteLink?.dashboard ?? null : storeDashboard
+
+  const meId = useWorkspaceCurrentUserId()
   const me = useMemo(() => findOrgUserById(meId), [meId])
 
   const isOrgMember = ORG_USERS.some((u) => u.id === meId)
 
   const [accepted, setAccepted] = useState(false)
 
-  // Persist a baseline share when an org user successfully consumes the link.
   useEffect(() => {
     if (!accepted) return
     if (!link || !dashboard || !isOrgMember) return
     if (dashboard.ownerUserId === meId) return
-    shareWithUser({
-      dashboardId: dashboard.id,
-      sharedWithUserId: meId,
-      permission: link.permission,
-    })
-  }, [accepted, link, dashboard, isOrgMember, meId, shareWithUser])
 
-  /* ── Error / blocked states ──────────────────────────────────────────── */
+    if (status === "authenticated") {
+      void acceptShareFromLink(token).catch((e) => {
+        toast.error("Could not save share access", {
+          description: e instanceof Error ? e.message : "Unknown error",
+        })
+      })
+    } else {
+      void shareWithUser({
+        dashboardId: dashboard.id,
+        sharedWithUserId: meId,
+        permission: link.permission,
+      }).catch((e) => {
+        toast.error("Could not save share access", {
+          description: e instanceof Error ? e.message : "Unknown error",
+        })
+      })
+    }
+  }, [
+    accepted,
+    link,
+    dashboard,
+    isOrgMember,
+    meId,
+    shareWithUser,
+    acceptShareFromLink,
+    token,
+    status,
+  ])
+
+  if (status === "loading") {
+    return (
+      <CenteredPanel
+        icon={<Loader2 className="w-10 h-10 text-muted-foreground animate-spin" />}
+        title="Loading"
+        body="Checking your session…"
+      />
+    )
+  }
+
+  if (status === "authenticated" && remoteLoading) {
+    return (
+      <CenteredPanel
+        icon={<Loader2 className="w-10 h-10 text-muted-foreground animate-spin" />}
+        title="Resolving link"
+        body="Looking up this share link…"
+      />
+    )
+  }
+
+  if (status === "authenticated" && remoteErr) {
+    return (
+      <CenteredPanel
+        icon={<Lock className="w-10 h-10 text-muted-foreground" />}
+        title="Link not available"
+        body="This share link is invalid, has expired, or has been revoked. Please ask the dashboard owner for a new link."
+      />
+    )
+  }
+
   if (!link) {
     return (
       <CenteredPanel

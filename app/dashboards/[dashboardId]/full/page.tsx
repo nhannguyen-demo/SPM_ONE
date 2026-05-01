@@ -6,7 +6,8 @@ import { Eye, ExternalLink, Printer } from "lucide-react"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import { ResponsiveDashboardGrid } from "@/components/workspace/read-only-grid"
 import { useRegisterViewerTab } from "@/lib/workspace/use-viewer-tabs"
-import { getCurrentUserId, findOrgUserById } from "@/lib/workspace/identity"
+import { findOrgUserById } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { Button } from "@/components/ui/button"
 import { sites } from "@/lib/data"
 
@@ -37,8 +38,8 @@ export default function FullScreenDashboardViewerPage() {
     }
   }, [dashboard, recordOpened])
 
-  const me = getCurrentUserId()
-  useRegisterViewerTab(dashboardId, me)
+  const meId = useWorkspaceCurrentUserId()
+  useRegisterViewerTab(dashboardId, meId)
 
   if (!dashboard) {
     return (

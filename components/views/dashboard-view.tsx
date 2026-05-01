@@ -1,9 +1,13 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+
 import { useAppStore } from "@/lib/store"
+import { mainRoutes } from "@/lib/main-routes"
 import { LayoutDashboard, ArrowLeft, Construction } from "lucide-react"
 
 export function WorkspaceView() {
+  const router = useRouter()
   const { setCurrentView, currentPath } = useAppStore()
 
   const hasEquipmentContext = Boolean(currentPath.equipment)
@@ -35,7 +39,13 @@ export function WorkspaceView() {
         {/* Back button */}
         {hasEquipmentContext && (
           <button
-            onClick={() => setCurrentView("equipment-home")}
+            onClick={() => {
+              const { site, plant, equipment } = currentPath
+              if (site && plant && equipment) {
+                router.push(mainRoutes.equipment(site, plant, equipment))
+              }
+              setCurrentView("equipment-home")
+            }}
             className="flex items-center gap-2 mx-auto text-sm text-primary hover:text-primary/80 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

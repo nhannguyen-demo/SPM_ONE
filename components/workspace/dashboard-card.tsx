@@ -29,12 +29,14 @@ import {
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
 import { UserAvatar, UserAvatarStack } from "./avatar"
-import { findOrgUserById, getCurrentUserId } from "@/lib/workspace/identity"
+import { findOrgUserById } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import {
   useWorkspaceStore,
   selectMyPermissionOn,
 } from "@/lib/workspace/store"
 import { permissionAtLeast, type WorkspaceDashboard } from "@/lib/workspace/types"
+import { toast } from "sonner"
 import { sites } from "@/lib/data"
 import { DASHBOARD_DRAG_TYPE } from "./folder-tree"
 
@@ -109,7 +111,7 @@ export function DashboardCard({
       unpublish: s.unpublishDashboard,
     }))
   )
-  const meId = getCurrentUserId()
+  const meId = useWorkspaceCurrentUserId()
   const folders = useMemo(
     () => rawFolders.filter((f) => f.ownerUserId === meId),
     [rawFolders, meId]
@@ -120,7 +122,7 @@ export function DashboardCard({
   const [showMenu, setShowMenu] = useState(false)
 
   const canEdit = permissionAtLeast(myPermission, "edit")
-  const isOwner = dashboard.ownerUserId === getCurrentUserId()
+  const isOwner = dashboard.ownerUserId === meId
 
   const onDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData(DASHBOARD_DRAG_TYPE, dashboard.id)
@@ -181,10 +183,17 @@ export function DashboardCard({
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={() => {
-                if (name.trim() && name.trim() !== dashboard.name) {
-                  renameDashboard(dashboard.id, name.trim())
-                }
-                setRenaming(false)
+                void (async () => {
+                  try {
+                    if (name.trim() && name.trim() !== dashboard.name) {
+                      await renameDashboard(dashboard.id, name.trim())
+                    }
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Rename failed")
+                  } finally {
+                    setRenaming(false)
+                  }
+                })()
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur()
@@ -222,7 +231,11 @@ export function DashboardCard({
                   <Pencil className="w-4 h-4 mr-2" /> Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => duplicate(dashboard.id)}
+                  onClick={() =>
+                    void duplicate(dashboard.id).catch((e) =>
+                      toast.error(e instanceof Error ? e.message : "Duplicate failed")
+                    )
+                  }
                 >
                   <Copy className="w-4 h-4 mr-2" /> Duplicate
                 </DropdownMenuItem>
@@ -266,14 +279,22 @@ export function DashboardCard({
                 <DropdownMenuSeparator />
                 {dashboard.lifecycleStatus === "created" ? (
                   <DropdownMenuItem
-                    onClick={() => publish(dashboard.id)}
+                    onClick={() =>
+                      void publish(dashboard.id).catch((e) =>
+                        toast.error(e instanceof Error ? e.message : "Publish failed")
+                      )
+                    }
                     disabled={!isOwner}
                   >
                     <Globe2 className="w-4 h-4 mr-2" /> Publish to Asset Module
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem
-                    onClick={() => unpublish(dashboard.id)}
+                    onClick={() =>
+                      void unpublish(dashboard.id).catch((e) =>
+                        toast.error(e instanceof Error ? e.message : "Unpublish failed")
+                      )
+                    }
                     disabled={!isOwner}
                   >
                     <Globe2 className="w-4 h-4 mr-2" /> Unpublish
@@ -281,7 +302,11 @@ export function DashboardCard({
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => softDelete(dashboard.id)}
+                  onClick={() =>
+                    void softDelete(dashboard.id).catch((e) =>
+                      toast.error(e instanceof Error ? e.message : "Could not move to trash")
+                    )
+                  }
                   disabled={!isOwner}
                   className="text-destructive focus:text-destructive"
                 >
@@ -302,7 +327,13 @@ export function DashboardCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>In trash</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => restore(dashboard.id)}>
+                <DropdownMenuItem
+                  onClick={() =>
+                    void restore(dashboard.id).catch((e) =>
+                      toast.error(e instanceof Error ? e.message : "Restore failed")
+                    )
+                  }
+                >
                   <RotateCcw className="w-4 h-4 mr-2" /> Restore
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -312,7 +343,9 @@ export function DashboardCard({
                         `Permanently delete "${dashboard.name}"? This cannot be undone.`
                       )
                     ) {
-                      permanentlyDelete(dashboard.id)
+                      void permanentlyDelete(dashboard.id).catch((e) =>
+                        toast.error(e instanceof Error ? e.message : "Delete failed")
+                      )
                     }
                   }}
                   className="text-destructive focus:text-destructive"

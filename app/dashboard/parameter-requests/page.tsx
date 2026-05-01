@@ -1,7 +1,8 @@
 "use client"
 
 import { useWorkspaceStore } from "@/lib/workspace/store"
-import { getCurrentUserId, findOrgUserById } from "@/lib/workspace/identity"
+import { findOrgUserById } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { Button } from "@/components/ui/button"
 import { sites } from "@/lib/data"
 import Link from "next/link"
@@ -15,7 +16,8 @@ function equipmentLabel(id: string | null): string {
 }
 
 export default function ParameterRequestsPage() {
-  const me = findOrgUserById(getCurrentUserId())
+  const meId = useWorkspaceCurrentUserId()
+  const me = findOrgUserById(meId)
   const list = useWorkspaceStore((s) => s.catalogParameterRequests)
   const update = useWorkspaceStore((s) => s.updateCatalogParameterRequestStatus)
 
@@ -24,8 +26,9 @@ export default function ParameterRequestsPage() {
       <div className="p-8 max-w-lg">
         <h1 className="text-lg font-bold mb-2">Parameter requests</h1>
         <p className="text-sm text-muted-foreground">
-          This queue is only visible to the product team. Switch the mock user to &quot;Product
-          Team&quot; in the user switcher to review submissions.
+          This queue is only visible to the product team. Sign in with the seeded Product Team
+          account (see <code className="text-xs">.env.example</code> / seed docs). In local
+          development you can still use mock identity helpers when not in production.
         </p>
         <Button asChild className="mt-4" variant="outline">
           <Link href="/dashboard">Back to Dashboard</Link>

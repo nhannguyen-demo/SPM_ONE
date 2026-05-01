@@ -7,6 +7,11 @@ import { FolderTree } from "@/components/workspace/folder-tree"
 import { sites } from "@/lib/data"
 import { MODULES, NAV_SEARCH_PLACEHOLDERS, navMatches } from "@/components/sidebar/config"
 import { useWorkspaceStore, selectMyUnreadCount } from "@/lib/workspace/store"
+import {
+  fallbackMainRouteForModule,
+  isWorkspaceOrCommsPath,
+  mainRoutes,
+} from "@/lib/main-routes"
 import { useRouter, usePathname } from "next/navigation"
 import {
   Building2,
@@ -76,30 +81,24 @@ function PanelSearchInput({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Cross-routing helpers — bridge legacy `currentView` SPA with new App Router
-   surfaces (/dashboard, /comms/alerts, etc.).
+   Cross-routing — main shell uses `/home`, `/assets/*`, `/tools/*`; Dashboard
+   and Comms use their own App Router layouts.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Modules that own dedicated App Router pages. Clicking the rail icon for one
- *  of these performs a `router.push` instead of just toggling the legacy
- *  in-page view. */
+/** Modules that use a dedicated layout route (not the main shell). */
 const APP_ROUTER_MODULES: Partial<Record<ActiveModule, string>> = {
   workspace: "/dashboard",
   comms: "/comms/alerts",
-}
-
-function useIsOnAppRouter() {
-  const pathname = usePathname() || "/"
-  return pathname !== "/"
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MODULE RAIL — narrow 56px strip always visible on the far left
    ═══════════════════════════════════════════════════════════════════════════ */
 function ModuleRail() {
-  const { activeModule, setActiveModule, isPanelOpen, togglePanel, setCurrentView } = useAppStore()
+  const { activeModule, setActiveModule, isPanelOpen, togglePanel, setCurrentView, currentPath } =
+    useAppStore()
   const router = useRouter()
-  const onAppRouter = useIsOnAppRouter()
+  const pathname = usePathname() || ""
   const unreadAlerts = useWorkspaceStore(selectMyUnreadCount)
 
   const handleModuleClick = (key: ActiveModule) => {
@@ -117,14 +116,18 @@ function ModuleRail() {
       return
     }
 
-    // Legacy module — must return to single-page shell first.
-    if (onAppRouter) {
-      router.push("/")
-    }
-
     if (key === "home") {
+      if (pathname !== mainRoutes.home()) {
+        router.push(mainRoutes.home())
+      }
       setActiveModule(key)
       setCurrentView("home")
+      return
+    }
+
+    if (isWorkspaceOrCommsPath(pathname)) {
+      router.push(fallbackMainRouteForModule(key, currentPath))
+      setActiveModule(key)
       return
     }
 
@@ -282,12 +285,14 @@ function ContextualPanel() {
 function HomePanel() {
   const { setCurrentView, setViewMode } = useAppStore()
   const router = useRouter()
-  const onAppRouter = useIsOnAppRouter()
+  const pathname = usePathname() || ""
   return (
     <div className="px-3 py-2">
       <button
         onClick={() => {
-          if (onAppRouter) router.push("/")
+          if (pathname !== mainRoutes.home()) {
+            router.push(mainRoutes.home())
+          }
           setCurrentView("home")
           setViewMode("view")
         }}
@@ -318,14 +323,9 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
     setViewMode,
   } = useAppStore()
   const router = useRouter()
-  const onAppRouter = useIsOnAppRouter()
-
-  const ensureSpaShell = () => {
-    if (onAppRouter) router.push("/")
-  }
 
   const handleSiteClick = (siteId: string) => {
-    ensureSpaShell()
+    router.push(mainRoutes.site(siteId))
     setCurrentPath({ site: siteId })
     setCurrentView("site")
     setViewMode("view")
@@ -333,7 +333,7 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
   }
 
   const handlePlantClick = (siteId: string, plantId: string) => {
-    ensureSpaShell()
+    router.push(mainRoutes.plant(siteId, plantId))
     setCurrentPath({ site: siteId, plant: plantId })
     setCurrentView("plant")
     setViewMode("view")
@@ -341,7 +341,7 @@ function AssetsPanel({ searchQuery }: { searchQuery: string }) {
   }
 
   const handleEquipmentClick = (siteId: string, plantId: string, equipmentId: string) => {
-    ensureSpaShell()
+    router.push(mainRoutes.equipment(siteId, plantId, equipmentId))
     const site = sites.find((s) => s.id === siteId)
     const unit = site?.units.find((p) => p.id === plantId)
     const equipment = unit?.equipment.find((e) => e.id === equipmentId)
@@ -516,21 +516,17 @@ function WorkspacePanel({ searchQuery }: { searchQuery: string }) {
 function InsightsPanel({ searchQuery }: { searchQuery: string }) {
   const { currentView, setCurrentView, setViewMode, setWhatIfSelectedScenarioId } = useAppStore()
   const router = useRouter()
-  const onAppRouter = useIsOnAppRouter()
+  const pathname = usePathname() || ""
   const q = searchQuery
 
-  const ensureSpaShell = () => {
-    if (onAppRouter) router.push("/")
-  }
-
   const handleDataSyncClick = () => {
-    ensureSpaShell()
+    router.push(mainRoutes.dataSync())
     setCurrentView("data-sync")
     setViewMode("view")
   }
 
   const handleWhatIfClick = () => {
-    ensureSpaShell()
+    router.push(mainRoutes.whatIf())
     setWhatIfSelectedScenarioId("scenario-coke-drum")
     setCurrentView("whatIfTool")
     setViewMode("view")
@@ -542,7 +538,7 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
       label: "Data & Sync",
       icon: <Database className="w-4 h-4 flex-shrink-0" />,
       onClick: handleDataSyncClick,
-      active: !onAppRouter && currentView === "data-sync",
+      active: pathname === "/tools/data-sync" && currentView === "data-sync",
     },
     {
       key: "shift",
@@ -553,15 +549,19 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
       key: "documents",
       label: "Documents",
       icon: <FolderOpen className="w-4 h-4 flex-shrink-0" />,
-      onClick: () => { ensureSpaShell(); setCurrentView("documents-tool"); setViewMode("view") },
-      active: !onAppRouter && currentView === "documents-tool",
+      onClick: () => {
+        router.push(mainRoutes.documents())
+        setCurrentView("documents-tool")
+        setViewMode("view")
+      },
+      active: pathname === "/tools/documents" && currentView === "documents-tool",
     },
     {
       key: "what-if-scenarios",
       label: "What-If Scenario",
       icon: <BarChart3 className="w-4 h-4 flex-shrink-0" />,
       onClick: handleWhatIfClick,
-      active: !onAppRouter && currentView === "whatIfTool",
+      active: pathname === "/tools/what-if" && currentView === "whatIfTool",
     },
   ].filter((row) => navMatches(row.label, q))
 
