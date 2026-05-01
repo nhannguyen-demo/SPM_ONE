@@ -35,8 +35,8 @@ import {
   ORG_USERS,
   findOrgUserById,
   searchOrgUsers,
-  getCurrentUserId,
 } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import type {
   SharePermission,
@@ -90,7 +90,7 @@ export function ShareDialog({ dashboard, open, onOpenChange }: ShareDialogProps)
 /* ─── People (named users) tab ─────────────────────────────────────────────── */
 
 function PeopleTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
-  const me = getCurrentUserId()
+  const me = useWorkspaceCurrentUserId()
   const [query, setQuery] = useState("")
   const [stagedUserId, setStagedUserId] = useState<string | null>(null)
   const [permission, setPermission] = useState<SharePermission>("view")
@@ -121,24 +121,30 @@ function PeopleTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
 
   const stagedUser = stagedUserId ? findOrgUserById(stagedUserId) : null
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!stagedUserId) {
       toast.error("Pick a person to share with.")
       return
     }
-    shareWithUser({
-      dashboardId: dashboard.id,
-      sharedWithUserId: stagedUserId,
-      permission,
-      message: message.trim() || undefined,
-      notifyOnFirstView: notify,
-    })
-    toast.success(`Shared with ${stagedUser?.name ?? "user"}`)
-    setStagedUserId(null)
-    setQuery("")
-    setMessage("")
-    setNotify(false)
-    setPermission("view")
+    try {
+      await shareWithUser({
+        dashboardId: dashboard.id,
+        sharedWithUserId: stagedUserId,
+        permission,
+        message: message.trim() || undefined,
+        notifyOnFirstView: notify,
+      })
+      toast.success(`Shared with ${stagedUser?.name ?? "user"}`)
+      setStagedUserId(null)
+      setQuery("")
+      setMessage("")
+      setNotify(false)
+      setPermission("view")
+    } catch (e) {
+      toast.error("Could not share", {
+        description: e instanceof Error ? e.message : "Unknown error",
+      })
+    }
   }
 
   return (
@@ -257,9 +263,15 @@ function PeopleTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
                 </div>
                 <select
                   value={sh.permission}
-                  onChange={(e) =>
-                    updateShare(sh.id, { permission: e.target.value as SharePermission })
-                  }
+                  onChange={(e) => {
+                    void updateShare(sh.id, {
+                      permission: e.target.value as SharePermission,
+                    }).catch((err) =>
+                      toast.error("Could not update permission", {
+                        description: err instanceof Error ? err.message : "Unknown error",
+                      })
+                    )
+                  }}
                   className="rounded border border-input bg-background text-xs px-1.5 py-1"
                 >
                   <option value="view">View</option>
@@ -269,8 +281,13 @@ function PeopleTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
                 <button
                   type="button"
                   onClick={() => {
-                    updateShare(sh.id, { revokedAt: new Date().toISOString() })
-                    toast.success("Access revoked")
+                    void updateShare(sh.id, { revokedAt: new Date().toISOString() }).then(
+                      () => toast.success("Access revoked"),
+                      (err) =>
+                        toast.error("Could not revoke", {
+                          description: err instanceof Error ? err.message : "Unknown error",
+                        })
+                    )
                   }}
                   className="p-1 rounded hover:bg-muted text-muted-foreground"
                   aria-label="Revoke"
@@ -364,8 +381,13 @@ function LinkTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
         <PermissionSelector value={linkPermission} onChange={setLinkPermission} />
         <Button
           onClick={() => {
-            generateShareLink({ dashboardId: dashboard.id, permission: linkPermission })
-            toast.success("New share link generated")
+            void generateShareLink({ dashboardId: dashboard.id, permission: linkPermission }).then(
+              () => toast.success("New share link generated"),
+              (e) =>
+                toast.error("Could not create link", {
+                  description: e instanceof Error ? e.message : "Unknown error",
+                })
+            )
           }}
           variant="default"
           size="sm"
@@ -419,8 +441,15 @@ function LinkTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        regenerateShareLink(l.id)
-                        toast.success("Link regenerated")
+                        void regenerateShareLink(l.id).then(
+                          (next) => {
+                            if (next) toast.success("Link regenerated")
+                          },
+                          (e) =>
+                            toast.error("Could not regenerate", {
+                              description: e instanceof Error ? e.message : "Unknown error",
+                            })
+                        )
                       }}
                       className="h-7 text-xs gap-1"
                     >
@@ -430,8 +459,13 @@ function LinkTab({ dashboard }: { dashboard: WorkspaceDashboard }) {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        revokeShareLink(l.id)
-                        toast.success("Link revoked")
+                        void revokeShareLink(l.id).then(
+                          () => toast.success("Link revoked"),
+                          (e) =>
+                            toast.error("Could not revoke link", {
+                              description: e instanceof Error ? e.message : "Unknown error",
+                            })
+                        )
                       }}
                       className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
                     >

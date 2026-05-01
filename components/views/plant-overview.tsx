@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import { useShallow } from "zustand/react/shallow"
@@ -15,23 +16,33 @@ import { AIHealthSummaryCard } from "@/components/ai/feature3-health-summary"
 import { PIDAnomalyOverlay } from "@/components/ai/feature5-pid-anomaly"
 import { useState, useMemo } from "react"
 import { DashboardTabStack } from "@/components/ui/dashboard-tab-stack"
+import { mainRoutes } from "@/lib/main-routes"
 
 export function PlantOverview() {
-  const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded, expandedEquipment, addRecentDashboard, setEquipmentHomeAutoOpenTab } = useAppStore()
+  const router = useRouter()
+  const { currentPath, setCurrentPath, setCurrentView, toggleEquipmentExpanded, dashboardExpanded, setDashboardExpanded, expandedEquipment, addRecentDashboard } = useAppStore()
   const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
   const [selectedFilter, setSelectedFilter] = useState("All")
   const [expandedEquipStack, setExpandedEquipStack] = useState<string | null>(null)
 
   const handleDashboardClick = (card: EquipmentHomeDashCard) => {
+    if (!currentPath.site || !currentPath.plant) return
     addRecentDashboard(card.id)
     setCurrentPath({ ...currentPath, equipment: card.equipId, tab: card.tag })
-    setEquipmentHomeAutoOpenTab(card.id)
+    router.push(
+      mainRoutes.equipmentHome(currentPath.site, currentPath.plant, card.equipId, {
+        tab: card.tag,
+        openDashboard: card.id,
+      }),
+    )
     setCurrentView("equipment-home")
     if (!expandedEquipment.includes(card.equipId)) toggleEquipmentExpanded(card.equipId)
   }
 
   const handleEquipmentNameClick = (equipId: string) => {
+    if (!currentPath.site || !currentPath.plant) return
     setCurrentPath({ ...currentPath, equipment: equipId })
+    router.push(mainRoutes.equipment(currentPath.site, currentPath.plant, equipId))
     setCurrentView("equipment-home")
     if (!expandedEquipment.includes(equipId)) toggleEquipmentExpanded(equipId)
   }
@@ -42,6 +53,8 @@ export function PlantOverview() {
   if (!site || !unit) return null
 
   const handleEquipmentClick = (equipmentId: string) => {
+    if (!currentPath.site || !currentPath.plant) return
+    router.push(mainRoutes.equipment(currentPath.site, currentPath.plant, equipmentId))
     setCurrentPath({ site: currentPath.site, plant: currentPath.plant, equipment: equipmentId })
     setCurrentView("equipment-home")
     toggleEquipmentExpanded(equipmentId)

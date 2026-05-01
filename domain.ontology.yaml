@@ -34,17 +34,39 @@
 # Updated Apr 30 2026 (rev 2): Coker **raster_image** template kind — selected
 # catalog tiles render from static files in `public/coker/widgets/` (code-mapped
 # paths in `lib/equipment-packs/coker-widget-images.ts`).
+# Updated Apr 30 2026 (rev 4): **Production workspace identity** — when built for
+# production, effective workspace user id follows Auth.js session (`ORG_USERS` ids);
+# client localStorage cannot override identity in prod.
+# Updated Apr 30 2026 (rev 3): **Workspace DB bootstrap** — signed-in clients load
+# folders, dashboards, and shares from PostgreSQL (`GET /api/workspace/bootstrap`), not
+# from localStorage as source of truth. The deterministic bundle `WORKSPACE_SEED` in
+# `lib/workspace/seed.ts` is promoted into the DB by `pnpm db:seed` via
+# `prisma/seed-workspace.ts` after users and the Site/Unit/Equipment hierarchy from
+# `lib/data.ts`. Primary catalog equipment ids remain **equipment-a** (Coker 01),
+# **equipment-b** (HCU 01), **equipment-c** (SMR Pigtails); dashboard POST validates
+# `equipmentId` against `Equipment`.
+# Updated May 1 2026: **Module URL parity** — every primary AppModule surface (Home,
+# Assets hierarchy + Equipment Home, Tools: Data & Sync / What-If / Documents, Insights,
+# Settings as they exist) SHALL be reached via stable Next.js App Router URLs with real
+# browser navigation (back/forward, bookmarkable deep links), matching the pattern
+# already used for the Workspace module (UI: **Dashboard** at `/dashboard/*`). This is
+# a routing/navigation invariant only: **no change to visible UI layout, styling, copy, or
+# interaction affordances** unless required to preserve behavior under URL-driven routing.
 
 entities:
   User:
     fields:
       id: { type: uuid }
       name: { type: string }
-      email: { type: string, format: email }
+      email: { type: string, format: email, unique: true }
       avatarUrl:
         type: string
         nullable: true
         comment: "Used for avatar chips in dashboard cards, share dialogs, alerts."
+      initials:
+        type: string
+        nullable: true
+        comment: "Short initials for chips; may be derived from name if not set."
       role:
         type: enum
         values: [integrity_engineer, process_engineer, admin, product_team]
@@ -52,11 +74,56 @@ entities:
       isCurrentUser:
         type: boolean
         default: false
-        comment: "Mock-only flag indicating which User row represents the active
-          session. Persisted via localStorage. Exactly one User has this set at
-          any time. Replaces real auth in v1."
+        comment: "Mock-only; **deprecated** when real authentication is enabled.
+          Replaced by session-bound identity. Do not rely on in production."
+      passwordHash:
+        type: string
+        nullable: true
+        comment: "Argon2/bcrypt hash for email+password auth; null if the user
+          is OAuth-only. Never log or return to clients."
+      emailVerified:
+        type: datetime
+        nullable: true
+        comment: "When the email was verified; null = not verified (policy TBD)."
+      lastLoginAt:
+        type: datetime
+        nullable: true
+        comment: "Last successful sign-in (optional analytics / security)."
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
+
+  # ── Auth.js / NextAuth-style session (persisted server-side) ──────────────
+  Account:
+    comment: "OAuth provider link (Auth.js `Account` model). Optional if the
+      product only uses email+password; present for future SSO."
+    fields:
+      id: { type: string, comment: "Provider row id (e.g. cuid)." }
+      userId: { type: uuid, references: User.id }
+      type: { type: string, comment: "e.g. oauth" }
+      provider: { type: string, comment: "e.g. google" }
+      providerAccountId: { type: string }
+      refresh_token: { type: string, nullable: true }
+      access_token: { type: string, nullable: true }
+      expires_at: { type: integer, nullable: true }
+      token_type: { type: string, nullable: true }
+      scope: { type: string, nullable: true }
+      id_token: { type: string, nullable: true }
+      session_state: { type: string, nullable: true }
+
+  Session:
+    comment: "Server-side session for cookie-based login (Auth.js `Session`)."
+    fields:
+      id: { type: string }
+      sessionToken: { type: string, unique: true }
+      userId: { type: uuid, references: User.id }
+      expires: { type: datetime }
+
+  VerificationToken:
+    comment: "Password reset or email verification token (Auth.js pattern)."
+    fields:
+      identifier: { type: string, comment: "Often email" }
+      token: { type: string, unique: true }
+      expires: { type: datetime }
 
   Site:
     fields:
@@ -335,7 +402,9 @@ entities:
           `Dashboard` entities. The per-user dashboard CMS (folders, drafts,
           sharing, publishing, Workspace-native editor). 'comms' hosts the Alerts
           page for in-app notifications about dashboard sharing and permission
-          requests."
+          requests. **May 1 2026:** other `AppModule` keys (`home`, `assets`, …)
+          SHALL gain the same URL-first navigation pattern as `workspace` (see
+          business_rules: App Routing — module URL parity)."
       displayName: { type: string }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
@@ -771,6 +840,9 @@ business_rules:
   - "Duplicating a dashboard to another **Equipment** requires the same **equipmentTypeKey**; cross-type duplicate is blocked with a user-visible message."
   - "Full-screen dashboard viewer and export/print must use the same **CatalogWidgetTemplate** renderers and **Coker** (or type) **theme** as the editor preview for pixel-consistent reports (see NFR in PRD)."
   - "Coker v1 templates of **kind** `raster_image` (3D model, bulging inspection heatmap, total fatigue damage shell, crack inspection / unwrapped map) render from **static image files** under the app’s `public/coker/widgets/` directory; canonical URL paths are defined in `lib/equipment-packs/coker-widget-images.ts` until a CMS or API provides assets."
+  - "**Authentication (production):** identity is bound to a server-side **Session** (and optional **Account** for OAuth) referencing **User**; `passwordHash` and tokens are never exposed in API responses. The legacy mock **user switcher** and `isCurrentUser` are development-only; remove or gate behind `NODE_ENV` before GA."
+  - "**Cross-device data:** per-user **Workspace** state (dashboards, folders, shares, notifications) must be loaded from a **server-authoritative** database, not from browser `localStorage` alone, so all signed-in devices see the same data."
+  - "**UI mock free-text (explicit OUT OF SCOPE for first cloud milestone):** change log, recent activity rows, What-If run list display strings, and similar copy in `lib/data.ts` / static fixtures may keep mock names until a later epic migrates them to user-linked audit rows; do not require replacing these strings in the initial auth + workspace persistence work."
   # ── (end catalog-driven) ─────────────────────────────────────────────────
   - "DashboardShare grants are per-recipient and may be revoked; revoked shares no longer grant access and are hidden from the recipient's 'Shared with me'."
   - "ShareLink grants permission to any signed-in user that opens the link; if revoked, the link refuses access."
@@ -789,7 +861,8 @@ business_rules:
   - "When a dashboard is open in any browser tab other than the current Equipment Home Page tab, an indicator icon (with optional count) appears on that dashboard's tab/card on the Equipment Home Page; the indicator updates live."
   # ── App Routing ────────────────────────────────────────────────────────────
   - "New surfaces are URL-driven via Next.js App Router routes: /dashboard, /dashboard/folder/[folderId], /dashboard/shared, /dashboard/recent, /dashboard/trash, /dashboard/dashboard/[dashboardId]/edit, /dashboards/[dashboardId]/full, /share/[token]."
-  - "Legacy surfaces (Home, Site Overview, Plant Overview, Equipment Home, Tools) continue to use the in-store currentView router during the transitional phase."
+  - "**Module URL parity (May 1 2026):** Home, Asset module (Site Overview, Plant Overview, Equipment Home), and Tools module primary views (Data & Sync, What-If Scenario, Documents) SHALL migrate from store-only `currentView` switching on `/` to dedicated App Router routes so users get the same **real navigation** semantics (history stack, reload-stable deep links) as the Workspace (**Dashboard**) module. Exact path map and any query-string encoding for pre-filters (e.g. equipment context from Equipment Home tool tiles) are implementation choices recorded in PROJECT.md; **visual and behavioral parity** with the pre-migration UI is mandatory."
+  - "Until migration is complete, legacy surfaces MAY still render via `currentView` on `/` as a transitional implementation detail; production target is **no** primary module relying solely on in-memory view switching without a URL."
   - "The Workspace module rail submenu is a single-level list containing exactly: 'All Dashboards', 'Shared with me', 'Recent', 'Trash'. No nested submenu is permitted."
   - "The Workspace Module renders exactly one in-module navigation menu surface. A second parallel menu panel is not allowed."
   - "The single Workspace in-module menu must preserve all existing Workspace navigation and information functions: All Dashboards, Shared with me, Recent, Trash, folder tree expansion/collapse, folder selection, and dynamic badges/counters."
@@ -808,6 +881,7 @@ business_rules:
   - "When the user completes a What-If Scenario run and chooses 'View Data' on the result, navigation goes to the Equipment Home Page scoped to that run's Equipment only; no Dashboard Popup opens automatically. The run remains queued for Viewed Data overlay via WhatIfRunSession auto-select so that when the user opens any dashboard popup on that Equipment, the scenario run can be selected in Viewed Data without forcing a specific WorkspaceDashboard."
   - "The legacy Full-Screen Viewer route /equipment-dashboard/[equipmentId]/[tag]/full is superseded; Equipment Home popup Open-in-new-tab now opens /dashboards/[WorkspaceDashboard.id]/full. The legacy route may remain for backward compatibility but is not the primary navigation path."
   - "All Workspace seed data in lib/workspace/seed.ts must include published WorkspaceDashboard entries for every tab present in equipment.tabs (lib/data.ts); this guarantees Equipment Home visual parity after removing dashboardCards as the source."
+  - "PostgreSQL deployments shall upsert the same deterministic Workspace bundle (`WORKSPACE_SEED`) via `pnpm db:seed` (`prisma/seed-workspace.ts`) after users and the Site/Unit/Equipment hierarchy are seeded from lib/data.ts. Signed-in clients load this data through `/api/workspace/bootstrap`; **equipment-a**, **equipment-b**, and **equipment-c** must exist before POST /api/workspace/dashboards will accept creates for Coker 01, HCU 01, and SMR Pigtails."
 
 invariants:
   - "Every entity has id, createdAt, and updatedAt."

@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { useWorkspaceStore } from "@/lib/workspace/store"
-import { getCurrentUserId, findOrgUserById } from "@/lib/workspace/identity"
+import { findOrgUserById } from "@/lib/workspace/identity"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { toast } from "sonner"
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -68,6 +69,7 @@ export function CatalogModuleLibrary({
   onRequestSubmitted?: () => void
 }) {
   const equ = getSiteEquipment(equipmentId)
+  const meId = useWorkspaceCurrentUserId()
   const typeKey = equ?.equipmentTypeKey ?? "other"
   const addOn = equ?.parameterAddonKeys ?? []
   const [active, setActive] = useState<ParameterCategory>(listCategoryOrder()[0]!)
@@ -77,7 +79,7 @@ export function CatalogModuleLibrary({
   const [reqCat, setReqCat] = useState("")
 
   const submit = useWorkspaceStore((s) => s.submitCatalogParameterRequest)
-  const currentRole = findOrgUserById(getCurrentUserId())?.role
+  const currentRole = findOrgUserById(meId)?.role
 
   const templates = useMemo(() => {
     const all = getCatalogTemplatesForType(typeKey, addOn)

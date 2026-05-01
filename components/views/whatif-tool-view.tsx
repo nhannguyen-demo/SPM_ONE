@@ -6,11 +6,13 @@
  */
 
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { useAppStore, type WhatIfRunSession, type WhatIfParameterInputMode } from "@/lib/store"
 import { getUnitIdForEquipment, whatIfScenarios } from "@/lib/data"
 import type { UserDocument } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { RUN_STEPS, StatusBadge, findAssetPathForEquipment, useSeedMockHistory } from "@/components/views/whatif-tool/shared"
+import { mainRoutes } from "@/lib/main-routes"
 import {
   Play, History, ChevronRight, GitCompareArrows,
   Upload, CheckCircle2, Loader2,
@@ -684,13 +686,13 @@ type MainPanelMode =
   | { mode: "running"; sessionId: string }
 
 function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
+  const router = useRouter()
   const scenario = whatIfScenarios.find((s) => s.id === scenarioId)
   const {
     whatIfRunSessions,
     whatIfInitialTab,
     setWhatIfInitialTab,
     setCurrentPath,
-    setCurrentView,
     setViewMode,
     setWhatIfDashboardAutoSelectRunId,
     removeWhatIfRunSession,
@@ -746,10 +748,10 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
         }}
         onCompareData={() => {
           const { site, plant, tab } = findAssetPathForEquipment(panel.session.equipmentId)
-          setCurrentPath({ site, plant, equipment: panel.session.equipmentId, tab })
+          const unitId = plant ?? getUnitIdForEquipment(panel.session.equipmentId) ?? "unit-2006-dcu"
+          setCurrentPath({ site, plant: unitId, equipment: panel.session.equipmentId, tab })
           setWhatIfDashboardAutoSelectRunId(panel.session.id)
-          /* Navigate to Equipment Home only — no dashboard popup; user picks a dashboard to overlay scenario data. */
-          setCurrentView("equipment-home")
+          router.push(mainRoutes.equipment(site, unitId, panel.session.equipmentId))
           setViewMode("view")
         }}
       />
@@ -945,6 +947,7 @@ function ScenarioSidebarList({
 
 export function WhatIfToolView() {
   useSeedMockHistory()
+  const router = useRouter()
   const { whatIfSelectedScenarioId, setWhatIfSelectedScenarioId, setCurrentView, setViewMode } = useAppStore()
 
   return (
@@ -956,7 +959,15 @@ export function WhatIfToolView() {
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-background">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-card flex-shrink-0 text-xs text-muted-foreground">
-          <button onClick={() => { setCurrentView("data-sync"); setViewMode("view") }} className="hover:text-foreground transition-colors">
+          <button
+            type="button"
+            onClick={() => {
+              router.push(mainRoutes.dataSync())
+              setCurrentView("data-sync")
+              setViewMode("view")
+            }}
+            className="hover:text-foreground transition-colors"
+          >
             Tools
           </button>
           <ChevronRight className="w-3 h-3" />

@@ -7,10 +7,12 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
 import { sites, userDocuments } from "@/lib/data"
 import type { UserDocument, DocumentCategory } from "@/lib/data"
 import { buildAssetOptions, filterDocuments } from "@/lib/documents"
+import { mainRoutes } from "@/lib/main-routes"
 import { cn } from "@/lib/utils"
 import {
   File, FileText, FileSpreadsheet, Link,
@@ -355,6 +357,7 @@ function DocumentRow({
 
 export function DocumentsView() {
   useSeedDocuments()
+  const router = useRouter()
 
   const { savedDocuments, setCurrentView, setViewMode } = useAppStore()
   const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | "All">("All")
@@ -378,7 +381,15 @@ export function DocumentsView() {
     <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-card flex-shrink-0 text-xs text-muted-foreground">
-        <button onClick={() => { setCurrentView("data-sync"); setViewMode("view") }} className="hover:text-foreground transition-colors">
+        <button
+          type="button"
+          onClick={() => {
+            router.push(mainRoutes.dataSync())
+            setCurrentView("data-sync")
+            setViewMode("view")
+          }}
+          className="hover:text-foreground transition-colors"
+        >
           Tools
         </button>
         <ChevronRight className="w-3 h-3" />

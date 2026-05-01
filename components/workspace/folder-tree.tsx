@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { useShallow } from "zustand/react/shallow"
 import { usePathname, useRouter } from "next/navigation"
 import {
@@ -17,6 +18,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import {
   DropdownMenu,
@@ -161,14 +163,18 @@ function FolderRow({
         return false
       }
       if (!isDescendant(node.id, folderId)) {
-        moveFolder(folderId, node.id)
+        void moveFolder(folderId, node.id).catch((e) =>
+          toast.error(e instanceof Error ? e.message : "Could not move folder")
+        )
         e.preventDefault()
         return
       }
     }
     const dashId = e.dataTransfer.getData(DASHBOARD_DRAG_TYPE)
     if (dashId) {
-      moveDashboard(dashId, node.id)
+      void moveDashboard(dashId, node.id).catch((err) =>
+        toast.error(err instanceof Error ? err.message : "Could not move dashboard")
+      )
       e.preventDefault()
     }
   }
@@ -223,9 +229,14 @@ function FolderRow({
         {renameId === node.id ? (
           <InlineRename
             initialValue={node.name}
-            onCommit={(v) => {
-              renameFolder(node.id, v)
-              setRenameId(null)
+            onCommit={async (v) => {
+              try {
+                await renameFolder(node.id, v)
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Rename failed")
+              } finally {
+                setRenameId(null)
+              }
             }}
             onCancel={() => setRenameId(null)}
           />
@@ -253,9 +264,15 @@ function FolderRow({
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
-                const folder = createFolder({ name: "New folder", parentFolderId: node.id })
-                if (!isOpen) toggleExpanded(node.id)
-                setRenameId(folder.id)
+                void (async () => {
+                  try {
+                    const folder = await createFolder({ name: "New folder", parentFolderId: node.id })
+                    if (!isOpen) toggleExpanded(node.id)
+                    setRenameId(folder.id)
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Could not create folder")
+                  }
+                })()
               }}
             >
               <FolderPlus className="w-4 h-4 mr-2" /> New subfolder
@@ -263,13 +280,20 @@ function FolderRow({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {
-                if (
-                  window.confirm(
-                    "Delete this folder? Subfolders will also be removed; dashboards inside will move to your Dashboard root."
-                  )
-                ) {
-                  deleteFolder(node.id, "move-to-root")
-                }
+                void (async () => {
+                  if (
+                    !window.confirm(
+                      "Delete this folder? Subfolders will also be removed; dashboards inside will move to your Dashboard root."
+                    )
+                  ) {
+                    return
+                  }
+                  try {
+                    await deleteFolder(node.id, "move-to-root")
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Could not delete folder")
+                  }
+                })()
               }}
               className="text-destructive focus:text-destructive"
             >
@@ -331,7 +355,11 @@ function VirtualRow({
         setDropOver(false)
         if (!acceptsDashboard) return
         const dashId = e.dataTransfer.getData(DASHBOARD_DRAG_TYPE)
-        if (dashId) moveDashboard(dashId, null)
+        if (dashId) {
+          void moveDashboard(dashId, null).catch((err) =>
+            toast.error(err instanceof Error ? err.message : "Could not move dashboard")
+          )
+        }
       }}
       className={cn(
         "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm cursor-pointer transition-colors",
@@ -380,12 +408,7 @@ export function FolderTree({
     }))
   )
 
-  const meId = useMemo(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("spm-one:current-user-id") ?? "user-nhan"
-    }
-    return "user-nhan"
-  }, [])
+  const meId = useWorkspaceCurrentUserId()
 
   const folders = useMemo(
     () => rawFolders.filter((f) => f.ownerUserId === meId),
@@ -420,7 +443,7 @@ export function FolderTree({
   const [allRootDropOver, setAllRootDropOver] = useState(false)
 
   const toggleExpanded = (id: string) =>
-    setExpanded((s) => {
+    setExpanded((s: Set<string>) => {
       const ns = new Set(s)
       if (ns.has(id)) ns.delete(id)
       else ns.add(id)
@@ -478,8 +501,14 @@ export function FolderTree({
           type="button"
           aria-label="New folder"
           onClick={() => {
-            const folder = createFolder({ name: "New folder", parentFolderId: null })
-            setRenameId(folder.id)
+            void (async () => {
+              try {
+                const folder = await createFolder({ name: "New folder", parentFolderId: null })
+                setRenameId(folder.id)
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Could not create folder")
+              }
+            })()
           }}
           className={cn(
             "p-1 rounded",
@@ -505,7 +534,11 @@ export function FolderTree({
             onDrop={(e) => {
               setAllRootDropOver(false)
               const dashId = e.dataTransfer.getData(DASHBOARD_DRAG_TYPE)
-              if (dashId) moveDashboard(dashId, null)
+              if (dashId) {
+          void moveDashboard(dashId, null).catch((err) =>
+            toast.error(err instanceof Error ? err.message : "Could not move dashboard")
+          )
+        }
             }}
             className={cn(
               "rounded-md",

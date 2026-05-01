@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import { useShallow } from "zustand/react/shallow"
@@ -16,6 +17,7 @@ import {
   changeLogEntries,
   userDocuments,
 } from "@/lib/data"
+import { mainRoutes } from "@/lib/main-routes"
 import type { ChangeLogType, DocumentCategory, UserDocument } from "@/lib/data"
 import { DashboardCard } from "@/components/dashboard-card"
 import { buildAssetOptions, filterDocuments } from "@/lib/documents"
@@ -69,6 +71,7 @@ function GlobalSearchBar() {
   const [cursor, setCursor] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
+  const router = useRouter()
 
   const {
     setCurrentPath,
@@ -97,14 +100,20 @@ function GlobalSearchBar() {
 
     switch (result.kind) {
       case "site":
+        if (!result.siteId) return
+        router.push(mainRoutes.site(result.siteId))
         setCurrentPath({ site: result.siteId })
         setCurrentView("site")
         break
       case "plant":
+        if (!result.siteId || !result.plantId) return
+        router.push(mainRoutes.plant(result.siteId, result.plantId))
         setCurrentPath({ site: result.siteId, plant: result.plantId })
         setCurrentView("plant")
         break
       case "equipment":
+        if (!result.siteId || !result.plantId || !result.equipmentId) return
+        router.push(mainRoutes.equipment(result.siteId, result.plantId, result.equipmentId))
         setCurrentPath({ site: result.siteId, plant: result.plantId, equipment: result.equipmentId })
         setCurrentView("equipment-home")
         break
@@ -115,12 +124,21 @@ function GlobalSearchBar() {
           useWorkspaceStore.getState().dashboards,
         )
         if (wsId) addRecentDashboard(wsId)
-        setCurrentPath({
+        const path = {
           site: result.siteId,
           plant: result.plantId,
           equipment: result.equipmentId,
           tab: result.tab,
-        })
+        }
+        setCurrentPath(path)
+        if (result.siteId && result.plantId && result.equipmentId) {
+          router.push(
+            mainRoutes.equipmentHome(result.siteId, result.plantId, result.equipmentId, {
+              tab: result.tab,
+              openDashboard: wsId ?? undefined,
+            }),
+          )
+        }
         setCurrentView("equipment-home")
         break
       }
@@ -364,22 +382,20 @@ function DashboardCardRow({
 
 function navigateToDashboardFromCard(
   card: EquipmentHomeDashCard,
-  currentPath: ReturnType<typeof useAppStore.getState>["currentPath"],
   addRecentDashboard: (cardId: string) => void,
-  setCurrentPath: ReturnType<typeof useAppStore.getState>["setCurrentPath"],
-  setCurrentView: ReturnType<typeof useAppStore.getState>["setCurrentView"],
+  push: (href: string) => void,
   setViewMode: ReturnType<typeof useAppStore.getState>["setViewMode"]
 ) {
   addRecentDashboard(card.id)
   const site = sites.find((s) => s.units.some((p) => p.equipment.some((e) => e.id === card.equipId)))
   const unit = site?.units.find((p) => p.equipment.some((e) => e.id === card.equipId))
-  setCurrentPath({
-    site: site?.id ?? currentPath.site,
-    plant: unit?.id ?? currentPath.plant,
-    equipment: card.equipId,
-    tab: card.tag,
-  })
-  setCurrentView("equipment-home")
+  if (!site || !unit) return
+  push(
+    mainRoutes.equipmentHome(site.id, unit.id, card.equipId, {
+      tab: card.tag,
+      openDashboard: card.id,
+    }),
+  )
   setViewMode("view")
 }
 
@@ -388,17 +404,15 @@ function navigateToDashboardFromCard(
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function RecentDashboardsModule() {
+  const router = useRouter()
   const {
     recentDashboardIds,
     addRecentDashboard,
-    setCurrentPath,
-    setCurrentView,
     setViewMode,
-    currentPath,
   } = useAppStore()
 
   const navigateToDashboard = (card: EquipmentHomeDashCard) =>
-    navigateToDashboardFromCard(card, currentPath, addRecentDashboard, setCurrentPath, setCurrentView, setViewMode)
+    navigateToDashboardFromCard(card, addRecentDashboard, router.push, setViewMode)
 
   return (
     <DashboardCardRow
@@ -415,13 +429,11 @@ function RecentDashboardsModule() {
 
 function FavoriteDashboardsModule() {
   const [showAll, setShowAll] = useState(false)
+  const router = useRouter()
   const {
     favoriteDashboardIds,
     addRecentDashboard,
-    setCurrentPath,
-    setCurrentView,
     setViewMode,
-    currentPath,
   } = useAppStore()
 
   const LIMIT = 6
@@ -429,7 +441,7 @@ function FavoriteDashboardsModule() {
   const hasMore = favoriteDashboardIds.length > LIMIT
 
   const navigateToDashboard = (card: EquipmentHomeDashCard) =>
-    navigateToDashboardFromCard(card, currentPath, addRecentDashboard, setCurrentPath, setCurrentView, setViewMode)
+    navigateToDashboardFromCard(card, addRecentDashboard, router.push, setViewMode)
 
   return (
     <div>
