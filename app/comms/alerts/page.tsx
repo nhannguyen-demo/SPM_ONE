@@ -23,6 +23,7 @@ import { useAppStore } from "@/lib/store"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import { findOrgUserById } from "@/lib/workspace/identity"
 import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
+import { notificationHref } from "@/lib/workspace/notification-navigation"
 import type {
   Notification,
   NotificationCategory,
@@ -107,9 +108,8 @@ export default function CommsAlertsPage() {
 
   const handleClick = (n: Notification) => {
     if (!n.readAt) void markRead(n.id).catch(() => {})
-    if (n.dashboardId) {
-      router.push(`/dashboard?d=${n.dashboardId}`)
-    }
+    const href = notificationHref(n)
+    if (href) router.push(href)
   }
 
   return (
@@ -117,7 +117,7 @@ export default function CommsAlertsPage() {
       <header className="border-b border-border px-6 py-4 flex items-center justify-between">
         <div className="space-y-0.5">
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <Bell className="w-5 h-5 text-foreground" /> Alerts
+            <Bell className="w-5 h-5 text-foreground" /> Notifications
           </h1>
           <p className="text-xs text-muted-foreground">
             Dashboard sharing and permission updates from your team.
@@ -201,14 +201,15 @@ export default function CommsAlertsPage() {
                               )}
                             </div>
                             <div className="flex items-start gap-1">
-                              {n.dashboardId && (
+                              {notificationHref(n) && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     if (!n.readAt) void markRead(n.id).catch(() => {})
-                                    router.push(`/dashboard?d=${n.dashboardId}`)
+                                    const href = notificationHref(n)
+                                    if (href) router.push(href)
                                   }}
                                   className="text-xs gap-1"
                                 >

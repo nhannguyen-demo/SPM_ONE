@@ -34,6 +34,7 @@ import {
   Inbox,
   Clock,
   Trash2,
+  LogOut,
 } from "lucide-react"
 import {
   Tooltip,
@@ -41,6 +42,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useSession, signOut } from "next-auth/react"
 
 function PanelSearchInput({
   value,
@@ -80,6 +90,60 @@ function PanelSearchInput({
   )
 }
 
+function moduleRailUserInitial(name: string | null | undefined, email: string | null | undefined) {
+  const n = name?.trim()
+  if (n) return n.charAt(0).toUpperCase()
+  const e = email?.trim()
+  if (e) return e.charAt(0).toUpperCase()
+  return "?"
+}
+
+function ModuleRailUserMenu() {
+  const { data: session, status } = useSession()
+  const name = session?.user?.name?.trim() ?? ""
+  const email = session?.user?.email ?? ""
+  const initial = moduleRailUserInitial(name || undefined, email || undefined)
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "w-8 h-8 rounded-full bg-sidebar-active flex items-center justify-center flex-shrink-0",
+            "text-white text-xs font-medium select-none outline-none",
+            "ring-offset-background focus-visible:ring-2 focus-visible:ring-sidebar-active ring-offset-1"
+          )}
+          aria-label="Account menu"
+          disabled={status === "loading"}
+        >
+          {status === "loading" ? "…" : initial}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{name || "Signed in"}</p>
+            {email ? (
+              <p className="text-xs leading-none text-muted-foreground truncate">{email}</p>
+            ) : null}
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+          onSelect={() => {
+            void signOut({ callbackUrl: "/login" })
+          }}
+        >
+          <LogOut className="size-4" />
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Cross-routing — main shell uses `/home`, `/assets/*`, `/tools/*`; Dashboard
    and Comms use their own App Router layouts.
@@ -99,7 +163,7 @@ function ModuleRail() {
     useAppStore()
   const router = useRouter()
   const pathname = usePathname() || ""
-  const unreadAlerts = useWorkspaceStore(selectMyUnreadCount)
+  const unreadNotifications = useWorkspaceStore(selectMyUnreadCount)
 
   const handleModuleClick = (key: ActiveModule) => {
     const targetRoute = APP_ROUTER_MODULES[key]
@@ -153,7 +217,7 @@ function ModuleRail() {
         <nav className="flex flex-col items-center gap-1 flex-1 w-full px-1">
           {MODULES.map(({ key, icon, label }) => {
             const isActive = activeModule === key
-            const showBadge = key === "comms" && unreadAlerts > 0
+            const showBadge = key === "comms" && unreadNotifications > 0
             return (
               <Tooltip key={key}>
                 <TooltipTrigger asChild>
@@ -181,9 +245,9 @@ function ModuleRail() {
                           "bg-rose-500 text-white text-[9px] font-bold",
                           "flex items-center justify-center leading-none"
                         )}
-                        aria-label={`${unreadAlerts} unread alerts`}
+                        aria-label={`${unreadNotifications} unread notifications`}
                       >
-                        {unreadAlerts > 99 ? "99+" : unreadAlerts}
+                        {unreadNotifications > 99 ? "99+" : unreadNotifications}
                       </span>
                     )}
                   </button>
@@ -198,11 +262,9 @@ function ModuleRail() {
           })}
         </nav>
 
-        {/* User avatar at the bottom */}
+        {/* Signed-in user — account menu */}
         <div className="mt-auto mb-1">
-          <div className="w-8 h-8 rounded-full bg-sidebar-active flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-medium select-none">U</span>
-          </div>
+          <ModuleRailUserMenu />
         </div>
       </div>
     </TooltipProvider>
@@ -604,7 +666,7 @@ function CommsPanel({ searchQuery }: { searchQuery: string }) {
     },
     {
       key: "alerts",
-      label: "Alerts",
+      label: "Notifications",
       icon: <Bell className="w-4 h-4 flex-shrink-0" />,
       onClick: () => router.push("/comms/alerts"),
       active: pathname === "/comms/alerts",
@@ -651,7 +713,7 @@ function SettingsPanel({ searchQuery }: { searchQuery: string }) {
   const items = [
     { key: "gen", label: "General", icon: <Settings className="w-4 h-4 flex-shrink-0" /> },
     { key: "int", label: "Integrations", icon: <Database className="w-4 h-4 flex-shrink-0" /> },
-    { key: "notif", label: "Notifications", icon: <Bell className="w-4 h-4 flex-shrink-0" /> },
+    { key: "notif", label: "Alert Settings", icon: <Bell className="w-4 h-4 flex-shrink-0" /> },
   ].filter((row) => navMatches(row.label, q))
 
   return (

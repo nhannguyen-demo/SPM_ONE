@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { WhatIfScenarioModal, WhatIfResultModal } from "@/components/modals/what-if-scenario"
 import { MainRouteSync } from "@/components/main-route-sync"
+import { Toaster } from "@/components/ui/sonner"
 import { AISparkButton } from "@/components/ai/feature1-spark-button"
 
 /**
@@ -25,6 +26,7 @@ export function MainShellWithSync({ children }: { children: ReactNode }) {
       <WhatIfScenarioModal />
       <WhatIfResultModal />
       <AISparkButton />
+      <Toaster richColors position="top-center" />
     </div>
   )
 }

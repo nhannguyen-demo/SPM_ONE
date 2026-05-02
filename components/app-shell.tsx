@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Header />
         <main className="flex-1 min-w-0 flex overflow-hidden">{children}</main>
       </div>
-      <Toaster richColors position="bottom-right" />
+      <Toaster richColors position="top-center" />
     </div>
   )
 }
