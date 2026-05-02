@@ -625,7 +625,7 @@ function ToolsSection({
     {
       key: "data-sync",
       icon: <Database className="w-5 h-5" />,
-      label: "Data & Sync",
+      label: "Data & Jobs",
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
       preview: dataSyncItem ? (

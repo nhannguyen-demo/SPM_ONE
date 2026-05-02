@@ -88,7 +88,7 @@ There is **one Next.js route** — `app/page.tsx`. All navigation is client-side
 | `ContextualPanel` | sidebar.tsx (internal) | Slide-in panel with per-module search bar. Routes to the correct sub-panel below. |
 | `AssetsPanel` | sidebar.tsx (internal) | Hierarchical asset tree (Sites → Plants → Equipment). Full search/filter with auto-expand. |
 | `WorkspacePanel` | sidebar.tsx (internal) | Stub: "Favorite" and "Share with me" items (unlinked). |
-| `InsightsPanel` | sidebar.tsx (internal) | Links to Data & Sync, Shift Log (stub), Documents, What-If Scenarios. |
+| `InsightsPanel` | sidebar.tsx (internal) | Links to Data & Jobs, Shift Log (stub), Documents, What-If Scenarios. |
 | `CommsPanel` | sidebar.tsx (internal) | Stub: Chat and Alerts items. |
 | `SettingsPanel` | sidebar.tsx (internal) | Stub: General, Integrations, Notifications. |
 | `Header` | `components/header.tsx` | Top 56px bar. Bell (with unread dot) and Settings buttons — **both are visual only, no handlers**. |

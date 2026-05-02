@@ -11,7 +11,7 @@ This document is the **path map** for Taskmaster tag `module-url-parity`. All li
 | `/assets/site/[siteId]` | `SiteOverview` | `siteId` = e.g. `site-x` |
 | `/assets/plant/[siteId]/[unitId]` | `PlantOverview` | `unitId` = process unit id |
 | `/assets/equipment/[siteId]/[unitId]/[equipmentId]` | `EquipmentHomeView` | Optional query: `tab`, `openDashboard` (WorkspaceDashboard id for popup) |
-| `/tools/data-sync` | `DataSyncView` | Optional query: `equipment` = equipment id (pre-filter) |
+| `/tools/data-sync` | `DataSyncView` (**Data & Jobs** in UI; code name unchanged) | Optional query: `equipment` = equipment id (pre-filter) |
 | `/tools/what-if` | `WhatIfToolView` | — |
 | `/tools/documents` | `DocumentsView` | Optional query: `equipment` |
 
