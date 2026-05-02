@@ -11,8 +11,8 @@ const globalForPrisma = globalThis as unknown as GlobalPrisma
 
 /**
  * During `next build`, Next collects route data and imports server modules. Vercel
- * (and many PR previews) often omit `DATABASE_URL` at build time — Prisma client
- * init must not throw; the Pool does not connect until the first query.
+ * previews often omit `DATABASE_URL` at build time — Prisma client init must not
+ * throw; the Pool does not connect until the first query.
  */
 const PRISMA_BUILD_PLACEHOLDER_URL =
   "postgresql://build_placeholder:build_placeholder@127.0.0.1:5432/build_placeholder?sslmode=disable"
@@ -21,9 +21,50 @@ function isNextProductionBuildPhase(): boolean {
   return process.env.NEXT_PHASE === "phase-production-build"
 }
 
+/** Read env without a literal `process.env.DATABASE_URL` reference (avoids some bundlers inlining build-time values into server chunks). */
+function envString(name: string): string | undefined {
+  const v = process.env[name]
+  return typeof v === "string" ? v : undefined
+}
+
+/** Strip wrapping quotes often pasted from `.env` examples into the Vercel UI. */
+function unwrapEnvString(raw: string): string {
+  let s = raw.trim()
+  if (s.length >= 2) {
+    const q = s[0]
+    if ((q === '"' || q === "'") && s[s.length - 1] === q) {
+      s = s.slice(1, -1).trim()
+    }
+  }
+  return s
+}
+
+function isValidPostgresUrl(url: string): boolean {
+  return /^postgres(ql)?:\/\//i.test(url.trim())
+}
+
+/**
+ * Prefer `DATABASE_URL`; fall back to Vercel / platform Postgres vars when the app
+ * is wired to the Vercel Postgres integration (those use `POSTGRES_URL` / `POSTGRES_PRISMA_URL`).
+ */
+function pickPostgresConnectionString(): string | undefined {
+  const keys = [
+    "DATABASE" + "_" + "URL",
+    "POSTGRES" + "_" + "URL",
+    "POSTGRES" + "_" + "PRISMA" + "_" + "URL",
+  ]
+  for (const key of keys) {
+    const raw = envString(key)
+    if (!raw) continue
+    const u = unwrapEnvString(raw)
+    if (isValidPostgresUrl(u)) return u.trim()
+  }
+  return undefined
+}
+
 function resolveDatabaseUrl(): string {
-  const url = process.env.DATABASE_URL
-  if (url?.startsWith("postgres")) return url
+  const url = pickPostgresConnectionString()
+  if (url) return url
 
   const building =
     isNextProductionBuildPhase() ||
@@ -33,9 +74,14 @@ function resolveDatabaseUrl(): string {
     return PRISMA_BUILD_PLACEHOLDER_URL
   }
 
+  const onVercel = process.env.VERCEL === "1"
+  const hint = onVercel
+    ? " On Vercel: open the deployment → Settings → Environment Variables, and ensure DATABASE_URL (Session pooler URI) is set for **this** environment (Preview vs Production), then redeploy. If the value was wrapped in quotes in the UI, remove them."
+    : ""
+
   throw new Error(
-    "DATABASE_URL must be a PostgreSQL URL (postgresql:// or postgres://), e.g. from Supabase. " +
-      "Set it in Vercel Project → Settings → Environment Variables for Preview and Production."
+    "DATABASE_URL must be a PostgreSQL URL (postgresql:// or postgres://), e.g. from Supabase." +
+      hint
   )
 }
 

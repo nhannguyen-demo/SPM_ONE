@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { useAppStore } from "@/lib/store"
 import { useWorkspaceStore } from "@/lib/workspace/store"
 import { useShallow } from "zustand/react/shallow"
@@ -684,6 +685,13 @@ function SectionHeader({
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export function HomeView() {
+  const { data: session } = useSession()
+  const displayName =
+    session?.user?.name?.trim() ||
+    (session?.user?.email
+      ? session.user.email.split("@")[0]?.trim() || "there"
+      : "there")
+
   return (
     <div className="flex-1 min-w-0 overflow-y-auto bg-background">
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
@@ -691,7 +699,9 @@ export function HomeView() {
         {/* ── Top greeting + Search ─────────────────────────────────────────── */}
         <div className="text-center space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">Welcome back, Nhan 👋</h1>
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">
+              Welcome back, {displayName} 👋
+            </h1>
             <p className="text-muted-foreground mt-1.5">
               Here&apos;s what&apos;s happening across your assets today.
             </p>

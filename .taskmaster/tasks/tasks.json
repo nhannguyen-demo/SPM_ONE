@@ -261,7 +261,174 @@
       "version": "1.0.0",
       "taskCount": 7,
       "completedCount": 7,
-      "tags": ["module-url-parity"]
+      "tags": [
+        "module-url-parity"
+      ]
+    }
+  },
+  "auth-shell-notifications-may2026": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Auth-gate main shell routes (middleware + root redirect)",
+        "description": "Extend Next.js middleware (or equivalent layout guards) so anonymous users cannot access the main app shell: `/home`, `/assets/*`, `/tools/*`, `/insights/*` as routed today. Redirect to `/login` with optional `callbackUrl`. Whitelist public routes: `/login`, `/api/auth/*`, static assets, `/share/*` if public, and any health checks. Align with existing `/dashboard` protection pattern. Update `app/page.tsx` or root redirect so `/` sends signed-in users to `/home` and anonymous users to `/login` per product intent.",
+        "details": "Files: `middleware.ts`, `app/(main)/layout.tsx` or `MainShellWithSync`, `app/page.tsx`, compare `app/dashboard/layout.tsx`. Document matcher exclusions for `_next`, images, favicon.",
+        "testStrategy": "Manual: signed out GET /home → /login; signed in GET /home → 200; dashboard and share routes still behave.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-01T15:08:19.317Z"
+      },
+      {
+        "id": 2,
+        "title": "Home page welcome uses session display name",
+        "description": "Replace hard-coded welcome in `components/views/home-view.tsx` with the signed-in user's display name from Auth.js session (fallback: email local-part or \"User\"). Server component or client `useSession` per existing app patterns.",
+        "details": "Ensure no mock string in production path; respect `PROJECT.md` / ontology **Home welcome** rule.",
+        "testStrategy": "Change session user name in seed/auth provider; verify Home headline updates.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-01T15:08:19.346Z"
+      },
+      {
+        "id": 3,
+        "title": "Module rail user avatar + account menu (initial, profile, sign out)",
+        "description": "In `components/sidebar.tsx` module rail bottom control: show avatar circle with first letter of session name (not hardcoded \"U\"). On click, open dropdown/popover with read-only user info (name, email if available) and Sign out (reuse `signOut` from next-auth). Ensure keyboard focus trap / Radix patterns match shadcn.",
+        "details": "Remove duplicate sign-out-only UX from header if present after header task.",
+        "testStrategy": "Click avatar → menu; Sign out clears session and lands on login.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-01T15:08:19.358Z"
+      },
+      {
+        "id": 4,
+        "title": "Header: Bell + banners/toasts; remove Settings + email chrome",
+        "description": "Update `components/header.tsx`: remove top-right Settings gear and remove user email strip from header (identity moves to rail menu). Implement Bell with unread badge from same source as Comms (`selectMyUnreadCount` / workspace notifications). Add dismissible top banners or toasts for new/unread notifications (use `sonner` or shadcn Toast + store subscription). Dropdown or sheet listing recent notifications with Mark read / link to `/comms/alerts`.",
+        "details": "Keep parity with ontology **Header chrome** rule. Do not regress dashboard module header if shared component.",
+        "testStrategy": "Create unread notification in seed; bell count matches rail; toast fires on new item (or simulated); navigation to list works.",
+        "status": "done",
+        "dependencies": [
+          "1",
+          "3"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-01T15:08:19.380Z"
+      },
+      {
+        "id": 5,
+        "title": "Comms: rename Alerts → Notifications (copy + nav labels)",
+        "description": "Rename Comms UI copy from Alerts to **Notifications**: `app/comms/alerts/page.tsx` title/description, `components/sidebar.tsx` CommsPanel label, any layout/breadcrumb strings. Optional: add redirect `/comms/notifications` → `/comms/alerts` for bookmarks.",
+        "details": "URL can remain `/comms/alerts` per ontology stability note.",
+        "testStrategy": "Grep ensures no user-facing \"Alerts\" in Comms surfaces; nav still works.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-01T15:08:19.386Z"
+      },
+      {
+        "id": 6,
+        "title": "Settings rail: rename Notifications → Alert Settings",
+        "description": "In `components/sidebar.tsx` SettingsPanel, rename stub row from Notifications to **Alert Settings**. Update `navMatches` filter strings if label-driven. Ensure search still finds row by either token if desired.",
+        "details": "Distinct from Comms Notifications per product naming.",
+        "testStrategy": "Open Settings module rail panel; label reads Alert Settings.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-05-01T15:08:19.414Z"
+      },
+      {
+        "id": 7,
+        "title": "Notification click-through: shared deep-link helper + wire list + bell",
+        "description": "Centralize notification target resolution: given `Notification`, return `router.push` target when navigable (min: `dashboardId` → `/dashboard?d=` or canonical editor/viewer per app). Use from Comms list row `onClick`, Bell dropdown items, and banner CTAs. Extend for categories with only `relatedRequestId` if product rules define a destination (e.g. dashboard module with request filter). Mark read on navigation consistent with current View button.",
+        "details": "Prefer shared helper in `lib/workspace/` or `components/workspace/` to avoid drift between header and page.",
+        "testStrategy": "Click each notification category in dev seed; lands on sensible route or no-op when no target.",
+        "status": "done",
+        "dependencies": [
+          "5"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-01T15:08:19.415Z"
+      },
+      {
+        "id": 8,
+        "title": "Docs & copy sweep for Notifications / Alert Settings naming",
+        "description": "Sweep docs/tests: update any remaining internal references (README, e2e, storybook) from Comms Alerts to Notifications where user-facing. Cross-check `domain.ontology.yaml` and `PROJECT.md` already updated.",
+        "details": "Low priority cleanup after implementation PR.",
+        "testStrategy": "Repo grep for \"Comms Alerts\" and user-facing Alerts in comms context returns none.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-05-01T15:08:19.419Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-01T15:08:19.419Z",
+      "taskCount": 8,
+      "completedCount": 8,
+      "tags": [
+        "auth-shell-notifications-may2026"
+      ],
+      "created": "2026-05-02T03:32:02.579Z",
+      "description": "Tasks for auth-shell-notifications-may2026 context"
+    }
+  },
+  "notification-preview-anchor-may2026": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Header: anchored ephemeral notification previews (no strip, no Sonner)",
+        "description": "Remove full-width unread banner under global header and remove Sonner toast.info(top-center) for new notifications. Add anchored stack under the bell: compact popover-styled cards (title/body/hint), max stack, TTL ~4s auto-remove, dismiss button marks read, tap opens via notificationHref. Files: components/header.tsx; keep global Toaster for non-notification errors.",
+        "details": "Constants EPHEMERAL_TTL_MS (4000), MAX_EPHEMERAL (4). useRef for prev notification ids + timeout map; cleanup on unmount. Remove toast import from header.",
+        "testStrategy": "Simulate pushNotification / new bootstrap row: preview appears under bell only; expires; dismiss works; no strip under header.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T03:32:17.091Z"
+      },
+      {
+        "id": "2",
+        "title": "Docs: ontology + PROJECT for bell-anchored notification previews",
+        "description": "Align domain.ontology.yaml changelog (May 1 rev 3), Notification comment, Header chrome business_rule, and PROJECT.md product + build-state bullets with anchored-under-bell previews and explicit exclusion of full-width strip + Sonner for routine previews.",
+        "details": "Files: domain.ontology.yaml, PROJECT.md",
+        "testStrategy": "Grep ontology/PROJECT for banners/toasts wording inconsistent with new UX.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T03:32:17.101Z"
+      },
+      {
+        "id": "3",
+        "title": "QA: bell preview stack a11y + layering",
+        "description": "Verify z-index when bell dropdown and ephemeral stack both relevant; keyboard dismiss on X; aria-live polite on stack. Tune TTL/copy if product feedback.",
+        "details": "Optional follow-up after ship.",
+        "testStrategy": "Manual keyboard-only pass on header region.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T03:37:09.179Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-02T03:37:09.180Z",
+      "taskCount": 3,
+      "completedCount": 3,
+      "tags": [
+        "notification-preview-anchor-may2026"
+      ]
     }
   }
 }

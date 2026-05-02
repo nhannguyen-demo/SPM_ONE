@@ -45,7 +45,13 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  const res = NextResponse.next()
+  const requestHeaders = new Headers(request.headers)
+  const pathWithSearch = `${pathname}${request.nextUrl.search}`
+  requestHeaders.set("x-spm-pathname", pathWithSearch)
+
+  const res = NextResponse.next({
+    request: { headers: requestHeaders },
+  })
   applySecurityHeaders(res.headers)
   return res
 }

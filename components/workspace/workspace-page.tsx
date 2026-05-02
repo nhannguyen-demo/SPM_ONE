@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useShallow } from "zustand/react/shallow"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Inbox, Clock, Trash2, Folder as FolderIcon, Home as HomeIcon, FolderOpen as FolderOpenIcon } from "lucide-react"
 import { WorkspaceToolbar } from "./workspace-toolbar"
@@ -55,6 +55,7 @@ const VIRTUAL_TITLES: Record<WorkspaceVirtualLocation, { title: string; subtitle
 
 export function WorkspacePage({ initial }: WorkspacePageProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const setActiveModule = useAppStore((s) => s.setActiveModule)
   const me = useWorkspaceCurrentUserId()
 
@@ -243,6 +244,15 @@ export function WorkspacePage({ initial }: WorkspacePageProps) {
   const [createOpen, setCreateOpen] = useState(false)
   const [shareDashboardId, setShareDashboardId] = useState<string | null>(null)
   const [popupDashboardId, setPopupDashboardId] = useState<string | null>(null)
+
+  const dashboardDeepLink = searchParams.get("d")
+  useEffect(() => {
+    if (!dashboardDeepLink || !me) return
+    const dash = allActive.find((d) => d.id === dashboardDeepLink)
+    if (!dash) return
+    setPopupDashboardId(dashboardDeepLink)
+    router.replace("/dashboard", { scroll: false })
+  }, [dashboardDeepLink, me, allActive, router])
 
   const shareDashboard =
     shareDashboardId && allActive.find((d) => d.id === shareDashboardId)

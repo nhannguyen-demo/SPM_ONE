@@ -52,6 +52,18 @@
 # already used for the Workspace module (UI: **Dashboard** at `/dashboard/*`). This is
 # a routing/navigation invariant only: **no change to visible UI layout, styling, copy, or
 # interaction affordances** unless required to preserve behavior under URL-driven routing.
+# Updated May 1 2026 (rev 2): **Auth-gated main shell + notification chrome** — unauthenticated
+# users cannot use the main app shell (`/home`, `/assets/*`, `/tools/*`, `/insights/*` as
+# implemented); they authenticate at `/login` first. Default signed-in landing remains `/home`.
+# Comms in-app feed is labeled **Notifications** (implementation may keep route `/comms/alerts`);
+# Settings module stub row for notification preferences is labeled **Alert Settings**. Header
+# bell mirrors Comms **Notifications** (unread parity); **ephemeral new-item previews** anchor
+# under the bell (compact dropdown-style cards, short TTL), not a full-width header strip and
+# not global Sonner toasts for notification delivery.
+# Updated May 1 2026 (rev 3): **Notification preview anchoring** — ephemeral previews for newly
+# received unread notifications render in a compact stack **immediately below** the header Bell
+# (same visual language as the bell dropdown, smaller), auto-dismiss after a short interval; no
+# full-width banner strip under the global header and no Sonner `toast.info` channel for those events.
 
 entities:
   User:
@@ -400,9 +412,11 @@ entities:
           product UI this module is labeled **Dashboard** (module rail, folder
           tree header, deep links) to distinguish the *module* from individual
           `Dashboard` entities. The per-user dashboard CMS (folders, drafts,
-          sharing, publishing, Workspace-native editor). 'comms' hosts the Alerts
-          page for in-app notifications about dashboard sharing and permission
-          requests. **May 1 2026:** other `AppModule` keys (`home`, `assets`, …)
+          sharing, publishing, Workspace-native editor). 'comms' hosts the
+          **Notifications** list surface for in-app notifications (e.g. dashboard
+          sharing and permission requests; route may remain `/comms/alerts`). The
+          'settings' stub row for notification preferences is labeled **Alert Settings**
+          in the UI. **May 1 2026:** other `AppModule` keys (`home`, `assets`, …)
           SHALL gain the same URL-first navigation pattern as `workspace` (see
           business_rules: App Routing — module URL parity)."
       displayName: { type: string }
@@ -568,8 +582,9 @@ entities:
       updatedAt: { type: datetime }
 
   Notification:
-    comment: "An in-app alert displayed on the Comms Module Alerts page for the
-      current user. All sharing-related events become Notifications."
+    comment: "An in-app notification for the current user, listed on the Comms Module
+      **Notifications** surface and previewed from the header **Bell** (dropdown list plus
+      short-lived compact previews anchored under the bell when new unread items arrive)."
     fields:
       id: { type: uuid }
       userId:
@@ -583,12 +598,14 @@ entities:
           - dashboard_first_view
           - permission_request_received
           - permission_request_resolved
+          - edit_lock_blocked
         comment: "v1 categories. dashboard_shared_with_you: someone shared a
           dashboard with you. dashboard_first_view: a recipient opened a
           dashboard you shared (when notifyOnFirstView=true).
           permission_request_received: someone asked for higher permission on
           your dashboard. permission_request_resolved: your permission request
-          was granted or denied."
+          was granted or denied. edit_lock_blocked: another user holds the edit
+          lock the recipient attempted to acquire (implementation-specific)."
       dashboardId:
         type: uuid
         nullable: true
@@ -612,7 +629,7 @@ entities:
       readAt:
         type: datetime
         nullable: true
-        comment: "Null = unread. Set when user opens or marks the alert read."
+        comment: "Null = unread. Set when user opens, navigates from, or marks the notification read."
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
@@ -850,9 +867,14 @@ business_rules:
   - "Users without comment/edit permission on a shared dashboard may submit a PermissionRequest from the Dashboard Popup; this generates a 'permission_request_received' Notification for the dashboard owner."
   - "Resolving a PermissionRequest (granted/denied) generates a 'permission_request_resolved' Notification for the requester; granting also creates or upgrades the corresponding DashboardShare."
   - "When DashboardShare.notifyOnFirstView is true, the first time the recipient opens the dashboard popup sets DashboardShare.firstViewedAt and produces a 'dashboard_first_view' Notification for the sharer; this fires at most once per share."
-  - "Comments on owner-owned dashboards do NOT generate Notifications; only sharing-related events do."
-  - "The Comms Module Alerts page lists all Notifications for the current user in reverse-chronological order; each item exposes a 'View' action that deep-links into the Workspace and marks the Notification read."
-  - "The Comms module rail icon shows an unread-count badge equal to count(Notification where readAt is null)."
+  - "Comments on owner-owned dashboards do NOT generate Notifications for comment activity; sharing-related events always do. Additional operational categories (e.g. edit-lock contention) MAY surface as Notifications when implemented."
+  - "**Authentication & main shell (May 1 2026 rev 2):** Routes under the signed-in application shell (e.g. `/home`, `/assets/*`, `/tools/*`, and other primary module pages that render sidebar+header) require an authenticated **Session**; anonymous visitors are redirected to `/login` with return-to intent preserved where practical. `/` may redirect to `/home` for signed-in users and to `/login` (or `/home` then login) per implementation; the product default landing after sign-in is `/home`."
+  - "**Home welcome:** The Home page welcome line SHALL use the signed-in **User** display name (or session name fallback), not a hard-coded mock string."
+  - "**Shell user affordance:** The module rail’s bottom user control SHALL show the first letter of the signed-in user’s display name (fallback initial) and open an account menu (read-only identity fields, **Sign out**). Duplicating the user’s email in the top header chrome is not required and SHOULD be removed in favor of this menu."
+  - "**Header chrome:** The top-right **Settings** gear control in the global header SHALL be removed (Settings remains reachable via the module rail). The **Bell** SHALL mirror Comms **Notifications**: same unread count semantics as the Comms rail badge, a dropdown list consistent with the full **Notifications** page, and **ephemeral preview cards** for newly received unread items — compact, dropdown-styled, anchored **directly under the bell** (not a full-width page strip), auto-dismissed after a **short TTL**; global Sonner toasts SHALL NOT be used as the delivery channel for routine new-notification previews."
+  - "The Comms Module **Notifications** page lists all Notifications for the current user in reverse-chronological order; selecting a row SHALL navigate to the in-app context implied by the notification when one exists (at minimum: when `dashboardId` is set, open the **Dashboard** module for that dashboard and mark read consistent with today’s 'View' behavior). Additional targets MAY be derived from `category`, `relatedShareId`, and `relatedRequestId` as the product matures."
+  - "The Comms module rail **Notifications** entry shows an unread-count badge equal to count(Notification where readAt is null for the current user)."
+  - "The Settings module stub row for notification delivery / preference copy is labeled **Alert Settings** in the UI (distinct from Comms **Notifications**)."
   # ── Asset Module — Full-Screen Viewer & Multi-Tab ──────────────────────────
   - "The Equipment Home Page Dashboard Popup includes 'Open in new tab', which opens /dashboards/[dashboardId]/full in a new browser tab and closes the popup in the originating tab."
   - "The Full-Screen Dashboard Viewer route renders the dashboard widget grid with no app sidebar and no header, in read-only mode."

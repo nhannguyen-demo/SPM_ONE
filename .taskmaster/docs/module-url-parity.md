@@ -18,7 +18,7 @@ This document is the **path map** for Taskmaster tag `module-url-parity`. All li
 Existing URL-first modules (unchanged contract):
 
 - `/dashboard/*` — Dashboard (Workspace) module  
-- `/comms/alerts` — Alerts  
+- `/comms/alerts` — Notifications (in-app feed; URL label may stay `alerts`)
 - `/dashboards/[dashboardId]/full` — Full-screen viewer  
 - `/share/[token]` — Share link  
 
