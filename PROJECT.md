@@ -21,10 +21,10 @@ Key entities:
 - Workspace Module entities (UI: **Dashboard** module): `WorkspaceFolder` (per-user nested folder tree), `DashboardShare` (per-recipient grant), `ShareLink` (token-based grant), `DashboardComment`, `PermissionRequest`.
 - Comms Module entities: `Notification` (in-app notification; UI list **Notifications**).
 - Cross-tab UI context: `DashboardViewerTabSession` (non-persisted; broadcast cross-tab) and `EquipmentHomeView.externalOpenTabCounts`.
-- Navigation/tooling: `AppModule` (keys: `home`, `assets`, `workspace`, `insights`, `comms`, `settings`; the `workspace` entry is shown as **Dashboard** in the UI), `Tool` (canonical keys: `data_sync`, `shift_log`, `documents`, `whatif`). **May 1 2026:** every primary module surface (except chromeless/full-screen exceptions) shall be reachable via a **stable App Router URL** with real navigation semantics, matching the **Dashboard** module — routing-only; no UI redesign.
+- Navigation/tooling: `AppModule` (keys: `home`, `assets`, `workspace`, `insights`, `comms`, `settings`; the `workspace` entry is shown as **Dashboard** in the UI), `Tool` (canonical keys: `data_sync`, `shift_log`, `documents`, `whatif` — UI label for `data_sync` is **Data & Jobs**, with panels **Data Status** + **FEA Jobs**). **May 1 2026:** every primary module surface (except chromeless/full-screen exceptions) shall be reachable via a **stable App Router URL** with real navigation semantics, matching the **Dashboard** module — routing-only; no UI redesign.
 - UI context (non-persisted): `EquipmentHomeView` — tracks active dashboard popup, viewed-data scenario, and external-open-tab counts for the Equipment Home Page.
 - What-If domain: `WhatIfScenario`, `WhatIfScenarioParameter`, `WhatIfRunSession`, `WhatIfRunInput`, `WhatIfRunResult`.
-- Supporting operational data: `User` (role, optional `passwordHash` / `emailVerified` for production auth; `isCurrentUser` **mock-only** until real login; **Account** / **Session** for OAuth and cookie sessions per ontology), `UserDocument`, `ChangeLogEntry`, `DataSyncStatus`, `SyncJob`.
+- Supporting operational data: `User` (role, optional `passwordHash` / `emailVerified` for production auth; `isCurrentUser` **mock-only** until real login; **Account** / **Session** for OAuth and cookie sessions per ontology), `UserDocument`, `ChangeLogEntry`, `DataSyncStatus`, `SyncJob`; **Data & Jobs (May 2026):** ontology adds deferred `ClientSensorDatabaseSource`, `SensorIngestHealthSnapshot`, `EquipmentAnalysisOutputDescriptor`, `DataTransferLogEntry` (UI mock only until Prisma epic).
 
 Key relationships:
 - A `Site` has many `Unit`; a `Unit` has many `Equipment`. Placeholder equipment rows (`isPlaceholder`) appear in the asset menu only and do not navigate.
@@ -68,7 +68,7 @@ Business behavior reflected in ontology:
 - ✅ Plant Overview view (equipment context, P&ID panel, charts, AI health overlays).
 - ✅ Read-only dashboard preview: Full-Screen Viewer, **Dashboard** module popup, and **Equipment Home** popup all use `ResponsiveDashboardGrid` + `DashboardWidgetBody` (catalog `templateKey` → `CokerTemplateView`). Equipment Home passes `viewedDataIds` and equipment-scoped What-If runs; empty published dashboards use `useEmptyFallback={false}` with asset-appropriate copy.
 - 🚧 **Catalog-driven Coker dashboard library (in design / build):** See `scripts/prd.txt`, `domain.ontology.yaml` (new entities), `.taskmaster/docs/coker-catalog-rebuild-layers.md`. Replaces ad-hoc `viewType` widgets with **template key + options**; adds **ParameterRequest** queue, **dashboard context** bar, **duplicate across same equipment type**, **export/print** parity.
-- ✅ Data & Sync view table screens with equipment pre-filter support from Equipment Home tool entry.
+- ✅ **Data & Jobs** view (`/tools/data-sync`): **Tabs** — **Data Status** vs **FEA Jobs**; Data Status uses a tighter enterprise layout (scoped header, numbered sections, data grids, demo dataset); Coker mock unchanged logically; FEA table in its own tab; equipment filter above tabs.
 - ✅ Centralized What-If Scenario Tool v2 (scenario list, configure/run/history/results/compare, animated run steps).
 - ✅ WIS-to-dashboard flow (viewed data selection, compare with live).
 - ✅ Documents Tool view (grid/list, category + asset filters, search, share/download interactions).
@@ -79,7 +79,7 @@ Business behavior reflected in ontology:
 - 🔄 All functional data remains mock/static (no backend/API persistence).
 - ✅ Equipment Home Page implemented as the default equipment entry point from Asset hierarchy.
 - ✅ Dashboard Popup implemented in read-only mode with Viewed Data + report/share actions.
-- ✅ Tools Section implemented on Equipment Home Page (Data & Sync, Shift Log placeholder, Documents, What-If Scenario).
+- ✅ Tools Section implemented on Equipment Home Page (Data & Jobs, Shift Log placeholder, Documents, What-If Scenario).
 - ✅ **Dashboard** module (code: Workspace) stub implemented as the "Edit Dashboards" navigation target.
 - ✅ What-If History -> "View results" / result **View Data** routes back to Equipment Home for that run's equipment; viewed-data run is queued for overlay when the user opens a dashboard popup (no forced popup or mystery dashboard).
 - ✅ Site/Plant dashboard stack tab clicks now route to Equipment Home popup (not legacy equipment dashboard screen).
@@ -118,7 +118,7 @@ App Router pages (main shell + Workspace + Comms + viewer):
 | `/assets/site/[siteId]` | Site Overview | Sidebar + Header |
 | `/assets/plant/[siteId]/[unitId]` | Plant Overview | Sidebar + Header |
 | `/assets/equipment/[siteId]/[unitId]/[equipmentId]` | Equipment Home (`?tab`, `?openDashboard`) | Sidebar + Header |
-| `/tools/data-sync` | Data & Sync (`?equipment`) | Sidebar + Header |
+| `/tools/data-sync` | Data & Jobs — `DataSyncView` (`?equipment`) | Sidebar + Header |
 | `/tools/what-if` | What-If Scenario tool | Sidebar + Header |
 | `/tools/documents` | Documents tool (`?equipment`) | Sidebar + Header |
 | `/dashboard` | Workspace Module main view (All Dashboards) | Sidebar + Header |
@@ -151,7 +151,7 @@ Routing principles:
 - **Dashboard Popup (Equipment Home)**: state lives in local `EquipmentHomeView` (`activePopupDashboardId`); the popup reuses `ResponsiveDashboardGrid` with `viewedDataIds` and equipment-scoped `scenarioRuns` so layout and Coker catalog tiles match the **Dashboard** module and full-screen viewer.
 - **Cross-view auto-open behavior**: Site/Plant dashboard stack tab clicks set one-shot popup targeting (`equipmentHomeAutoOpenTab`) so Equipment Home opens directly into the selected read-only dashboard popup.
 - **Equipment pre-filter for Tools**: when navigating from Equipment Home Page tool tiles, the target equipment `id` is written to a Zustand slice (`preFilterEquipmentId`) so the destination tool page can read and apply it on mount.
-- **Data & Sync filter**: `DataSyncView` will accept `preFilterEquipmentId` from Zustand to auto-select the equipment filter on entry.
+- **Data & Jobs filter**: `DataSyncView` accepts `preFilterEquipmentId` from Zustand to auto-select the equipment filter on entry (same mechanism; route key remains `data-sync`).
 - **Stack label navigation UX**: equipment labels in dashboard tab stacks are explicit link-style controls with dedicated click handling (separate from stack expand/collapse interaction).
 - **Workspace identity (Workspace UI)**: **Production builds** (`NODE_ENV === 'production'`): effective user id follows the signed-in Auth.js session (`session.user.id` must match a seeded `ORG_USERS` id); **manual localStorage overrides are ignored**. **Development**: mock flows may still read/write `spm-one:current-user-id` when not in production. Directory lookups (`findOrgUserById`, Share typeahead) remain client-side against `ORG_USERS`. Server APIs enforce ownership/shares independently.
 - **Workspace persistence**: **Signed-in users:** folders, dashboards, and shares are loaded from PostgreSQL via `/api/workspace/bootstrap` and mutated through `/api/workspace/*` (Zustand holds a client cache; localStorage does **not** store those collections — see persist v2 in `lib/workspace/store.ts`). **`pnpm db:seed`** upserts the deterministic **`WORKSPACE_SEED`** bundle (`lib/workspace/seed.ts` → `prisma/seed-workspace.ts`) plus **`lib/data.ts`** asset hierarchy so **equipment-a / equipment-b / equipment-c** exist and dashboard lists are populated. **Signed-out / failure fallback:** the same seed shapes hydrate the store from mock data. Debug **Reset Workspace** still reverts the client slice to `WORKSPACE_SEED`.

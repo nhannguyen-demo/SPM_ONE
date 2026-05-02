@@ -597,7 +597,7 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
   const rows = [
     {
       key: "sync",
-      label: "Data & Sync",
+      label: "Data & Jobs",
       icon: <Database className="w-4 h-4 flex-shrink-0" />,
       onClick: handleDataSyncClick,
       active: pathname === "/tools/data-sync" && currentView === "data-sync",

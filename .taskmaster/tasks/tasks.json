@@ -385,7 +385,7 @@
   "notification-preview-anchor-may2026": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Header: anchored ephemeral notification previews (no strip, no Sonner)",
         "description": "Remove full-width unread banner under global header and remove Sonner toast.info(top-center) for new notifications. Add anchored stack under the bell: compact popover-styled cards (title/body/hint), max stack, TTL ~4s auto-remove, dismiss button marks read, tap opens via notificationHref. Files: components/header.tsx; keep global Toaster for non-notification errors.",
         "details": "Constants EPHEMERAL_TTL_MS (4000), MAX_EPHEMERAL (4). useRef for prev notification ids + timeout map; cleanup on unmount. Remove toast import from header.",
@@ -397,7 +397,7 @@
         "updatedAt": "2026-05-02T03:32:17.091Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Docs: ontology + PROJECT for bell-anchored notification previews",
         "description": "Align domain.ontology.yaml changelog (May 1 rev 3), Notification comment, Header chrome business_rule, and PROJECT.md product + build-state bullets with anchored-under-bell previews and explicit exclusion of full-width strip + Sonner for routine previews.",
         "details": "Files: domain.ontology.yaml, PROJECT.md",
@@ -409,7 +409,7 @@
         "updatedAt": "2026-05-02T03:32:17.101Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "QA: bell preview stack a11y + layering",
         "description": "Verify z-index when bell dropdown and ephemeral stack both relevant; keyboard dismiss on X; aria-live polite on stack. Tune TTL/copy if product feedback.",
         "details": "Optional follow-up after ship.",
@@ -428,7 +428,117 @@
       "completedCount": 3,
       "tags": [
         "notification-preview-anchor-may2026"
-      ]
+      ],
+      "created": "2026-05-02T07:49:30.483Z",
+      "description": "Tasks for notification-preview-anchor-may2026 context"
+    }
+  },
+  "data-jobs-may2026": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "P0: Product copy rename — Data & Jobs + FEA Jobs",
+        "description": "Replace user-visible **Data & Sync** with **Data & Jobs** and **Sync & FEA Jobs** with **FEA Jobs** across shell navigation (sidebar Tools, Insights links), Equipment Home tool tile, any header/CTA, `whatif-tool-view` link text if shown, `feature4-insight-strips`, README/AUDIT where user-facing. Keep route `/tools/data-sync`, Zustand view key `data-sync`, and `mainRoutes.dataSync()` unchanged.",
+        "details": "Files likely: `components/sidebar.tsx`, `components/views/equipment-home.tsx`, `components/views/data-sync.tsx` (page title if any), `components/ai/feature4-insight-strips.tsx`, `components/views/whatif-tool-view.tsx`, `README.md`, `AUDIT.md`. Do not rename Prisma models or API paths in this task.",
+        "testStrategy": "Grep repo for user-facing \"Data & Sync\" and \"Sync & FEA Jobs\" returns none in app components; `/tools/data-sync` still loads; Equipment Home tile navigates with pre-filter.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T12:00:00.000Z"
+      },
+      {
+        "id": 2,
+        "title": "P1: Data Status mock — fixtures + layout",
+        "description": "Extend **Data Status** (first section of Data & Jobs) with mock content for: (a) input — sensor types, client DB kind, link to external console URL; (b) ingest — stream mode, last client write, last successful pull, avg interval, last error, sensor channel health counts; (c) outputs — damage/stress/3D/scenario-style descriptors. Use static fixtures (e.g. `lib/data.ts` or `lib/data-jobs-mock.ts`) keyed by equipment name/id; respect existing equipment filter and `preFilterEquipmentId`.",
+        "details": "Keep **FEA Jobs** section markup and `syncJobs` table as-is (only heading text handled in P0). Follow existing Tailwind/shadcn patterns. No API calls.",
+        "testStrategy": "Filter by each primary equipment shows coherent mock rows; All equipment shows union; empty state still sensible for unknown filter.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T12:00:00.000Z"
+      },
+      {
+        "id": 3,
+        "title": "P1: Data Status mock — non-persistent actions",
+        "description": "Add UI affordances only (no backend, no Zustand mutations beyond local dialog open state): Open **Data transfer log** (sheet/dialog with mock `DataTransferLogEntry`-shaped rows); **Open client database** (anchor/button opening `externalManagementUrl` in new tab with `rel=\"noopener noreferrer\"`); **Configure / add database** (modal or drawer with form fields that reset on close — no save); **Export output data** (format choice CSV/XML/JSON + optional \"API (coming soon)\" copy; export triggers download of static sample blob or disabled with tooltip per product choice).",
+        "details": "Align labels with ontology `domain.ontology.yaml` May 2 2026 rules. Ensure no writes to workspace or Prisma.",
+        "testStrategy": "Click each control: log opens; external link opens new tab; config closes without persisting; export shows expected non-destructive behavior.",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T12:00:00.000Z"
+      },
+      {
+        "id": 4,
+        "title": "P2: QA + doc sweep for Data & Jobs",
+        "description": "Regression pass: Equipment Home → Data & Jobs with pre-filter; browser refresh on `/tools/data-sync?equipment=`; FEA Jobs table columns and data unchanged from baseline. Grep for stale copy (Data & Sync, Sync & FEA). Update `.taskmaster/docs/module-url-parity.md` only if it still says Data & Sync in user-facing AC.",
+        "details": "Optional: add one Playwright smoke later — out of scope unless repo already has harness.",
+        "testStrategy": "Manual checklist signed off; grep clean for stale marketing strings in `app/` and `components/`.",
+        "status": "done",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T14:30:00.000Z"
+      },
+      {
+        "id": 5,
+        "title": "Deferred: Data Status backend — Prisma + connectors",
+        "description": "Future epic: persist `ClientSensorDatabaseSource`, `SensorIngestHealthSnapshot`, `EquipmentAnalysisOutputDescriptor`, `DataTransferLogEntry` per `domain.ontology.yaml`; secure credential storage; real pull workers / webhooks; export and outbound API. Not started until product prioritizes data platform.",
+        "details": "Coordinate with `prisma/schema.prisma` migration, `/api/data-jobs/*`, and authz by equipment/site. Out of scope for May 2026 mock delivery.",
+        "testStrategy": "N/A until scoped.",
+        "status": "deferred",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T08:03:51.814Z"
+      },
+      {
+        "id": 6,
+        "title": "P2: Multi-layer rollout plan — Data & Jobs persistence (reference)",
+        "description": "When prioritizing real Data Status: (1) Ontology ↔ Prisma for `ClientSensorDatabaseSource`, `SensorIngestHealthSnapshot`, `EquipmentAnalysisOutputDescriptor`, `DataTransferLogEntry` + secret storage design; **per-channel ingest** may require a child table or time-series store keyed by sensor tag (cadence varies: process minutes vs laser campaigns). (2) Migrations + optional seed demo rows; (3) Ingest worker/queue with read-only client credentials and rotation; (4) REST `/api/data-jobs/*` (or tRPC) scoped by equipment + server authz; (5) Export + future outbound API routes; (6) Replace static `lib/data-jobs-mock.ts` in `DataSyncView` with server-backed fetch; (7) Observability (metrics on pull latency/errors); (8) E2E smoke for filter, log sheet, and export.",
+        "details": "Canonical domain: `domain.ontology.yaml` May 2 2026. Route and `Tool.key` stay `data_sync` / `/tools/data-sync`. Architecture reference: `.taskmaster/docs/data-jobs-persistence-layers.md` (May 2 2026). Prisma/migration delivery remains Task 5.",
+        "testStrategy": "Doc present and reviewed; Prisma work tracked under Task 5 when epic starts.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T14:30:00.000Z"
+      },
+      {
+        "id": 7,
+        "title": "P2: Run QA task 4 checklist post-Data Status mock",
+        "description": "Execute manual regression from Task 4: Equipment Home → Data & Jobs with pre-filter; refresh `/tools/data-sync?equipment=`; confirm FEA Jobs table unchanged; grep `app/` and `components/` for stale user-facing \"Data & Sync\" / \"Sync & FEA Jobs\".",
+        "details": "Mark Task 4 done when complete. Fixtures live in `lib/data-jobs-mock.ts`; view in `components/views/data-sync.tsx`.",
+        "testStrategy": "Grep returns no stale strings in app/components; manual pass documented in PR.",
+        "status": "done",
+        "dependencies": [
+          4
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-02T14:30:00.000Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-02T14:30:00.000Z",
+      "taskCount": 7,
+      "completedCount": 6,
+      "tags": [
+        "data-jobs-may2026"
+      ],
+      "created": "2026-05-02T10:06:50.229Z",
+      "description": "Tasks for data-jobs-may2026 context",
+      "updated": "2026-05-02T14:30:00.000Z"
     }
   }
 }

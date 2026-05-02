@@ -110,7 +110,7 @@ spm-one/
 │   │   ├── site-overview.tsx     # Screen 1 — Site level
 │   │   ├── plant-overview.tsx    # Screen 2 — Plant level
 │   │   ├── equipment-dashboard.tsx # Screens 3–6 — Equipment level
-│   │   └── data-sync.tsx         # Screen 9 — Data & Sync
+│   │   └── data-sync.tsx         # Screen 9 — Data & Jobs (Data Status + FEA Jobs)
 │   └── ui/                # shadcn/ui base components
 ├── lib/
 │   ├── store.ts           # Zustand global state (navigation, view mode, modals)

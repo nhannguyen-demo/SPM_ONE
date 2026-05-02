@@ -1,6 +1,6 @@
 // FEATURE 1 - Global Floating AI Spark Button System
 // Renders on: Site Overview, Plant Overview, Equipment Home
-// Does NOT render on: Data & Sync screen, any modal
+// Does NOT render on: Data & Jobs screen, any modal
 // To remove this feature: delete this file and remove <AISparkButton /> from app/page.tsx
 // Note: When viewMode === "edit", this component renders AIEditingSuggestionButton (FEATURE 7) instead.
 
