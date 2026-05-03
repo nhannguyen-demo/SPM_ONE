@@ -2,28 +2,23 @@
 
 import { useSession } from "next-auth/react"
 import { useMemo } from "react"
-import {
-  getCurrentUserId,
-  ORG_USERS,
-  WORKSPACE_DEFAULT_USER_ID,
-} from "@/lib/workspace/identity"
+import { useWorkspaceStore } from "@/lib/workspace/store"
+import { getCurrentUserId } from "@/lib/workspace/identity"
 
 /**
  * Workspace-scoped “current user” id for React components.
  *
- * Production: uses the Auth.js session user id when it matches a seeded org user.
- * Development: falls back to `getCurrentUserId()` (localStorage mock selection).
+ * Always mirrors `getCurrentUserId()` (session mirror in production, optional
+ * localStorage in development) and re-renders when `bumpWorkspaceIdentityRevision`
+ * runs after Auth.js session sync — same source as Zustand notification actions.
  */
 export function useWorkspaceCurrentUserId(): string {
+  const revision = useWorkspaceStore((s) => s.workspaceIdentityRevision)
   const { data: session, status } = useSession()
   return useMemo(() => {
-    if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
-      const id = session?.user?.id
-      if (status === "authenticated" && id && ORG_USERS.some((u) => u.id === id)) {
-        return id
-      }
-      return WORKSPACE_DEFAULT_USER_ID
-    }
+    void session?.user?.id
+    void status
+    void revision
     return getCurrentUserId()
-  }, [session?.user?.id, status])
+  }, [session?.user?.id, status, revision])
 }

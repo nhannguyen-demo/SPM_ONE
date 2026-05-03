@@ -6,6 +6,7 @@ import type { ActiveModule } from "@/lib/store"
 import { FolderTree } from "@/components/workspace/folder-tree"
 import { sites } from "@/lib/data"
 import { MODULES, NAV_SEARCH_PLACEHOLDERS, navMatches } from "@/components/sidebar/config"
+import { SETTINGS_MOCK_ROWS } from "@/lib/settings-mock"
 import { useWorkspaceStore, selectMyUnreadCount } from "@/lib/workspace/store"
 import {
   fallbackMainRouteForModule,
@@ -25,6 +26,7 @@ import {
   MessageSquare,
   Bell,
   BarChart3,
+  Siren,
   Settings,
   Search,
   X,
@@ -33,6 +35,11 @@ import {
   LayoutGrid,
   Inbox,
   Clock,
+  Palette,
+  Globe,
+  SlidersHorizontal,
+  Shield,
+  Info,
   Trash2,
   LogOut,
 } from "lucide-react"
@@ -190,6 +197,20 @@ function ModuleRail() {
     }
 
     if (isWorkspaceOrCommsPath(pathname)) {
+      router.push(fallbackMainRouteForModule(key, currentPath))
+      setActiveModule(key)
+      return
+    }
+
+    if (key === "settings") {
+      if (pathname !== mainRoutes.settings()) {
+        router.push(mainRoutes.settings())
+      }
+      setActiveModule(key)
+      return
+    }
+
+    if (pathname === mainRoutes.settings() || pathname === "/tools/alert-setting") {
       router.push(fallbackMainRouteForModule(key, currentPath))
       setActiveModule(key)
       return
@@ -594,6 +615,12 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
     setViewMode("view")
   }
 
+  const handleAlertSettingClick = () => {
+    router.push(mainRoutes.alertSetting())
+    setCurrentView("alertSettingTool")
+    setViewMode("view")
+  }
+
   const rows = [
     {
       key: "sync",
@@ -624,6 +651,13 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
       icon: <BarChart3 className="w-4 h-4 flex-shrink-0" />,
       onClick: handleWhatIfClick,
       active: pathname === "/tools/what-if" && currentView === "whatIfTool",
+    },
+    {
+      key: "alert-setting",
+      label: "Alert Setting",
+      icon: <Siren className="w-4 h-4 flex-shrink-0" />,
+      onClick: handleAlertSettingClick,
+      active: pathname === "/tools/alert-setting" && currentView === "alertSettingTool",
     },
   ].filter((row) => navMatches(row.label, q))
 
@@ -710,18 +744,43 @@ function CommsPanel({ searchQuery }: { searchQuery: string }) {
    ═══════════════════════════════════════════════════════════════════════════ */
 function SettingsPanel({ searchQuery }: { searchQuery: string }) {
   const q = searchQuery
-  const items = [
-    { key: "gen", label: "General", icon: <Settings className="w-4 h-4 flex-shrink-0" /> },
-    { key: "int", label: "Integrations", icon: <Database className="w-4 h-4 flex-shrink-0" /> },
-    { key: "notif", label: "Alert Settings", icon: <Bell className="w-4 h-4 flex-shrink-0" /> },
-  ].filter((row) => navMatches(row.label, q))
+  const iconFor = (key: (typeof SETTINGS_MOCK_ROWS)[number]["key"]) => {
+    switch (key) {
+      case "appearance":
+        return <Palette className="w-4 h-4 flex-shrink-0" />
+      case "locale":
+        return <Globe className="w-4 h-4 flex-shrink-0" />
+      case "workspace":
+        return <LayoutGrid className="w-4 h-4 flex-shrink-0" />
+      case "tools":
+        return <SlidersHorizontal className="w-4 h-4 flex-shrink-0" />
+      case "privacy":
+        return <Shield className="w-4 h-4 flex-shrink-0" />
+      case "about":
+        return <Info className="w-4 h-4 flex-shrink-0" />
+    }
+  }
+
+  const items = SETTINGS_MOCK_ROWS.filter(
+    (row) => navMatches(row.label, q) || navMatches(row.hint, q)
+  )
 
   return (
-    <div className="px-2 flex flex-col gap-0.5">
+    <div className="px-2 flex flex-col gap-1">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-sidebar-muted px-2 pt-1 pb-2">
+        Application
+      </p>
       {items.length === 0 ? (
         <p className="text-xs text-sidebar-muted px-1 py-2">No items match.</p>
       ) : (
-        items.map((row) => <PanelNavItem key={row.key} icon={row.icon} label={row.label} />)
+        items.map((row) => (
+          <PanelNavItem
+            key={row.key}
+            icon={iconFor(row.key)}
+            label={row.label}
+            title={`${row.label} — ${row.hint}`}
+          />
+        ))
       )}
     </div>
   )
@@ -736,11 +795,14 @@ interface PanelNavItemProps {
   onClick?: () => void
   active?: boolean
   children?: React.ReactNode
+  title?: string
 }
 
-function PanelNavItem({ icon, label, onClick, active, children }: PanelNavItemProps) {
+function PanelNavItem({ icon, label, onClick, active, children, title }: PanelNavItemProps) {
   return (
     <button
+      type="button"
+      title={title}
       onClick={onClick}
       className={cn(
         "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",

@@ -204,6 +204,7 @@ export async function seedWorkspaceFromMock(): Promise<void> {
         title: n.title,
         body: n.body,
         readAt: n.readAt ? dt(n.readAt) : null,
+        archivedAt: n.archivedAt ? dt(n.archivedAt) : null,
         createdAt: dt(n.createdAt),
         updatedAt: dt(n.updatedAt),
       },
@@ -216,6 +217,7 @@ export async function seedWorkspaceFromMock(): Promise<void> {
         title: n.title,
         body: n.body,
         readAt: n.readAt ? dt(n.readAt) : null,
+        archivedAt: n.archivedAt ? dt(n.archivedAt) : null,
         updatedAt: dt(n.updatedAt),
       },
     })

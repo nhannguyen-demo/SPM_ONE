@@ -1,10 +1,11 @@
 import { sites } from "@/lib/data"
 import type { NavigationPath } from "@/lib/store"
 
-/** True for URL-backed main app shell routes (Home, Assets, Tools). */
+/** True for URL-backed main app shell routes (Home, Assets, Tools, Settings). */
 export function isMainShellPath(pathname: string): boolean {
   return (
     pathname === "/home" ||
+    pathname === "/settings" ||
     pathname.startsWith("/assets/") ||
     pathname.startsWith("/tools/")
   )
@@ -64,6 +65,11 @@ export const mainRoutes = {
     const q = equipmentId ? `?equipment=${encodeURIComponent(equipmentId)}` : ""
     return `/tools/documents${q}` as const
   },
+  settings: () => "/settings" as const,
+  alertSetting: (equipmentId?: string | null) => {
+    const q = equipmentId ? `?equipment=${encodeURIComponent(equipmentId)}` : ""
+    return `/tools/alert-setting${q}` as const
+  },
 }
 
 export type MainRouteApply =
@@ -74,6 +80,8 @@ export type MainRouteApply =
   | { view: "data-sync"; equipmentId: string | null }
   | { view: "whatIfTool" }
   | { view: "documents-tool"; equipmentId: string | null }
+  | { view: "settings" }
+  | { view: "alertSettingTool"; equipmentId: string | null }
 
 /** Parse pathname + search into a store sync instruction. Returns null if not a main route. */
 export function parseMainShellRoute(pathname: string, searchParams: URLSearchParams): MainRouteApply | null {
@@ -117,6 +125,12 @@ export function parseMainShellRoute(pathname: string, searchParams: URLSearchPar
     return { view: "documents-tool", equipmentId: searchParams.get("equipment") }
   }
 
+  if (pathname === "/settings") return { view: "settings" }
+
+  if (pathname === "/tools/alert-setting") {
+    return { view: "alertSettingTool", equipmentId: searchParams.get("equipment") }
+  }
+
   return null
 }
 
@@ -144,7 +158,7 @@ export function fallbackMainRouteForModule(
     case "comms":
       return mainRoutes.home()
     case "settings":
-      return mainRoutes.home()
+      return mainRoutes.settings()
     default:
       return mainRoutes.home()
   }

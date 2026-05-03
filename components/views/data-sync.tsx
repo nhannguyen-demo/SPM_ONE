@@ -298,7 +298,7 @@ function CokerDataStatusPanel() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `coker-01-output-mock.${ext}`
+    a.download = `coker-01-output-sample.${ext}`
     a.click()
     URL.revokeObjectURL(url)
     setExportOpen(false)
@@ -441,7 +441,7 @@ function CokerDataStatusPanel() {
           <SheetHeader className="border-b border-border pb-4 text-left">
             <SheetTitle className="text-lg">Transfer log</SheetTitle>
             <SheetDescription className="text-xs leading-relaxed">
-              Mock audit trail for {ASSET_COKER}. Nothing is persisted.
+              Sample transfer log for {ASSET_COKER}. Entries are not saved.
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-1 py-4">
@@ -471,7 +471,7 @@ function CokerDataStatusPanel() {
           <DialogHeader>
             <DialogTitle>Database sources</DialogTitle>
             <DialogDescription className="text-xs leading-relaxed">
-              Mock configuration. Values are discarded on close — no API calls.
+              Preview only. Values are discarded when you close this dialog.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">
@@ -493,7 +493,7 @@ function CokerDataStatusPanel() {
               Cancel
             </Button>
             <Button type="button" onClick={() => setConfigOpen(false)}>
-              Save (mock)
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -592,8 +592,8 @@ export function DataSyncView() {
             <div className="max-w-2xl space-y-2">
               <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Data &amp; Jobs</h1>
               <p className="text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-                Monitor client-side data contracts and downstream FEA work. Data Status is a read-only mock; FEA Jobs
-                lists historical job rows from demo data.
+                Monitor client-side data contracts and downstream FEA work. Data Status is read-only here; FEA Jobs lists
+                historical job rows from demo data.
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2 rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
@@ -666,7 +666,7 @@ export function DataSyncView() {
             {showNonPrimaryNotice ? (
               <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-14 text-center">
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Data Status mock is available for{" "}
+                  Data Status is available for{" "}
                   <span className="font-medium text-foreground">{DATA_JOBS_PRIMARY_ASSETS.join(", ")}</span>. Choose one of
                   those assets or <span className="font-medium text-foreground">All equipment</span>.
                 </p>

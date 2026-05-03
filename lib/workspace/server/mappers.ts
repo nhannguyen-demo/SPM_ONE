@@ -5,6 +5,7 @@ import type {
   DashboardContextState,
   DashboardShare,
   Notification,
+  NotificationCategory,
   PermissionRequest,
   ShareLink,
   WorkspaceDashboard,
@@ -179,19 +180,16 @@ export function mapPermissionRequest(row: {
 export function mapNotification(row: {
   id: string
   userId: string
-  category:
-    | "dashboard_shared_with_you"
-    | "dashboard_first_view"
-    | "permission_request_received"
-    | "permission_request_resolved"
-    | "edit_lock_blocked"
+  category: NotificationCategory
   dashboardId: string | null
   relatedShareId: string | null
   relatedRequestId: string | null
   actorUserId: string | null
   title: string
   body: string | null
+  actionHref?: string | null
   readAt: Date | null
+  archivedAt?: Date | null
   createdAt: Date
   updatedAt: Date
 }): Notification {
@@ -205,6 +203,8 @@ export function mapNotification(row: {
     actorUserId: row.actorUserId,
     title: row.title,
     body: row.body,
+    actionHref: row.actionHref ?? null,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
     readAt: row.readAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

@@ -23,7 +23,7 @@ export const NAV_SEARCH_PLACEHOLDERS: Record<ActiveModule, string> = {
   workspace: "Search dashboards…",
   insights: "Search tools…",
   comms: "Search messages…",
-  settings: "Search settings…",
+settings: "Search app settings…",
 }
 
 export function navMatches(label: string, q: string) {

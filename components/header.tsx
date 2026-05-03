@@ -22,14 +22,17 @@ import { notificationHref } from "@/lib/workspace/notification-navigation"
 const EPHEMERAL_TTL_MS = 4_000
 const MAX_EPHEMERAL = 4
 
+/** Subscribe to the stable `notifications` array, then filter in useMemo — avoids a selector that returns a new array each read (breaks useSyncExternalStore / getServerSnapshot). */
 function useMyNotifications(): Notification[] {
   const me = useWorkspaceCurrentUserId()
   const raw = useWorkspaceStore((s) => s.notifications)
-  return useMemo(() => {
-    return raw
-      .filter((n) => n.userId === me)
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  }, [raw, me])
+  return useMemo(
+    () =>
+      raw
+        .filter((n) => n.userId === me && !n.archivedAt)
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    [raw, me]
+  )
 }
 
 export function Header() {
@@ -43,8 +46,14 @@ export function Header() {
 
   const [ephemeral, setEphemeral] = useState<Notification[]>([])
   const [notifyMenuOpen, setNotifyMenuOpen] = useState(false)
+  /** Unread badge / aria text differ after persisted store hydrates — defer until mounted to match SSR HTML. */
+  const [notifyUiMounted, setNotifyUiMounted] = useState(false)
+  useEffect(() => {
+    setNotifyUiMounted(true)
+  }, [])
 
   const recentForMenu = useMemo(() => myNotifications.slice(0, 8), [myNotifications])
+  const showUnreadChrome = notifyUiMounted && unread > 0
 
   useEffect(() => {
     return () => {
@@ -117,13 +126,13 @@ export function Header() {
                 type="button"
                 className="p-2 rounded-lg hover:bg-secondary transition-colors relative outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={
-                  unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
+                  showUnreadChrome ? `Notifications, ${unread} unread` : "Notifications"
                 }
                 aria-expanded={notifyMenuOpen}
                 aria-haspopup="menu"
               >
                 <Bell className="w-5 h-5 text-muted-foreground" />
-                {unread > 0 ? (
+                {showUnreadChrome ? (
                   <span
                     className={cn(
                       "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive",
@@ -148,21 +157,34 @@ export function Header() {
               ) : (
                 recentForMenu.map((n) => {
                   const href = notificationHref(n)
+                  const isOperational = n.category === "operational_alert"
                   return (
                     <DropdownMenuItem
                       key={n.id}
-                      className="flex flex-col items-start gap-0.5 cursor-pointer whitespace-normal"
+                      className={cn(
+                        "flex flex-col items-start gap-0.5 cursor-pointer whitespace-normal",
+                        isOperational && "border-l-4 border-l-amber-500 bg-amber-500/10 font-medium"
+                      )}
                       onSelect={(e) => {
                         e.preventDefault()
                         openFromNotification(n)
                       }}
                     >
-                      <span className="text-sm font-medium text-foreground">{n.title}</span>
+                      <span
+                        className={cn(
+                          "text-sm text-foreground",
+                          isOperational && "font-semibold tracking-tight"
+                        )}
+                      >
+                        {n.title}
+                      </span>
                       {n.body ? (
                         <span className="text-xs text-muted-foreground line-clamp-2">{n.body}</span>
                       ) : null}
                       {href ? (
-                        <span className="text-[10px] text-primary">Go to dashboard</span>
+                        <span className="text-[10px] text-primary">
+                          {isOperational ? "Open equipment home" : "Go to dashboard"}
+                        </span>
                       ) : (
                         <span className="text-[10px] text-muted-foreground">No linked destination</span>
                       )}
@@ -196,13 +218,15 @@ export function Header() {
             >
               {ephemeral.map((n) => {
                 const href = notificationHref(n)
+                const isOperational = n.category === "operational_alert"
                 return (
                   <div
                     key={n.id}
                     role="listitem"
                     className={cn(
                       "rounded-md border border-border bg-popover text-popover-foreground shadow-md",
-                      "p-2.5 text-sm animate-in fade-in zoom-in-95 duration-200"
+                      "p-2.5 text-sm animate-in fade-in zoom-in-95 duration-200",
+                      isOperational && "border-amber-500/80 ring-2 ring-amber-500/30 bg-amber-500/10"
                     )}
                   >
                     <div className="flex gap-2 items-start">
@@ -216,7 +240,12 @@ export function Header() {
                             : `Mark as read: ${n.title}`
                         }
                       >
-                        <div className="font-medium text-foreground leading-snug line-clamp-2">
+                        <div
+                          className={cn(
+                            "font-medium text-foreground leading-snug line-clamp-2",
+                            isOperational && "font-semibold"
+                          )}
+                        >
                           {n.title}
                         </div>
                         {n.body ? (

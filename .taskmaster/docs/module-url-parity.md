@@ -14,6 +14,8 @@ This document is the **path map** for Taskmaster tag `module-url-parity`. All li
 | `/tools/data-sync` | `DataSyncView` (**Data & Jobs** in UI; code name unchanged) | Optional query: `equipment` = equipment id (pre-filter) |
 | `/tools/what-if` | `WhatIfToolView` | — |
 | `/tools/documents` | `DocumentsView` | Optional query: `equipment` |
+| `/tools/alert-setting` | `AlertSettingView` (`components/views/alert-setting-view.tsx`) | Optional query: `equipment`; **Alert Setting** tool mock |
+| `/settings` | `SettingsAppView` | In-app application settings (**mock**; no persistence) |
 
 Existing URL-first modules (unchanged contract):
 

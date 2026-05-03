@@ -540,5 +540,175 @@
       "description": "Tasks for data-jobs-may2026 context",
       "updated": "2026-05-02T14:30:00.000Z"
     }
+  },
+  "settings-in-app-may2026": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "P0: Ontology + PROJECT — in-app Settings scope",
+        "description": "Align `domain.ontology.yaml` and `PROJECT.md` with Settings as **in-app application preferences** mock; retire General / Integrations / Alert Settings from Settings; add deferred `UserApplicationPreference`; Comms remains canonical for **Notifications**.",
+        "details": "Files: `domain.ontology.yaml`, `PROJECT.md`; optional `AUDIT.md` / grep for stale copy.",
+        "testStrategy": "Grep ontology and PROJECT for contradictory Settings vs Comms wording.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-03T12:00:00.000Z"
+      },
+      {
+        "id": 2,
+        "title": "P1: Sidebar SettingsPanel — SaaS-style mock rows",
+        "description": "Replace General / Integrations / Alert Settings with grouped entries: Appearance, Language & region, Workspace defaults, Tools & exports, Privacy, About. No routes, no Zustand mutations, no API.",
+        "details": "`components/sidebar.tsx` SettingsPanel; optional `PanelNavItem` `title` tooltips; `NAV_SEARCH_PLACEHOLDERS.settings` unchanged or refined.",
+        "testStrategy": "Open Settings rail panel; search filters; rows are inert.",
+        "status": "done",
+        "dependencies": [1],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-03T12:00:00.000Z"
+      },
+      {
+        "id": 3,
+        "title": "P2: Optional `/settings` App Router page (URL parity)",
+        "description": "If product wants a full-page Settings surface like typical SaaS, add `app/(main)/settings/page.tsx`, wire `MainRouteSync` + `parseMainShellRoute`, and `mainRoutes.settings()` — still mock-only until Task 4.",
+        "details": "Update `.taskmaster/docs/module-url-parity.md` when route exists. `fallbackMainRouteForModule('settings')` should return `/settings` instead of `/home`.",
+        "testStrategy": "Signed-in user can open `/settings` and see mirrored mock sections.",
+        "status": "done",
+        "dependencies": [2],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-05-03T18:00:00.000Z"
+      },
+      {
+        "id": 4,
+        "title": "Deferred: Prisma `UserApplicationPreference` + user preferences API",
+        "description": "Persist theme, locale, timeZone, workspaceDefaultLifecycle, analyticsOptIn per `User` when Settings leaves mock-only.",
+        "details": "Ontology entity `UserApplicationPreference`; zod validation; Auth.js session binding; optional `next-themes` integration.",
+        "testStrategy": "PATCH round-trip; reload retains preferences.",
+        "status": "deferred",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-03T18:00:00.000Z",
+      "taskCount": 4,
+      "completedCount": 3,
+      "tags": ["settings-in-app-may2026"],
+      "created": "2026-05-03T12:00:00.000Z",
+      "description": "In-app Settings module (mock → persist)",
+      "updated": "2026-05-03T18:00:00.000Z"
+    }
+  },
+  "alert-setting-may2026": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "P0: Domain + product docs — Alert Setting scope",
+        "description": "Ontology `Tool.alert_setting`, entities `EquipmentAlertRule` / `EquipmentAlertAssignee` / `EquipmentAlertDeleteRequest`, `Notification` extensions; PROJECT + `module-url-parity.md` + `.taskmaster/docs/alert-setting-tool-layers.md`.",
+        "details": "Files: `domain.ontology.yaml`, `PROJECT.md`, `.taskmaster/docs/module-url-parity.md`, `.taskmaster/docs/alert-setting-tool-layers.md`. No app code required for this task.",
+        "testStrategy": "Grep docs for contradiction with Settings vs Tools vs Comms; Tool.key invariant lists `alert_setting`.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-03T20:00:00.000Z"
+      },
+      {
+        "id": 2,
+        "title": "P1: Shared Coker parameter catalog for Alert Setting",
+        "description": "Export grouped inputs (Temperature, Pressure, Coke Level, Steam Rate, Flow Rate, Laser) + outputs from `lib/data-jobs-mock.ts` (or new `lib/alert-setting-mock.ts`) with `equipment-a` vs coming-soon helpers.",
+        "details": "Align tag names with `cokerSensorChannels` + `cokerOutputDescriptors`; document mapping in layers doc if split files.",
+        "testStrategy": "Unit-less: TypeScript compiles; Data & Jobs and Alert Setting import same constants for Coker 01.",
+        "status": "done",
+        "dependencies": [1],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-04T12:00:00.000Z"
+      },
+      {
+        "id": 3,
+        "title": "P2: URL + shell — `/tools/alert-setting`",
+        "description": "`mainRoutes.alertSetting()`, `parseMainShellRoute`, `MainRouteSync`, Zustand `currentView`, `isMainShellPath`, `app/(main)/tools/alert-setting/page.tsx` stub.",
+        "details": "`lib/main-routes.ts`, `lib/store.ts`, `components/main-route-sync.tsx`, new page; optional `fallbackMainRouteForModule` if insights fallback should open alert tool (product choice — default keep `whatIf` or document).",
+        "testStrategy": "Reload `/tools/alert-setting?equipment=equipment-a` hydrates store; back/forward works.",
+        "status": "done",
+        "dependencies": [2],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-04T12:00:00.000Z"
+      },
+      {
+        "id": 4,
+        "title": "P3: Navigation — Insights rail + Equipment Home entry",
+        "description": "Add **Alert Setting** row to `InsightsPanel`; optional fifth Equipment Home tool tile; `router.push` + `preFilterEquipmentId` parity.",
+        "details": "`components/sidebar.tsx`, `components/views/equipment-home.tsx`; search placeholder / nav copy if needed.",
+        "testStrategy": "From Equipment Home Coker → tool opens with filter; HCU/SMR tile may route with coming-soon gate inside tool.",
+        "status": "done",
+        "dependencies": [3],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-04T12:00:00.000Z"
+      },
+      {
+        "id": 5,
+        "title": "P4: Mock tool UX — rules, assignees, delete flow, history",
+        "description": "Multiple rules per user/equipment mock; assignees with comment vs co-edit + `mayInitiateDeleteRequest`; owner delete; assignee delete-request accept/reject; soft-delete + **Deleted alert history** with recover + edit.",
+        "details": "Prefer dedicated Zustand slice under `lib/` or colocated store module; no Prisma. Respect org user list for assignee picker mock.",
+        "testStrategy": "Create two rules, assign two users, delete one, recover from history, edit recovered rule (mock).",
+        "status": "done",
+        "dependencies": [4],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-04T12:00:00.000Z"
+      },
+      {
+        "id": 6,
+        "title": "P5: Condition builder + schedules + Coker-only gate",
+        "description": "Equipment picker; multi-parameter select; DAG for AND/OR/NOT; per-parameter predicates (thresholds, bands, OR-outside-band, slope templates + extensibility); schedule modes one_shot / recurring / date_window mock; HCU/SMR **coming soon** panel.",
+        "details": "Client-side validation for contradictory math; no live series evaluation. Reference ontology `logicalExpression` comment for predicate taxonomy.",
+        "testStrategy": "Save rule with two parameters and mixed AND/OR; switch equipment to HCU → coming soon copy.",
+        "status": "done",
+        "dependencies": [5],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-04T12:00:00.000Z"
+      },
+      {
+        "id": 7,
+        "title": "P6: Demo — Test button + operational_alert prominence",
+        "description": "Tiny **Test** per rule injects `operational_alert` for each assignee via workspace store; `actionHref` → Coker Equipment Home; bell + `/comms/alerts` render bolder / higher-attention than other categories.",
+        "details": "`lib/workspace/store.ts` notification factory paths; `app/comms/alerts/page.tsx`, header bell dropdown components; reuse `notificationHref`.",
+        "testStrategy": "Click Test → unread increments; row opens Equipment Home for Coker; visual regression by inspection.",
+        "status": "done",
+        "dependencies": [6],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-04T12:00:00.000Z"
+      },
+      {
+        "id": 8,
+        "title": "Deferred: Prisma + APIs + evaluation engine",
+        "description": "Persist `EquipmentAlertRule*`, wire real time-series evaluation, remove mock-only Test path behind feature flag.",
+        "details": "Migrations, `/api/equipment-alerts/*`, authz by equipment access, background worker for crossings — post mock sign-off.",
+        "testStrategy": "Integration tests for firing + notification dedupe by `equipmentAlertRuleId`.",
+        "status": "deferred",
+        "dependencies": [7],
+        "priority": "low",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-04T12:00:00.000Z",
+      "taskCount": 8,
+      "completedCount": 7,
+      "tags": ["alert-setting-may2026"],
+      "created": "2026-05-03T20:00:00.000Z",
+      "description": "Tools module — Alert Setting (mock → persist)",
+      "updated": "2026-05-04T12:00:00.000Z"
+    }
   }
 }

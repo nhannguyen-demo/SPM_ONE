@@ -2,7 +2,7 @@
 
 import { SessionProvider } from "next-auth/react"
 import { useSession } from "next-auth/react"
-import { useEffect, type ReactNode } from "react"
+import { useLayoutEffect, type ReactNode } from "react"
 import { WorkspaceServerSync } from "@/components/providers/workspace-server-sync"
 import {
   clearCurrentUserId,
@@ -19,7 +19,7 @@ import { bumpWorkspaceIdentityRevision } from "@/lib/workspace/store"
 function AuthIdentitySync() {
   const { data: session, status } = useSession()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (status === "unauthenticated") {
       clearCurrentUserId()
       bumpWorkspaceIdentityRevision()

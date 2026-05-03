@@ -10,7 +10,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { AISparkButton } from "@/components/ai/feature1-spark-button"
 
 /**
- * Main app chrome (legacy `/` shell) plus URL↔store sync for `/home`, `/assets/*`, `/tools/*`.
+ * Main app chrome (legacy `/` shell) plus URL↔store sync for `/home`, `/assets/*`, `/tools/*`, `/settings`.
  */
 export function MainShellWithSync({ children }: { children: ReactNode }) {
   return (

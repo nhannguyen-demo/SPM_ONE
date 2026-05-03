@@ -176,6 +176,7 @@ export type NotificationCategory =
   | "permission_request_received"
   | "permission_request_resolved"
   | "edit_lock_blocked"
+  | "operational_alert"
 
 export interface Notification {
   id: string
@@ -189,6 +190,10 @@ export interface Notification {
   actorUserId: string | null
   title: string
   body: string | null
+  /** In-app navigation target when set (e.g. Equipment Home for operational_alert). */
+  actionHref?: string | null
+  /** When set, hidden from default inbox until restored (persisted when using the workspace API). */
+  archivedAt?: string | null
   /** Null = unread. */
   readAt: string | null
   createdAt: string

@@ -3,7 +3,7 @@
  *
  * Holds folders, dashboards, shares, links, comments, permission requests,
  * notifications, and Workspace UI state (filters/sort/search/recent/selection).
- * Persisted to localStorage for UI preferences and mock-only slices; core
+ * Persisted to localStorage for UI preferences; core
  * workspace collections hydrate from GET /api/workspace/bootstrap when signed in
  * (Tasks 6–7) and are not the persisted source of truth.
  */
@@ -173,12 +173,17 @@ export interface WorkspaceState {
 
   /* ── Actions: notifications ─────────────────────────────────────────────── */
   pushNotification: (
-    notif: Omit<Notification, "id" | "createdAt" | "updatedAt" | "readAt"> & {
+    notif: Omit<Notification, "id" | "createdAt" | "updatedAt" | "readAt" | "archivedAt"> & {
       readAt?: string | null
+      archivedAt?: string | null
     }
   ) => Notification
   markNotificationRead: (notificationId: string) => Promise<void>
   markAllNotificationsRead: () => Promise<void>
+  /** Archive, restore, or delete for the signed-in recipient. Updates the UI immediately; syncs to the API when workspace remote mode is on (404 = notification exists only in this session). */
+  archiveNotification: (notificationId: string) => Promise<void>
+  restoreNotification: (notificationId: string) => Promise<void>
+  deleteNotification: (notificationId: string) => Promise<void>
 
   /* ── Actions: filters & sort ────────────────────────────────────────────── */
   setSearchQuery: (q: string) => void
@@ -228,6 +233,9 @@ const initialState: Omit<
   | "pushNotification"
   | "markNotificationRead"
   | "markAllNotificationsRead"
+  | "archiveNotification"
+  | "restoreNotification"
+  | "deleteNotification"
   | "setSearchQuery"
   | "setFilter"
   | "clearFilters"
@@ -1143,6 +1151,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           ...notif,
           id: genId("notif"),
           readAt: notif.readAt ?? null,
+          archivedAt: notif.archivedAt ?? null,
           createdAt: nowIso(),
           updatedAt: nowIso(),
         }
@@ -1179,14 +1188,75 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const me = getCurrentUserId()
         set((s) => ({
           notifications: s.notifications.map((n) =>
-            n.userId === me && !n.readAt
+            n.userId === me && !n.readAt && !n.archivedAt
               ? { ...n, readAt: nowIso(), updatedAt: nowIso() }
               : n
           ),
         }))
       },
 
-      /* ── Filters / sort / search ───────────────────────────────────────── */
+      archiveNotification: async (notificationId) => {
+        const t = nowIso()
+        const before = get().notifications
+        set((s) => ({
+          notifications: s.notifications.map((n) =>
+            n.id === notificationId ? { ...n, archivedAt: t, updatedAt: t } : n
+          ),
+        }))
+        if (!getWorkspaceRemoteMode()) return
+        try {
+          const res = await workspaceFetch(workspaceApiPaths.notification(notificationId), {
+            method: "PATCH",
+            body: JSON.stringify({ archived: true }),
+          })
+          if (res.status === 404) return
+          if (!res.ok) throw new Error(await res.text())
+          await parseJsonOk<Notification>(res)
+          await refreshWorkspaceFromServer()
+        } catch {
+          set({ notifications: before })
+        }
+      },
+      restoreNotification: async (notificationId) => {
+        const snapshot = get().notifications
+        const t = nowIso()
+        set((s) => ({
+          notifications: s.notifications.map((n) =>
+            n.id === notificationId ? { ...n, archivedAt: null, updatedAt: t } : n
+          ),
+        }))
+        if (!getWorkspaceRemoteMode()) return
+        try {
+          const res = await workspaceFetch(workspaceApiPaths.notification(notificationId), {
+            method: "PATCH",
+            body: JSON.stringify({ archived: false }),
+          })
+          if (res.status === 404) return
+          if (!res.ok) throw new Error(await res.text())
+          await parseJsonOk<Notification>(res)
+          await refreshWorkspaceFromServer()
+        } catch {
+          set({ notifications: snapshot })
+        }
+      },
+      deleteNotification: async (notificationId) => {
+        const before = get().notifications
+        set((s) => ({
+          notifications: s.notifications.filter((n) => n.id !== notificationId),
+        }))
+        if (!getWorkspaceRemoteMode()) return
+        try {
+          const res = await workspaceFetch(workspaceApiPaths.notification(notificationId), {
+            method: "DELETE",
+          })
+          if (res.status === 404) return
+          if (!res.ok) throw new Error(await res.text())
+          await parseJsonOk<{ deleted: boolean }>(res)
+          await refreshWorkspaceFromServer()
+        } catch {
+          set({ notifications: before })
+        }
+      },
       setSearchQuery: (q) => set({ searchQuery: q }),
       setFilter: (key, value) =>
         set((s) => ({ filters: { ...s.filters, [key]: value } })),
@@ -1276,18 +1346,22 @@ export function selectMyFolders(s: WorkspaceState): WorkspaceFolder[] {
   return s.folders.filter((f) => f.ownerUserId === me)
 }
 
+/** Inbox-only (excludes `archivedAt`). Do not pass directly to `useWorkspaceStore()` — returns a new array each call and breaks useSyncExternalStore; subscribe to `s.notifications` and filter in `useMemo` instead. */
 export function selectMyNotifications(s: WorkspaceState): Notification[] {
   void s.workspaceIdentityRevision
   const me = getCurrentUserId()
   return s.notifications
-    .filter((n) => n.userId === me)
+    .filter((n) => n.userId === me && !n.archivedAt)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 }
 
 export function selectMyUnreadCount(s: WorkspaceState): number {
   void s.workspaceIdentityRevision
   const me = getCurrentUserId()
-  return s.notifications.reduce((n, x) => (x.userId === me && !x.readAt ? n + 1 : n), 0)
+  return s.notifications.reduce(
+    (n, x) => (x.userId === me && !x.readAt && !x.archivedAt ? n + 1 : n),
+    0
+  )
 }
 
 /**
@@ -1334,6 +1408,7 @@ export const NOTIFICATION_LABEL: Record<NotificationCategory, string> = {
   permission_request_received: "Access request",
   permission_request_resolved: "Request resolved",
   edit_lock_blocked: "Editor in use",
+  operational_alert: "Operational alert",
 }
 
 /** Utility: known org user ids — exported for consumers that need the directory. */
