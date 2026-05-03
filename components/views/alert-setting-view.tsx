@@ -49,6 +49,19 @@ import {
 } from "@/lib/alert-setting-store"
 import { ORG_USERS, findOrgUserById } from "@/lib/workspace/identity"
 import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import {
+  ToolPageShell,
+  ToolPageHeader,
+  ToolsModuleHomeCrumb,
+  ToolPageRouteChip,
+} from "@/components/tools/tool-page-layout"
 
 function equipmentDirectory() {
   const rows: { id: string; label: string }[] = []
@@ -245,26 +258,34 @@ export function AlertSettingView() {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto bg-background">
-      <div className="border-b border-border bg-card/40 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-              <Siren className="h-6 w-6 text-amber-500" aria-hidden />
-              Alert Setting
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Equipment alerts for Coker 01 — assign people, compose conditions, schedules, and review
-              history. Saving with assignees publishes as <strong>active</strong> so they see the rule;
-              owner-only rules stay <strong>draft</strong> until you activate them in edit. Threshold
-              crossing is not evaluated here; <strong>Test</strong> sends a preview notification to you and
-              all assignees.
-            </p>
-          </div>
-          <div className="flex flex-col gap-1.5 min-w-[220px]">
+    <ToolPageShell>
+      <ToolPageHeader
+        title="Alert Setting"
+        titleAdornment={<Siren className="h-8 w-8 text-amber-500" aria-hidden />}
+        description={
+          <>
+            Equipment alerts for Coker 01 — assign people, compose conditions, schedules, and review history. Saving
+            with assignees publishes as <strong>active</strong> so they see the rule; owner-only rules stay{" "}
+            <strong>draft</strong> until you activate them in edit. Threshold crossing is not evaluated here;{" "}
+            <strong>Test</strong> sends a preview notification to you and all assignees.
+          </>
+        }
+        breadcrumb={
+          <Breadcrumb>
+            <BreadcrumbList className="text-xs">
+              <ToolsModuleHomeCrumb />
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Alert Setting</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        }
+        trailing={
+          <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:max-w-xs sm:items-end">
             <Label htmlFor="eq-filter">Equipment</Label>
             <Select value={equipmentId} onValueChange={setEquipmentId}>
-              <SelectTrigger id="eq-filter">
+              <SelectTrigger id="eq-filter" className="w-full min-w-0 sm:min-w-[16rem]">
                 <SelectValue placeholder="Select equipment" />
               </SelectTrigger>
               <SelectContent>
@@ -275,11 +296,12 @@ export function AlertSettingView() {
                 ))}
               </SelectContent>
             </Select>
+            <ToolPageRouteChip path="/tools/alert-setting" />
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+      <div className="space-y-6">
         {comingSoon && (
           <Card className="border-dashed">
             <CardHeader>
@@ -665,7 +687,7 @@ export function AlertSettingView() {
           </Tabs>
         )}
       </div>
-    </div>
+    </ToolPageShell>
   )
 }
 

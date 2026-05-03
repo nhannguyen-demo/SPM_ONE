@@ -7,19 +7,29 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
 import { sites, userDocuments } from "@/lib/data"
 import type { UserDocument, DocumentCategory } from "@/lib/data"
 import { buildAssetOptions, filterDocuments } from "@/lib/documents"
-import { mainRoutes } from "@/lib/main-routes"
 import { cn } from "@/lib/utils"
 import {
   File, FileText, FileSpreadsheet, Link,
   Upload, Users, BookOpen, Search, SlidersHorizontal,
-  Share2, Download, X, Check, ChevronRight,
-  MoreHorizontal, ExternalLink, Info, Tag,
+  Share2, Download, X, Check,
+  Tag,
 } from "lucide-react"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import {
+  ToolPageShell,
+  ToolPageHeader,
+  ToolsModuleHomeCrumb,
+} from "@/components/tools/tool-page-layout"
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SEED — populate savedDocuments once from static data.ts list
@@ -357,9 +367,8 @@ function DocumentRow({
 
 export function DocumentsView() {
   useSeedDocuments()
-  const router = useRouter()
 
-  const { savedDocuments, setCurrentView, setViewMode } = useAppStore()
+  const { savedDocuments } = useAppStore()
   const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | "All">("All")
   const [typeFilter, setTypeFilter] = useState<string>("All")
   const [assetFilter, setAssetFilter] = useState<string>("All")
@@ -378,47 +387,43 @@ export function DocumentsView() {
   const whatIfCount = savedDocuments.filter((d) => isWhatIfDocument(d.name)).length
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-card flex-shrink-0 text-xs text-muted-foreground">
-        <button
-          type="button"
-          onClick={() => {
-            router.push(mainRoutes.dataSync())
-            setCurrentView("data-sync")
-            setViewMode("view")
-          }}
-          className="hover:text-foreground transition-colors"
-        >
-          Tools
-        </button>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-foreground font-medium">Documents</span>
-      </div>
-
-      {/* Header + stats */}
-      <div className="px-6 pt-6 pb-4 border-b border-border bg-card flex-shrink-0">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Documents</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {savedDocuments.length} documents · {whatIfCount} What-If report{whatIfCount !== 1 ? "s" : ""}
-            </p>
-          </div>
-          {/* Layout toggle */}
-          <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+    <ToolPageShell className="overflow-hidden">
+      <ToolPageHeader
+        title="Documents"
+        description={`${savedDocuments.length} documents · ${whatIfCount} What-If report${whatIfCount !== 1 ? "s" : ""}`}
+        breadcrumb={
+          <Breadcrumb>
+            <BreadcrumbList className="text-xs">
+              <ToolsModuleHomeCrumb />
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Documents</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        }
+        trailing={
+          <div className="flex items-center gap-1 rounded-lg border border-border/80 bg-muted/30 p-0.5">
             {(["grid", "list"] as const).map((l) => (
-              <button key={l} onClick={() => setViewLayout(l)}
-                className={cn("px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors",
-                  viewLayout === l ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+              <button
+                key={l}
+                type="button"
+                onClick={() => setViewLayout(l)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                  viewLayout === l
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
                 {l === "grid" ? "Grid" : "List"}
               </button>
             ))}
           </div>
-        </div>
+        }
+      />
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 mt-4">
+        <div className="mb-6 shrink-0 flex flex-wrap items-center gap-3 rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm backdrop-blur-sm sm:px-5">
           {/* Category tabs */}
           <div className="flex items-center bg-secondary rounded-lg p-0.5 gap-0.5">
             {(["All", "Uploaded", "Shared"] as const).map((cat) => (
@@ -457,13 +462,12 @@ export function DocumentsView() {
           <div className="relative ml-auto">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             <input type="text" placeholder="Search documents…" value={docSearch} onChange={(e) => setDocSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 bg-secondary border border-border rounded-lg text-xs focus:outline-none focus:border-primary/50 w-48" />
+              className="w-48 rounded-lg border border-border bg-secondary py-1.5 pl-8 pr-3 text-xs focus:border-primary/50 focus:outline-none"
+            />
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
             <FileText className="w-10 h-10 opacity-40" />
@@ -474,7 +478,7 @@ export function DocumentsView() {
             </button>
           </div>
         ) : viewLayout === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-6">
+          <div className="grid grid-cols-2 gap-4 py-2 pb-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {filtered.map((doc) => (
               <DocumentCard key={doc.id} doc={doc} onShare={setShareTarget} />
             ))}
@@ -501,6 +505,6 @@ export function DocumentsView() {
 
       {/* Share modal */}
       {shareTarget && <ShareModal doc={shareTarget} onClose={() => setShareTarget(null)} />}
-    </div>
+    </ToolPageShell>
   )
 }

@@ -89,6 +89,9 @@
 # **active** when the rule has assignees (so they appear on assignees' Alert Setting immediately), otherwise **draft**.
 # **Coker 01** (`equipment-a`) has full UX; other primaries show **coming soon** until fixtures align with Data & Jobs.
 # Firings integrate with **Comms → Notifications** via `operational_alert`; deep-link to Equipment Home.
+# Updated May 3 2026 (rev 2): **Tools module** primary tool pages share one **page chrome** (breadcrumb,
+# title, description, optional route chip, gradient shell) in `components/tools/tool-page-layout.tsx` for
+# visual consistency; URLs, behavior, and store sync rules are unchanged.
 
 entities:
   User:
@@ -1020,6 +1023,7 @@ business_rules:
   - "The old rule requiring selected dashboards for a run is removed."
   - "What-If results can be surfaced through Viewed Data on the **Equipment Home Page** read-only dashboard popup (and any other read-only grid that wires `viewedDataIds` into widgets)."
   - "What-If Scenarios are accessed from the Tools module."
+  - "Primary Tools module App Router pages (Data & Jobs, What-If Scenario, Documents, Alert Setting) use a **shared page chrome** (breadcrumb **Tools** → tool name, shared title and description styling, optional route chip) for consistency; **navigation and tool behavior** (including the first breadcrumb targeting `/tools/data-sync` with `MainRouteSync`) remain as before."
   - "Documents generated from runs are stored in the same document library."
   - "For the current mock profile, Site 2000 has three units: Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 - Hydrogen Unit. Primary equipment are Coker 01 (ex Coke Drum, id equipment-a), HCU 01 (id equipment-b), SMR Pigtails (ex SMR Unit A, id equipment-c), with all prior tab sets and seed dashboards preserved for those ids."
   - "For the current mock profile, SMR Pigtails (equipment-c) has a dashboard tab named 'SMR Pigtail Integrity'."

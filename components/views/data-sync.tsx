@@ -41,6 +41,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import {
+  ToolPageShell,
+  ToolPageHeader,
+  ToolsModuleHomeCrumb,
+  ToolPageRouteChip,
+} from "@/components/tools/tool-page-layout"
+import {
   buildCokerExportSample,
   cokerDatabaseSources,
   cokerOutputDescriptors,
@@ -584,23 +597,23 @@ export function DataSyncView() {
     filterAsset === ALL_ASSETS ? "All equipment" : filterAsset
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-gradient-to-b from-background via-background to-muted/25">
-      <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <header className="mb-8 border-b border-border/60 pb-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Tools</p>
-          <div className="mt-2 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Data &amp; Jobs</h1>
-              <p className="text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-                Monitor client-side data contracts and downstream FEA work. Data Status is read-only here; FEA Jobs lists
-                historical job rows from demo data.
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2 rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-              <span className="font-mono text-[10px] uppercase tracking-wide">/tools/data-sync</span>
-            </div>
-          </div>
-        </header>
+    <ToolPageShell>
+      <ToolPageHeader
+        title="Data & Jobs"
+        description="Monitor client-side data contracts and downstream FEA work. Data Status is read-only here; FEA Jobs lists historical job rows from demo data."
+        breadcrumb={
+          <Breadcrumb>
+            <BreadcrumbList className="text-xs">
+              <ToolsModuleHomeCrumb />
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Data & Jobs</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        }
+        trailing={<ToolPageRouteChip path="/tools/data-sync" />}
+      />
 
         <div className="mb-6 flex flex-col gap-3 rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex flex-wrap items-center gap-3">
@@ -706,7 +719,6 @@ export function DataSyncView() {
             <FeJobsTable jobs={filteredJobs} />
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+    </ToolPageShell>
   )
 }
