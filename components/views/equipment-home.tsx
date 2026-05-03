@@ -45,6 +45,7 @@ import {
   BarChart3,
   Lock,
   Users,
+  Siren,
 } from "lucide-react"
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -732,12 +733,32 @@ function ToolsSection({
         : undefined,
       disabled: !scenario,
     },
+    {
+      key: "alert-setting",
+      icon: <Siren className="w-5 h-5" />,
+      label: "Alert Setting",
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+      preview: (
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <p>Configure equipment alerts, assignees, and schedules.</p>
+          <p className="text-[10px]">Coker 01: full UI · HCU / SMR: coming soon in-tool.</p>
+        </div>
+      ),
+      onClick: () => {
+        setPreFilterEquipmentId(equipment.id)
+        router.push(mainRoutes.alertSetting(equipment.id))
+        setCurrentView("alertSettingTool")
+        setViewMode("view")
+      },
+      disabled: false,
+    },
   ]
 
   return (
     <section>
       <SectionHeader title="Tools" subtitle="Equipment-specific tools and data" />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {tiles.map((tile) => (
           <button
             key={tile.key}

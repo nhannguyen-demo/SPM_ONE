@@ -14,6 +14,18 @@ import { cn } from "@/lib/utils"
 import { RUN_STEPS, StatusBadge, findAssetPathForEquipment, useSeedMockHistory } from "@/components/views/whatif-tool/shared"
 import { mainRoutes } from "@/lib/main-routes"
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import {
+  ToolPageHeader,
+  ToolsModuleHomeCrumb,
+  ToolPageRouteChip,
+} from "@/components/tools/tool-page-layout"
+import {
   Play, History, ChevronRight, GitCompareArrows,
   Upload, CheckCircle2, Loader2,
   ArrowLeft, ExternalLink, MessageSquare, Check, Box,
@@ -887,9 +899,9 @@ function ScenarioSidebarList({
   )
 
   return (
-    <div className="w-72 flex-shrink-0 border-r border-border flex flex-col overflow-hidden bg-secondary/10">
-      <div className="px-4 py-4 border-b border-border">
-        <h2 className="font-semibold text-foreground text-base">What-If Scenarios</h2>
+    <div className="flex w-72 shrink-0 flex-col overflow-hidden border-r border-border bg-card/40">
+      <div className="border-b border-border/80 px-4 py-3.5">
+        <h2 className="text-sm font-semibold tracking-tight text-foreground">What-If Scenarios</h2>
       </div>
       <div className="px-3 py-2 border-b border-border">
         <div className="relative">
@@ -947,44 +959,51 @@ function ScenarioSidebarList({
 
 export function WhatIfToolView() {
   useSeedMockHistory()
-  const router = useRouter()
-  const { whatIfSelectedScenarioId, setWhatIfSelectedScenarioId, setCurrentView, setViewMode } = useAppStore()
+  const { whatIfSelectedScenarioId, setWhatIfSelectedScenarioId } = useAppStore()
 
   return (
-    <div className="flex-1 flex min-w-0 overflow-hidden">
+    <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
       <ScenarioSidebarList
         selectedId={whatIfSelectedScenarioId}
         onSelect={setWhatIfSelectedScenarioId}
       />
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-background">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-card flex-shrink-0 text-xs text-muted-foreground">
-          <button
-            type="button"
-            onClick={() => {
-              router.push(mainRoutes.dataSync())
-              setCurrentView("data-sync")
-              setViewMode("view")
-            }}
-            className="hover:text-foreground transition-colors"
-          >
-            Tools
-          </button>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-foreground font-medium">What-If Scenario</span>
-          {whatIfSelectedScenarioId && (
-            <><ChevronRight className="w-3 h-3" /><span className="text-foreground">{whatIfScenarios.find((s) => s.id === whatIfSelectedScenarioId)?.equipmentName}</span></>
-          )}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gradient-to-b from-background via-background to-muted/25">
+        <div className="shrink-0 border-b border-border/60 px-4 py-8 sm:px-6 lg:px-8 lg:pt-10 lg:pb-6">
+          <ToolPageHeader
+            className="mb-0 border-0 pb-0"
+            title="What-If Scenario"
+            description="Configure parameters, run analyses, and open run history for each published scenario. New scenarios are added by the Technical Team."
+            breadcrumb={
+              <Breadcrumb>
+                <BreadcrumbList className="text-xs">
+                  <ToolsModuleHomeCrumb />
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>What-If Scenario</BreadcrumbPage>
+                  </BreadcrumbItem>
+                  {whatIfSelectedScenarioId ? (
+                    <>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        <BreadcrumbPage>
+                          {whatIfScenarios.find((s) => s.id === whatIfSelectedScenarioId)?.equipmentName ?? "Equipment"}
+                        </BreadcrumbPage>
+                      </BreadcrumbItem>
+                    </>
+                  ) : null}
+                </BreadcrumbList>
+              </Breadcrumb>
+            }
+            trailing={<ToolPageRouteChip path="/tools/what-if" />}
+          />
         </div>
 
         {whatIfSelectedScenarioId ? (
           <ScenarioMainPanel scenarioId={whatIfSelectedScenarioId} />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <Info className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-sm">Select a scenario from the left panel</p>
-            </div>
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground">
+            <Info className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden />
+            <p className="text-sm">Select a scenario from the left panel</p>
           </div>
         )}
       </div>

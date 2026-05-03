@@ -71,8 +71,30 @@ interface AppState {
   // ─────────────────────────────────────────────────────────────────────────
 
   // Current view
-  currentView: "home" | "site" | "plant" | "equipment-home" | "workspace" | "data-sync" | "whatIfTool" | "documents-tool"
-  setCurrentView: (view: "home" | "site" | "plant" | "equipment-home" | "workspace" | "data-sync" | "whatIfTool" | "documents-tool") => void
+  currentView:
+    | "home"
+    | "site"
+    | "plant"
+    | "equipment-home"
+    | "workspace"
+    | "data-sync"
+    | "whatIfTool"
+    | "documents-tool"
+    | "settings"
+    | "alertSettingTool"
+  setCurrentView: (
+    view:
+      | "home"
+      | "site"
+      | "plant"
+      | "equipment-home"
+      | "workspace"
+      | "data-sync"
+      | "whatIfTool"
+      | "documents-tool"
+      | "settings"
+      | "alertSettingTool"
+  ) => void
 
   // ── EQUIPMENT HOME PAGE STATE ─────────────────────────────────────────────
   /** Equipment ID to pre-apply as filter when navigating into a tool from Equipment Home Page. Consumed on mount by the target tool view. */
@@ -209,8 +231,11 @@ export const useAppStore = create<AppState>((set) => ({
       } else if (view === "workspace") {
         activeModule = "workspace"
         isPanelOpen = true
-      } else if (view === "data-sync" || view === "whatIfTool" || view === "documents-tool") {
+      } else if (view === "data-sync" || view === "whatIfTool" || view === "documents-tool" || view === "alertSettingTool") {
         activeModule = "insights"
+        isPanelOpen = true
+      } else if (view === "settings") {
+        activeModule = "settings"
         isPanelOpen = true
       }
       return { currentView: view, activeModule, isPanelOpen }

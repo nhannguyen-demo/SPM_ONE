@@ -175,7 +175,7 @@ export const cokerSensorChannels: readonly CokerSensorChannelRow[] = [
 
 /** Optional DB-level footnote (not a per-sensor aggregate "stream" card). */
 export const cokerPipelineFootnote =
-  "Pull worker batches process channels on a short timer; laser geometry is pulled on campaign completion only (mock copy)."
+  "Pull worker batches process channels on a short timer; laser geometry is pulled on campaign completion only."
 
 export const cokerOutputDescriptors = [
   "Fatigue Damage",
@@ -213,7 +213,7 @@ export function buildCokerExportSample(format: ExportFormat): string {
     equipment: "Coker 01",
     generatedAt: "2026-05-02T14:22:00Z",
     outputs: [...cokerOutputDescriptors],
-    note: "Mock export — replace with API or file service in production.",
+    note: "Sample export bundle for offline review.",
   }
   if (format === "json") {
     return `${JSON.stringify(payload, null, 2)}\n`

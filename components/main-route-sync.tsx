@@ -42,12 +42,22 @@ function applyParsedRoute(apply: MainRouteApply) {
       store.setPreFilterEquipmentId(apply.equipmentId)
       store.setCurrentView("documents-tool")
       break
+    case "settings":
+      store.setEquipmentHomeAutoOpenTab(null)
+      store.setPreFilterEquipmentId(null)
+      store.setCurrentView("settings")
+      break
+    case "alertSettingTool":
+      store.setEquipmentHomeAutoOpenTab(null)
+      store.setPreFilterEquipmentId(apply.equipmentId)
+      store.setCurrentView("alertSettingTool")
+      break
   }
 }
 
 /**
  * Keeps Zustand navigation slices aligned with URL for main-shell routes
- * (`/home`, `/assets/*`, `/tools/*`).
+ * (`/home`, `/assets/*`, `/tools/*`, `/settings`, `/tools/alert-setting`).
  */
 export function MainRouteSync() {
   const pathname = usePathname() || ""

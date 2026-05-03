@@ -5,6 +5,8 @@ import type { Notification } from "@/lib/workspace/types"
  * when there is no safe default target (stay on the list / dismiss only).
  */
 export function notificationHref(n: Notification): string | null {
+  const href = n.actionHref?.trim()
+  if (href) return href
   if (n.dashboardId) {
     return `/dashboard?d=${encodeURIComponent(n.dashboardId)}`
   }

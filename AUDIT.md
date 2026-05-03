@@ -73,7 +73,7 @@ There is **one Next.js route** — `app/page.tsx`. All navigation is client-side
 - Alerts (Comms panel)
 - Favorite (Workspace panel)
 - Share with me (Workspace panel)
-- General / Integrations / Notifications (Settings panel)
+- In-app **Settings** rail panel and **`/settings`** page (appearance, locale, workspace defaults, tools & exports, privacy, about) — mock only. Comms **Notifications** feed is separate.
 
 ---
 
@@ -90,7 +90,7 @@ There is **one Next.js route** — `app/page.tsx`. All navigation is client-side
 | `WorkspacePanel` | sidebar.tsx (internal) | Stub: "Favorite" and "Share with me" items (unlinked). |
 | `InsightsPanel` | sidebar.tsx (internal) | Links to Data & Jobs, Shift Log (stub), Documents, What-If Scenarios. |
 | `CommsPanel` | sidebar.tsx (internal) | Stub: Chat and Alerts items. |
-| `SettingsPanel` | sidebar.tsx (internal) | Stub: General, Integrations, Notifications. |
+| `SettingsPanel` | sidebar.tsx (internal) | In-app **Settings** mock: Appearance, Language & region, Workspace defaults, Tools & exports, Privacy, About (no persistence). |
 | `Header` | `components/header.tsx` | Top 56px bar. Bell (with unread dot) and Settings buttons — **both are visual only, no handlers**. |
 
 ### Views

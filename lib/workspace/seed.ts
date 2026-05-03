@@ -486,6 +486,7 @@ export function buildWorkspaceSeed(): SeedResult {
     title: "Ben Tran shared 'HCU 01 — Reactor Health Live' with you",
     body: "Permission: edit · \"Nhan, please review the temperature limits and tune if needed.\"",
     readAt: null,
+    archivedAt: null,
     createdAt: D(20),
     updatedAt: D(20),
   })
@@ -500,6 +501,7 @@ export function buildWorkspaceSeed(): SeedResult {
     title: "Ben Tran viewed 'Coker 01 — Live Monitoring' for the first time",
     body: null,
     readAt: D(18),
+    archivedAt: null,
     createdAt: D(18),
     updatedAt: D(18),
   })
@@ -514,6 +516,7 @@ export function buildWorkspaceSeed(): SeedResult {
     title: "Priya Shah shared 'HCU 01 — Process Control Tuning' with you",
     body: "Permission: view",
     readAt: null,
+    archivedAt: null,
     createdAt: D(50),
     updatedAt: D(50),
   })
@@ -530,6 +533,7 @@ export function buildWorkspaceSeed(): SeedResult {
     title: "Nhan Nguyen requested comment access on 'HCU 01 — Process Control Tuning'",
     body: "I'd like to leave notes on the tuning section.",
     readAt: null,
+    archivedAt: null,
     createdAt: D(6),
     updatedAt: D(6),
   })

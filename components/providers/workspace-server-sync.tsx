@@ -22,7 +22,7 @@ const fullSeedHydrate = {
 
 /**
  * Loads workspace data from GET /api/workspace/bootstrap when the user is signed in.
- * Mock seed data is restored when signed out.
+ * Workspace seed data is restored when signed out.
  */
 export function WorkspaceServerSync() {
   const { status } = useSession()
