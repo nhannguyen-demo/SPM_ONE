@@ -460,8 +460,6 @@ export interface WhatIfScenarioDefinition {
   equipmentName: string
   name: string
   description: string
-  details: string
-  availableDashboards: string[]
   defaultParams: Record<string, { value: string; unit: string }>
   plant: string
   site: string
@@ -474,8 +472,6 @@ export const whatIfScenarios: WhatIfScenarioDefinition[] = [
     equipmentName: "Coker 01",
     name: "Coker 01 — Future Operating Scenario",
     description: "Models a future operating cycle where inlet temperature and pressure profiles are varied to assess impact on fatigue accumulation, bulging probability, and remaining asset life.",
-    details: "Upload a CSV file containing projected temperature and pressure time-series data for the next scheduled operating period. The tool computes updated Damage (DMG%), Remaining Life, and generates scenario-specific equivalents of the Fatigue, Bulging, and Cracking dashboards so engineers can compare future state against current actuals.",
-    availableDashboards: ["Demo Engineer Team's Dashboard", "Monitoring", "Process", "Fatigue", "Bulging", "Cracking"],
     defaultParams: {
       "Inlet Pressure":    { value: "150.5", unit: "barg" },
       "Inlet Temp":        { value: "450.2", unit: "°C" },
@@ -495,8 +491,6 @@ export const whatIfScenarios: WhatIfScenarioDefinition[] = [
     equipmentName: "HCU 01",
     name: "HCU 01 — Reactor Load Variation Scenario",
     description: "Simulates the effect of varying hydrogen partial pressure and feed rate on reactor health indicators, catalyst deactivation rates, and predicted maintenance intervals.",
-    details: "Upload a CSV containing projected feed compositions, reactor inlet conditions, and recycle gas compositions for a specified future period. The tool produces scenario-adapted Reactor Health, Process Control, and Maintenance dashboards for direct comparison with current live data.",
-    availableDashboards: ["Overview", "Reactor Health", "Process Control", "Maintenance"],
     defaultParams: {
       "H₂ Partial Pressure": { value: "38.2",  unit: "bar" },
       "Feed Rate":            { value: "95.0",  unit: "t/h" },
@@ -526,6 +520,7 @@ export const mockWhatIfRunSessions = [
     duration: "4m 52s",
     status: "success" as const,
     user: "Ben T.",
+    selectedDashboardIds: ["dash-legacy-coker-fat", "dash-legacy-coker-bul"],
     selectedDashboards: ["Fatigue", "Bulging"],
     results: [
       { checked: true, col1: "DMG Accumulation",   col2: "218.4%", col3: "Warning" },
@@ -552,6 +547,7 @@ export const mockWhatIfRunSessions = [
     duration: "3m 28s",
     status: "success" as const,
     user: "Nhan N.",
+    selectedDashboardIds: ["dash-legacy-coker-proc", "dash-nhan-coker-cra"],
     selectedDashboards: ["Process", "Cracking"],
     results: [
       { checked: true, col1: "DMG Accumulation",   col2: "195.2%", col3: "Pass" },
@@ -578,6 +574,7 @@ export const mockWhatIfRunSessions = [
     duration: "5m 14s",
     status: "success" as const,
     user: "Alex P.",
+    selectedDashboardIds: ["dash-legacy-hcu-rea", "dash-legacy-hcu-maint"],
     selectedDashboards: ["Reactor Health", "Maintenance"],
     results: [
       { checked: true, col1: "Catalyst Activity",   col2: "74.2%",  col3: "Warning" },
@@ -601,6 +598,7 @@ export const mockWhatIfRunSessions = [
     duration: "4m 02s",
     status: "failed" as const,
     user: "Simon K.",
+    selectedDashboardIds: ["dash-ben-hcu-over"],
     selectedDashboards: ["Overview"],
     results: [],
     progressStep: 2,

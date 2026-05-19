@@ -713,9 +713,14 @@ entities:
       equipmentId: { type: uuid, references: Equipment.id }
       name: { type: string }
       description: { type: string }
-      details: { type: string, nullable: true }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
+    comment: >
+      Result dashboards are NOT stored on WhatIfScenario. The What-If Tool Overview
+      **Available Result Dashboards** section derives from published WorkspaceDashboard
+      rows for scenario.equipmentId (same filter/sort as Equipment Home Page in the
+      Asset module). Legacy mock `availableDashboards: string[]` in lib/data.ts is
+      deprecated and scheduled for removal.
 
   WhatIfScenarioParameter:
     fields:
@@ -734,6 +739,13 @@ entities:
       equipmentId: { type: uuid, references: Equipment.id }
       requestedById: { type: uuid, references: User.id, nullable: true }
       runName: { type: string }
+      selectedDashboardIds:
+        type: array
+        items: { type: uuid, references: Dashboard.id }
+        comment: >
+          Snapshot of WorkspaceDashboard ids (published on this equipment at run time)
+          that the run targets for scenario overlays. UI store field `selectedDashboards`
+          is migrating from display-name strings to these ids.
       status: { type: enum, values: [queued, running, success, failed, cancelled] }
       progressStep: { type: integer, min: 0, max: 5 }
       source: { type: enum, values: [tool, dashboard] }
@@ -991,7 +1003,9 @@ relationships:
   - "A Tool belongs to one AppModule; What-If Scenario and **Alert Setting** are Tools under the Tools (`insights`) module."
   - "A WhatIfScenario belongs to one Equipment."
   - "A WhatIfScenario has many parameters and many run sessions (history)."
+  - "A WhatIfScenario does not own a static result-dashboard catalog; published dashboards for the scenario's Equipment are resolved from WorkspaceDashboard (lifecycleStatus=published, not deleted), same source as Equipment Home Page in the Asset module."
   - "A WhatIfRunSession has many inputs and many results."
+  - "A WhatIfRunSession.selectedDashboardIds references WorkspaceDashboard rows on the same Equipment as the run (published at run time in product terms)."
   - "A UserDocument can optionally reference Site, Unit (field name plantId in legacy types), Equipment, and source WhatIfRunSession."
   - "A DataSyncStatus belongs to one Equipment."
   - "A SyncJob belongs to one Equipment and optionally one User."
@@ -1023,6 +1037,8 @@ business_rules:
   - "The old rule requiring selected dashboards for a run is removed."
   - "What-If results can be surfaced through Viewed Data on the **Equipment Home Page** read-only dashboard popup (and any other read-only grid that wires `viewedDataIds` into widgets)."
   - "What-If Scenarios are accessed from the Tools module."
+  - "What-If Tool Overview **Available Result Dashboards** MUST list live published dashboards for the selected scenario's Equipment (via the same adapter as Equipment Home: getPublishedDashboardsForEquipment over useWorkspaceStore.dashboards), not hard-coded scenario labels. Each entry SHOULD be actionable (e.g. navigate to Equipment Home and open that dashboard popup, or open Full-Screen Viewer) so the section is an active function, not decorative chips."
+  - "What-If **Dashboards Available** stat on Overview MUST use the count of published dashboards for that Equipment, not a static array length on WhatIfScenario."
   - "Primary Tools module App Router pages (Data & Jobs, What-If Scenario, Documents, Alert Setting) use a **shared page chrome** (breadcrumb **Tools** → tool name, shared title and description styling, optional route chip) for consistency; **navigation and tool behavior** (including the first breadcrumb targeting `/tools/data-sync` with `MainRouteSync`) remain as before."
   - "Documents generated from runs are stored in the same document library."
   - "For the current mock profile, Site 2000 has three units: Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 - Hydrogen Unit. Primary equipment are Coker 01 (ex Coke Drum, id equipment-a), HCU 01 (id equipment-b), SMR Pigtails (ex SMR Unit A, id equipment-c), with all prior tab sets and seed dashboards preserved for those ids."

@@ -20,7 +20,10 @@ export interface WhatIfRunSession {
   duration: string            // e.g. "4m 12s"
   status: WhatIfRunStatus
   user: string
-  selectedDashboards: string[]
+  /** WorkspaceDashboard ids published on this equipment at run time. */
+  selectedDashboardIds: string[]
+  /** Display names snapshot (legacy history / mock). */
+  selectedDashboards?: string[]
   results: Array<{ checked: boolean; col1: string; col2: string; col3: string }>
   progressStep: number        // 0-5
   params: Record<string, string>

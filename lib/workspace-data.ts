@@ -12,7 +12,7 @@
  * plain callbacks alike.
  */
 
-import { sites } from "@/lib/data"
+import { sites, whatIfScenarios } from "@/lib/data"
 import type { WorkspaceDashboard } from "@/lib/workspace/types"
 
 /* ─── Adapter type ──────────────────────────────────────────────────────────── */
@@ -82,6 +82,19 @@ function mockMetrics(dashboardId: string): { value1: string; value2: string } {
  * Returns EquipmentHomeDashCard entries for all published, non-deleted
  * dashboards belonging to the given equipment, sorted newest-published first.
  */
+/**
+ * Published dashboards for a What-If scenario's equipment — same filter/sort as
+ * Equipment Home Page (`getPublishedDashboardsForEquipment`).
+ */
+export function getWhatIfResultDashboardsForScenario(
+  scenarioId: string,
+  dashboards: WorkspaceDashboard[],
+): EquipmentHomeDashCard[] {
+  const scenario = whatIfScenarios.find((s) => s.id === scenarioId)
+  if (!scenario) return []
+  return getPublishedDashboardsForEquipment(scenario.equipmentId, dashboards)
+}
+
 export function getPublishedDashboardsForEquipment(
   equipmentId: string,
   dashboards: WorkspaceDashboard[],

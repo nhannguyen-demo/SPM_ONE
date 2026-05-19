@@ -5,10 +5,17 @@
  * Scenario management: configure & run, live progress, history, results (with back/save/discard/report), compare.
  */
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useShallow } from "zustand/react/shallow"
 import { useAppStore, type WhatIfRunSession, type WhatIfParameterInputMode } from "@/lib/store"
-import { getUnitIdForEquipment, whatIfScenarios } from "@/lib/data"
+import { getEquipmentDashboardThumbnail, getUnitIdForEquipment, whatIfScenarios } from "@/lib/data"
+import {
+  getPublishedDashboardsForEquipment,
+  getWhatIfResultDashboardsForScenario,
+} from "@/lib/workspace-data"
+import { useWorkspaceStore } from "@/lib/workspace/store"
+import { DashboardCard } from "@/components/dashboard-card"
 import type { UserDocument } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { RUN_STEPS, StatusBadge, findAssetPathForEquipment, useSeedMockHistory } from "@/components/views/whatif-tool/shared"
@@ -23,7 +30,6 @@ import {
 import {
   ToolPageHeader,
   ToolsModuleHomeCrumb,
-  ToolPageRouteChip,
 } from "@/components/tools/tool-page-layout"
 import {
   Play, History, ChevronRight, GitCompareArrows,
@@ -306,6 +312,71 @@ function ResultsPanel({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   PUBLISHED RESULT DASHBOARDS (Equipment Home parity)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function PublishedResultDashboards({
+  scenarioId,
+  equipmentId,
+}: {
+  scenarioId: string
+  equipmentId: string
+}) {
+  const router = useRouter()
+  const { setCurrentPath, setViewMode } = useAppStore()
+  const setInitialEquipmentFilter = useWorkspaceStore((s) => s.setInitialEquipmentFilter)
+  const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
+  const cards = useMemo(
+    () => getWhatIfResultDashboardsForScenario(scenarioId, rawDashboards),
+    [scenarioId, rawDashboards],
+  )
+  const thumbnailSrc = getEquipmentDashboardThumbnail(equipmentId)
+
+  const openOnEquipmentHome = (dashboardId: string) => {
+    const { site, plant } = findAssetPathForEquipment(equipmentId)
+    const unitId = plant ?? getUnitIdForEquipment(equipmentId) ?? "unit-2006-dcu"
+    setCurrentPath({ site, plant: unitId, equipment: equipmentId })
+    setViewMode("view")
+    router.push(mainRoutes.equipmentHome(site, unitId, equipmentId, { openDashboard: dashboardId }))
+  }
+
+  if (cards.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-muted/10 px-4 py-8 text-center">
+        <p className="text-sm text-muted-foreground">No published dashboards for this equipment yet.</p>
+        <button
+          type="button"
+          onClick={() => {
+            setInitialEquipmentFilter(equipmentId)
+            router.push("/dashboard")
+          }}
+          className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+        >
+          <LayoutDashboard className="size-4" />
+          Publish dashboards in Workspace
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+      {cards.map((card, idx) => (
+        <button
+          key={card.id}
+          type="button"
+          onClick={() => openOnEquipmentHome(card.id)}
+          className="flex-shrink-0 rounded-xl border-2 border-transparent text-left transition-all hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Open ${card.tag} on Equipment Home`}
+        >
+          <DashboardCard card={card} cardIndex={idx} thumbnailSrc={thumbnailSrc} showEquipmentName={false} />
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    CONFIGURE & RUN PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -317,6 +388,11 @@ function ConfigureRunPanel({
   onRunStarted: (sessionId: string) => void
 }) {
   const { addWhatIfRunSession, setWhatIfActiveRunId } = useAppStore()
+  const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
+  const publishedCards = useMemo(
+    () => getPublishedDashboardsForEquipment(scenario.equipmentId, rawDashboards),
+    [scenario.equipmentId, rawDashboards],
+  )
   const [runName, setRunName] = useState("")
   const [csvFile, setCsvFile] = useState<string | null>(null)
   const [paramInputMode, setParamInputMode] = useState<WhatIfParameterInputMode>("typed")
@@ -348,7 +424,8 @@ function ConfigureRunPanel({
       duration: "",
       status: "running",
       user: "Nhan N.",
-      selectedDashboards: scenario.availableDashboards,
+      selectedDashboardIds: publishedCards.map((c) => c.id),
+      selectedDashboards: publishedCards.map((c) => c.tag),
       results: [],
       progressStep: 0,
       params,
@@ -729,6 +806,12 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
     setPanel({ mode: init ?? "overview" })
   }, [scenarioId])
 
+  const rawDashboards = useWorkspaceStore(useShallow((s) => s.dashboards))
+  const publishedDashboards = useMemo(
+    () => getWhatIfResultDashboardsForScenario(scenarioId, rawDashboards),
+    [scenarioId, rawDashboards],
+  )
+
   if (!scenario) return null
 
   const sessionCount = whatIfRunSessions.filter((s) => s.scenarioId === scenarioId).length
@@ -778,9 +861,6 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-foreground">{scenario.name}</h2>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              {scenario.description}
-            </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {lastSuccess && (
@@ -822,14 +902,12 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
             <div className="bg-card border border-border rounded-2xl p-6">
               <h3 className="font-semibold text-foreground mb-3">About this Scenario</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{scenario.description}</p>
-              <hr className="border-border my-4" />
-              <p className="text-sm text-muted-foreground leading-relaxed">{scenario.details}</p>
             </div>
             <div className="grid grid-cols-3 gap-4">
               {[
                 { label: "Total Runs", value: sessionCount.toString() },
                 { label: "Successful", value: whatIfRunSessions.filter((s) => s.scenarioId === scenarioId && s.status === "success").length.toString() },
-                { label: "Dashboards Available", value: scenario.availableDashboards.length.toString() },
+                { label: "Dashboards Available", value: publishedDashboards.length.toString() },
               ].map((s) => (
                 <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
                   <div className="text-2xl font-bold text-foreground">{s.value}</div>
@@ -839,13 +917,10 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
             </div>
             <div className="bg-card border border-border rounded-2xl p-6">
               <h3 className="font-semibold text-foreground mb-3">Available Result Dashboards</h3>
-              <div className="flex flex-wrap gap-2">
-                {scenario.availableDashboards.map((d) => (
-                  <span key={d} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-sm rounded-full">
-                    <LayoutDashboard className="w-3.5 h-3.5" />{d}
-                  </span>
-                ))}
-              </div>
+              <p className="mb-4 text-xs text-muted-foreground leading-relaxed">
+                Published dashboards for this equipment (same as Asset module Equipment Home). Click to open on Equipment Home.
+              </p>
+              <PublishedResultDashboards scenarioId={scenarioId} equipmentId={scenario.equipmentId} />
             </div>
             <div className="bg-amber-500/5 border border-amber-400/20 rounded-2xl p-5 flex items-start gap-3">
               <MessageSquare className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -972,7 +1047,6 @@ export function WhatIfToolView() {
           <ToolPageHeader
             className="mb-0 border-0 pb-0"
             title="What-If Scenario"
-            description="Configure parameters, run analyses, and open run history for each published scenario. New scenarios are added by the Technical Team."
             breadcrumb={
               <Breadcrumb>
                 <BreadcrumbList className="text-xs">
@@ -994,7 +1068,6 @@ export function WhatIfToolView() {
                 </BreadcrumbList>
               </Breadcrumb>
             }
-            trailing={<ToolPageRouteChip path="/tools/what-if" />}
           />
         </div>
 

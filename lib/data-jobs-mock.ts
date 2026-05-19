@@ -172,11 +172,6 @@ export const cokerSensorChannels: readonly CokerSensorChannelRow[] = [
     note: "Next campaign window: est. late May 2026",
   },
 ] as const
-
-/** Optional DB-level footnote (not a per-sensor aggregate "stream" card). */
-export const cokerPipelineFootnote =
-  "Pull worker batches process channels on a short timer; laser geometry is pulled on campaign completion only."
-
 export const cokerOutputDescriptors = [
   "Fatigue Damage",
   "Stress",

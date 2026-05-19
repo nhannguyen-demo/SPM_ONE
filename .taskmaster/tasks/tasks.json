@@ -710,5 +710,96 @@
       "description": "Tools module — Alert Setting (mock → persist)",
       "updated": "2026-05-04T12:00:00.000Z"
     }
+  },
+  "whatif-published-dashboards-may2026": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "P0: Domain + product docs — published result dashboards",
+        "description": "Ontology: WhatIfScenario has no static dashboard catalog; WhatIfRunSession.selectedDashboardIds; business rules for Overview binding to WorkspaceDashboard. PROJECT.md in-progress bullet; layers doc.",
+        "details": "Files: domain.ontology.yaml, PROJECT.md, .taskmaster/docs/whatif-published-dashboards-layers.md, .taskmaster/docs/whatif-published-dashboards-prd.md. Mark task done after review.",
+        "testStrategy": "Grep ontology for availableDashboards on WhatIfScenario entity fields (should be absent); business_rules mention getPublishedDashboardsForEquipment.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "P1: Remove static availableDashboards from mock scenarios",
+        "description": "Deprecate and remove availableDashboards from WhatIfScenarioDefinition and whatIfScenarios[] in lib/data.ts; update AUDIT.md WhatIfScenarioDefinition section.",
+        "details": "Coker + HCU scenario objects only. Grep repo for availableDashboards and fix compile errors in follow-up tasks.",
+        "testStrategy": "pnpm exec tsc --noEmit surfaces all call sites; no remaining references in lib/data.ts.",
+        "status": "done",
+        "dependencies": [1],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "P2: Workspace bridge helper for What-If scenarios",
+        "description": "Add getWhatIfResultDashboardsForScenario(scenarioId, dashboards) (or use getPublishedDashboardsForEquipment directly) in lib/workspace-data.ts with JSDoc pointing to Equipment Home parity.",
+        "details": "Resolve equipmentId from whatIfScenarios by id; return EquipmentHomeDashCard[]. No React imports.",
+        "testStrategy": "Unit-less: import from whatif-tool-view; Coker scenario returns same length as getPublishedDashboardsForEquipment('equipment-a', WORKSPACE_SEED dashboards) in dev.",
+        "status": "done",
+        "dependencies": [2],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "P3: Overview UI — live Available Result Dashboards",
+        "description": "ScenarioMainPanel Overview: replace static chips with published dashboard list/cards; live Dashboards Available count; empty state; navigate to Equipment Home + open dashboard (setCurrentPath + router.push mainRoutes.equipment).",
+        "details": "components/views/whatif-tool-view.tsx; use useWorkspaceStore + useShallow; reuse DashboardCard or compact row. Match Equipment Home sort order.",
+        "testStrategy": "Publish new dashboard in Workspace for Coker → appears in What-If Overview without reload (if store syncs) or after refresh; click opens correct dashboard popup.",
+        "status": "done",
+        "dependencies": [3],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "P4: Run session — selectedDashboardIds snapshot",
+        "description": "Extend WhatIfRunSession with selectedDashboardIds: string[]; ConfigureRunPanel.handleRun snapshots published dashboard ids; migrate mockWhatIfRunSessions; keep Viewed Data / Compare Data working.",
+        "details": "lib/store.ts, lib/data.ts, whatif-tool-view.tsx ConfigureRunPanel. Optionally derive selectedDashboards display names from ids for results UI during migration.",
+        "testStrategy": "Start run from tool → session stores workspace dashboard ids; View Data on result still navigates to equipment home.",
+        "status": "done",
+        "dependencies": [4],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "P5: Legacy modal + equipment What-If entry alignment",
+        "description": "components/modals/what-if-scenario.tsx and equipment-home What-If navigation: resolve default dashboard from published list, not availableDashboards[0].",
+        "details": "Find equipment scenario via whatIfScenarios.find(equipmentId); first published dashboard id or currentPath.tab mapped via getWorkspaceDashboardIdForTag if needed.",
+        "testStrategy": "Open legacy modal from equipment dashboard tab → selectedDashboards uses valid published id/name.",
+        "status": "done",
+        "dependencies": [5],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "P6: QA matrix + PROJECT.md sign-off",
+        "description": "Manual test Coker + HCU; unpublish dashboard removes from Overview; update PROJECT.md bullet from in-progress to done; optional AUDIT.md note.",
+        "details": "Checklist in .taskmaster/docs/whatif-published-dashboards-layers.md acceptance criteria.",
+        "testStrategy": "Document pass/fail for equipment-a and equipment-b; no user-visible static dashboard name list in What-If Overview.",
+        "status": "done",
+        "dependencies": [6],
+        "priority": "low",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-19T18:00:00.000Z",
+      "taskCount": 7,
+      "completedCount": 7,
+      "tags": ["whatif-published-dashboards-may2026"],
+      "created": "2026-05-19T12:00:00.000Z",
+      "description": "What-If Tool — bind Available Result Dashboards to published WorkspaceDashboard (Asset parity)",
+      "updated": "2026-05-19T12:00:00.000Z"
+    }
   }
 }
