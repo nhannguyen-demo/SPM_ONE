@@ -210,12 +210,11 @@ equipmentId: string
 equipmentName: string
 name: string
 description: string
-details: string
-availableDashboards: string[]
 defaultParams: Record<string, { value: string; unit: string }>
 plant: string
 site: string
 ```
+Published result dashboards are **not** on the scenario object — resolved at runtime via `getWhatIfResultDashboardsForScenario` / `getPublishedDashboardsForEquipment` (same as Equipment Home).
 
 #### WhatIfRunSession (Zustand)
 ```
@@ -228,7 +227,8 @@ startedAt: string           // ISO datetime
 duration: string            // e.g. "4m 12s"
 status: "queued" | "running" | "success" | "failed"
 user: string
-selectedDashboards: string[]
+selectedDashboardIds: string[]   // WorkspaceDashboard ids
+selectedDashboards?: string[]    // display-name snapshot (legacy/mock)
 results: Array<{ checked: boolean; col1: string; col2: string; col3: string }>
 progressStep: number        // 0-5
 params: Record<string, string>

@@ -60,7 +60,6 @@ import {
   ToolPageShell,
   ToolPageHeader,
   ToolsModuleHomeCrumb,
-  ToolPageRouteChip,
 } from "@/components/tools/tool-page-layout"
 
 function equipmentDirectory() {
@@ -296,7 +295,6 @@ export function AlertSettingView() {
                 ))}
               </SelectContent>
             </Select>
-            <ToolPageRouteChip path="/tools/alert-setting" />
           </div>
         }
       />

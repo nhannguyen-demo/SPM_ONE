@@ -51,13 +51,11 @@ import {
   ToolPageShell,
   ToolPageHeader,
   ToolsModuleHomeCrumb,
-  ToolPageRouteChip,
 } from "@/components/tools/tool-page-layout"
 import {
   buildCokerExportSample,
   cokerDatabaseSources,
   cokerOutputDescriptors,
-  cokerPipelineFootnote,
   cokerSensorChannels,
   cokerTransferLog,
   COKER_SENSOR_DB_CONSOLE_URL,
@@ -320,18 +318,7 @@ function CokerDataStatusPanel() {
   return (
     <div className="overflow-hidden rounded-xl border border-border/90 bg-card shadow-md">
       <div className="flex flex-col gap-4 border-b border-border/80 bg-gradient-to-br from-muted/40 via-card to-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{ASSET_COKER}</h2>
-            <Badge variant="secondary" className="text-[10px] font-semibold uppercase tracking-wider">
-              Demo dataset
-            </Badge>
-          </div>
-          <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
-            Read-only view of client historian connectivity, per-channel ingest latency, and engineering outputs. Actions
-            below are UI-only.
-          </p>
-        </div>
+        <h2 className="min-w-0 text-lg font-semibold tracking-tight text-foreground sm:text-xl">{ASSET_COKER}</h2>
         <div className="flex flex-shrink-0 flex-wrap gap-2">
           <Button type="button" variant="outline" size="sm" className="bg-background/90 shadow-xs" onClick={() => setLogOpen(true)}>
             <ScrollText className="size-4 opacity-80" />
@@ -353,11 +340,7 @@ function CokerDataStatusPanel() {
       </div>
 
       <div className="space-y-5 bg-muted/15 p-5 sm:space-y-6 sm:p-6">
-        <DataJobsSection
-          step="01"
-          title="Client database sources"
-          description="Authoritative sensor and historian endpoints owned by the client. SPM uses read-only credentials."
-        >
+        <DataJobsSection step="01" title="Client database sources">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-[13px]">
               <thead>
@@ -395,23 +378,12 @@ function CokerDataStatusPanel() {
           </div>
         </DataJobsSection>
 
-        <DataJobsSection
-          step="02"
-          title="Ingest by sensor channel"
-          description="One row per instrument tag. Process sensors align to short-interval pulls; laser geometry aligns to campaign completions."
-        >
+        <DataJobsSection step="02" title="Ingest by sensor channel">
           <div className="space-y-5 px-4 pb-5 pt-4 sm:px-5">
-            <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-              {cokerPipelineFootnote}
-            </p>
-
             <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
-                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Process &amp; rate</h4>
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground">Typical refresh ≈ 5 min</span>
+              <div className="mb-2 flex items-center gap-2">
+                <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Process &amp; rate</h4>
               </div>
               <IngestChannelTable rows={processChannels} />
             </div>
@@ -419,12 +391,9 @@ function CokerDataStatusPanel() {
             <Separator className="bg-border/70" />
 
             <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="size-1.5 rounded-full bg-violet-500" aria-hidden />
-                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Laser &amp; geometry</h4>
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground">Campaign cadence ≈ 3 months</span>
+              <div className="mb-2 flex items-center gap-2">
+                <span className="size-1.5 rounded-full bg-violet-500" aria-hidden />
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Laser &amp; geometry</h4>
               </div>
               <IngestChannelTable rows={laserChannels} />
             </div>
@@ -600,7 +569,6 @@ export function DataSyncView() {
     <ToolPageShell>
       <ToolPageHeader
         title="Data & Jobs"
-        description="Monitor client-side data contracts and downstream FEA work. Data Status is read-only here; FEA Jobs lists historical job rows from demo data."
         breadcrumb={
           <Breadcrumb>
             <BreadcrumbList className="text-xs">
@@ -612,7 +580,6 @@ export function DataSyncView() {
             </BreadcrumbList>
           </Breadcrumb>
         }
-        trailing={<ToolPageRouteChip path="/tools/data-sync" />}
       />
 
         <div className="mb-6 flex flex-col gap-3 rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -704,12 +671,7 @@ export function DataSyncView() {
             className="mt-0 rounded-b-xl border border-t-0 border-border/80 bg-card/95 p-5 shadow-md outline-none sm:p-6"
           >
             <div className="mb-5 flex flex-col gap-1 border-b border-border/70 pb-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">FEA &amp; sync jobs</h2>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Historical job queue (demo). Columns unchanged from the prior table layout.
-                </p>
-              </div>
+              <h2 className="text-base font-semibold text-foreground">FEA &amp; sync jobs</h2>
               {filterAsset !== ALL_ASSETS && (
                 <Badge variant="secondary" className="w-fit text-[10px] font-semibold uppercase tracking-wide">
                   Filtered: {filterAsset}

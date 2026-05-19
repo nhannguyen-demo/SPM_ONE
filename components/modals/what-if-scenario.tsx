@@ -3,6 +3,11 @@
 import { useState } from "react"
 import { useAppStore, type WhatIfRunSession } from "@/lib/store"
 import { whatIfResults, whatIfScenarios } from "@/lib/data"
+import {
+  getPublishedDashboardsForEquipment,
+  getWorkspaceDashboardIdForTag,
+} from "@/lib/workspace-data"
+import { useWorkspaceStore } from "@/lib/workspace/store"
 import { X, Info, ChevronDown, Check, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 // FEATURE 8 — What-If AI Summary Card
@@ -28,6 +33,16 @@ export function WhatIfScenarioModal() {
     // Find which scenario this equipment maps to
     const scenario = whatIfScenarios.find((s) => s.equipmentId === currentPath.equipment)
     if (scenario) {
+      const rawDashboards = useWorkspaceStore.getState().dashboards
+      const published = getPublishedDashboardsForEquipment(scenario.equipmentId, rawDashboards)
+      const tab = currentPath.tab ?? ""
+      const primaryId =
+        getWorkspaceDashboardIdForTag(scenario.equipmentId, tab, rawDashboards) ?? published[0]?.id
+      const targetIds = primaryId ? [primaryId] : published.map((c) => c.id)
+      const targetNames = targetIds
+        .map((id) => published.find((c) => c.id === id)?.tag)
+        .filter((name): name is string => Boolean(name))
+
       const id = `wir-dash-${Date.now()}`
       const session: WhatIfRunSession = {
         id,
@@ -39,7 +54,8 @@ export function WhatIfScenarioModal() {
         duration: `${Math.floor(Math.random() * 3 + 2)}m ${Math.floor(Math.random() * 59)}s`,
         status: "success",
         user: "Nhan N.",
-        selectedDashboards: [currentPath.tab ?? scenario.availableDashboards[0]],
+        selectedDashboardIds: targetIds,
+        selectedDashboards: targetNames.length > 0 ? targetNames : published.map((c) => c.tag),
         results: whatIfResults.map((r) => ({ checked: r.checked, col1: r.col1, col2: r.col2, col3: r.col3 })),
         progressStep: 5,
         params: Object.fromEntries(Object.entries(scenario.defaultParams).map(([k, v]) => [k, v.value])),
