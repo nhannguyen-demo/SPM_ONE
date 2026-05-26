@@ -1056,6 +1056,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const dash = get().dashboards.find((d) => d.id === dashboardId)
         if (!dash) return null
 
+        const existingPending = get().permissionRequests.find(
+          (r) =>
+            r.dashboardId === dashboardId &&
+            r.requestedByUserId === me &&
+            r.requestedPermission === requestedPermission &&
+            r.status === "pending"
+        )
+        if (existingPending) return existingPending
+
         if (getWorkspaceRemoteMode()) {
           const res = await workspaceFetch(workspaceApiPaths.permissionRequests, {
             method: "POST",

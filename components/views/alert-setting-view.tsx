@@ -43,6 +43,7 @@ import type { AlertPredicateKindId } from "@/lib/alert-setting-mock"
 import { pushOperationalAlertDemo } from "@/lib/alert-setting-test-notifications"
 import {
   useAlertSettingStore,
+  type AlertScheduleFrequency,
   type MockAlertRule,
   type MockParameterCondition,
   type AlertAssigneeAccess,
@@ -61,6 +62,8 @@ import {
   ToolPageHeader,
   ToolsModuleHomeCrumb,
 } from "@/components/tools/tool-page-layout"
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function equipmentDirectory() {
   const rows: { id: string; label: string }[] = []
@@ -109,20 +112,13 @@ function validateCondition(c: MockParameterCondition): string | null {
     }
   } else if (ALERT_PREDICATE_KINDS.find((k) => k.id === c.predicateKind)?.needs === "one") {
     if (c.a === "" || !Number.isFinite(na)) return "Enter a numeric threshold."
-  } else if (ALERT_PREDICATE_KINDS.find((k) => k.id === c.predicateKind)?.needs === "window") {
-    if (!c.windowLabel?.trim()) return "Describe the rate window."
   }
+  // slope / window predicates: no user-visible field to validate
   return null
 }
 
 function defaultConditionForParameter(parameterId: string): MockParameterCondition {
-  return {
-    parameterId,
-    predicateKind: "gt",
-    a: "0",
-    b: "",
-    windowLabel: "15 min window",
-  }
+  return { parameterId, predicateKind: "gt", a: "0", b: "" }
 }
 
 function buildBlankAssignees(currentUserId: string) {
@@ -133,6 +129,230 @@ function buildBlankAssignees(currentUserId: string) {
   }
   return blank
 }
+
+/** Human-readable summary of schedule fields for card description. */
+function scheduleLabel(rule: MockAlertRule): string {
+  const { scheduleMode, scheduleStartDate, scheduleStartTime, scheduleEndDate, scheduleFrequency } =
+    rule
+  if (scheduleMode === "one_shot") {
+    if (scheduleStartDate) {
+      return `One time · ${scheduleStartDate}${scheduleStartTime ? ` at ${scheduleStartTime}` : ""}`
+    }
+    return "One time"
+  }
+  if (scheduleMode === "recurring") {
+    const freq = scheduleFrequency ?? "daily"
+    const at = scheduleStartTime ? ` at ${scheduleStartTime}` : ""
+    const until = scheduleEndDate ? ` until ${scheduleEndDate}` : ""
+    return `${freq.charAt(0).toUpperCase() + freq.slice(1)}${at}${until}`
+  }
+  if (scheduleMode === "date_window") {
+    const start = scheduleStartDate ?? "—"
+    const end = scheduleEndDate ?? "—"
+    return `${start} → ${end}`
+  }
+  return scheduleMode
+}
+
+// ─── Schedule date/time UI ────────────────────────────────────────────────────
+
+interface ScheduleFields {
+  startDate: string
+  startTime: string
+  endDate: string
+  endTime: string
+  frequency: AlertScheduleFrequency
+}
+
+function SchedulePickers({
+  mode,
+  fields,
+  disabled,
+  onChange,
+}: {
+  mode: MockAlertRule["scheduleMode"]
+  fields: ScheduleFields
+  disabled?: boolean
+  onChange: (patch: Partial<ScheduleFields>) => void
+}) {
+  if (mode === "one_shot") {
+    return (
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label className="text-xs">Date</Label>
+          <Input
+            type="date"
+            value={fields.startDate}
+            disabled={disabled}
+            onChange={(e) => onChange({ startDate: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Time</Label>
+          <Input
+            type="time"
+            value={fields.startTime}
+            disabled={disabled}
+            onChange={(e) => onChange({ startTime: e.target.value })}
+          />
+        </div>
+      </div>
+    )
+  }
+  if (mode === "recurring") {
+    return (
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Frequency</Label>
+          <Select
+            value={fields.frequency}
+            disabled={disabled}
+            onValueChange={(v) => onChange({ frequency: v as AlertScheduleFrequency })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Time of day</Label>
+          <Input
+            type="time"
+            value={fields.startTime}
+            disabled={disabled}
+            onChange={(e) => onChange({ startTime: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">End date (optional)</Label>
+          <Input
+            type="date"
+            value={fields.endDate}
+            disabled={disabled}
+            onChange={(e) => onChange({ endDate: e.target.value })}
+          />
+        </div>
+      </div>
+    )
+  }
+  // date_window
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <div className="space-y-1">
+        <Label className="text-xs">Start date</Label>
+        <Input
+          type="date"
+          value={fields.startDate}
+          disabled={disabled}
+          onChange={(e) => onChange({ startDate: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Start time (optional)</Label>
+        <Input
+          type="time"
+          value={fields.startTime}
+          disabled={disabled}
+          onChange={(e) => onChange({ startTime: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">End date</Label>
+        <Input
+          type="date"
+          value={fields.endDate}
+          disabled={disabled}
+          onChange={(e) => onChange({ endDate: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">End time (optional)</Label>
+        <Input
+          type="time"
+          value={fields.endTime}
+          disabled={disabled}
+          onChange={(e) => onChange({ endTime: e.target.value })}
+        />
+      </div>
+    </div>
+  )
+}
+
+function scheduleFieldsFromRule(rule: MockAlertRule): ScheduleFields {
+  return {
+    startDate: rule.scheduleStartDate ?? "",
+    startTime: rule.scheduleStartTime ?? "",
+    endDate: rule.scheduleEndDate ?? "",
+    endTime: rule.scheduleEndTime ?? "",
+    frequency: rule.scheduleFrequency ?? "daily",
+  }
+}
+
+function blankScheduleFields(): ScheduleFields {
+  return { startDate: "", startTime: "", endDate: "", endTime: "", frequency: "daily" }
+}
+
+// ─── Assignee row UI ──────────────────────────────────────────────────────────
+
+function AssigneeRow({
+  user,
+  row,
+  disabled,
+  onChange,
+}: {
+  user: { id: string; name: string }
+  row: { on: boolean; access: AlertAssigneeAccess; mayDel: boolean }
+  disabled?: boolean
+  onChange: (patch: Partial<typeof row>) => void
+}) {
+  const isCoEdit = row.access === "co_edit_rule"
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center">
+      <label className="flex items-center gap-2 text-sm min-w-[140px]">
+        <Checkbox
+          checked={row.on}
+          disabled={disabled}
+          onCheckedChange={(v) => onChange({ on: v === true })}
+        />
+        {user.name}
+      </label>
+      <Select
+        value={row.access}
+        disabled={disabled || !row.on}
+        onValueChange={(v) => {
+          const access = v as AlertAssigneeAccess
+          onChange({ access, mayDel: access === "co_edit_rule" ? false : row.mayDel })
+        }}
+      >
+        <SelectTrigger className="sm:w-44">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="notify_only">Notify only</SelectItem>
+          <SelectItem value="comment_on_alert">Comment on alert</SelectItem>
+          <SelectItem value="co_edit_rule">Co-edit rule</SelectItem>
+        </SelectContent>
+      </Select>
+      {!isCoEdit && (
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            disabled={disabled || !row.on}
+            checked={row.mayDel}
+            onCheckedChange={(v) => onChange({ mayDel: v === true })}
+          />
+          Can request delete
+        </label>
+      )}
+    </div>
+  )
+}
+
+// ─── Main view ────────────────────────────────────────────────────────────────
 
 export function AlertSettingView() {
   const searchParams = useSearchParams()
@@ -159,6 +379,18 @@ export function AlertSettingView() {
     if (preFilterEquipmentId) setPreFilterEquipmentId(null)
   }, [searchParams, preFilterEquipmentId, setPreFilterEquipmentId])
 
+  // Dev: also re-render when another tab changes the identity key in localStorage
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === "spm-one:current-user-id") {
+        // force component to re-evaluate `me` on next render tick
+        setEquipmentId((prev) => prev)
+      }
+    }
+    window.addEventListener("storage", handler)
+    return () => window.removeEventListener("storage", handler)
+  }, [])
+
   const fullMock = isAlertSettingFullMockEquipment(equipmentId)
   const comingSoon = isAlertSettingComingSoonEquipment(equipmentId)
 
@@ -174,11 +406,12 @@ export function AlertSettingView() {
   )
   const pendingDeletes = deleteRequests.filter((d) => d.status === "pending")
 
+  // ── Create sheet state ──────────────────────────────────────────────────────
   const [draftName, setDraftName] = useState("")
   const [draftParams, setDraftParams] = useState<string[]>([])
   const [draftCombine, setDraftCombine] = useState<"AND" | "OR">("AND")
   const [draftSchedule, setDraftSchedule] = useState<MockAlertRule["scheduleMode"]>("one_shot")
-  const [draftScheduleNote, setDraftScheduleNote] = useState("")
+  const [draftScheduleFields, setDraftScheduleFields] = useState<ScheduleFields>(blankScheduleFields)
   const [draftAssignees, setDraftAssignees] = useState(() => buildBlankAssignees(me))
   const [draftConditions, setDraftConditions] = useState<MockParameterCondition[]>([])
   const [draftCreateError, setDraftCreateError] = useState<string | null>(null)
@@ -190,7 +423,7 @@ export function AlertSettingView() {
     setDraftConditions([])
     setDraftCombine("AND")
     setDraftSchedule("one_shot")
-    setDraftScheduleNote("")
+    setDraftScheduleFields(blankScheduleFields())
     setDraftAssignees(buildBlankAssignees(me))
     setDraftCreateError(null)
   }, [me])
@@ -228,19 +461,25 @@ export function AlertSettingView() {
       .map(([userId, v]) => ({
         userId,
         accessLevel: v.access,
-        mayInitiateDeleteRequest: v.mayDel,
+        // enforce: co_edit_rule cannot have mayInitiateDeleteRequest
+        mayInitiateDeleteRequest: v.access === "co_edit_rule" ? false : v.mayDel,
       }))
-    const status = assignees.length > 0 ? "active" : "draft"
     addRule({
       equipmentId,
       ownerUserId: me,
       name,
-      status,
+      status: assignees.length > 0 ? "active" : "draft",
       parameterIds: draftParams,
       combineOperator: draftCombine,
       conditions,
       scheduleMode: draftSchedule,
-      scheduleNote: draftScheduleNote || "—",
+      scheduleNote: "",
+      scheduleStartDate: draftScheduleFields.startDate || undefined,
+      scheduleStartTime: draftScheduleFields.startTime || undefined,
+      scheduleEndDate: draftScheduleFields.endDate || undefined,
+      scheduleEndTime: draftScheduleFields.endTime || undefined,
+      scheduleFrequency:
+        draftSchedule === "recurring" ? draftScheduleFields.frequency : undefined,
       assignees,
     })
     setCreateSheetOpen(false)
@@ -263,9 +502,10 @@ export function AlertSettingView() {
         titleAdornment={<Siren className="h-8 w-8 text-amber-500" aria-hidden />}
         description={
           <>
-            Equipment alerts for Coker 01 — assign people, compose conditions, schedules, and review history. Saving
-            with assignees publishes as <strong>active</strong> so they see the rule; owner-only rules stay{" "}
-            <strong>draft</strong> until you activate them in edit. Threshold crossing is not evaluated here;{" "}
+            Equipment alerts for Coker 01 — assign people, compose conditions, schedules, and review
+            history. Rules saved with assignees are published as <strong>active</strong> so they see
+            the rule immediately; owner-only rules start as <strong>draft</strong> until you activate
+            them in Edit. Threshold crossing is not evaluated here;{" "}
             <strong>Test</strong> sends a preview notification to you and all assignees.
           </>
         }
@@ -316,47 +556,58 @@ export function AlertSettingView() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Equipment not supported yet</CardTitle>
-              <CardDescription>Select Coker 01, HCU 01, or SMR Pigtails from the directory.</CardDescription>
+              <CardDescription>
+                Select Coker 01, HCU 01, or SMR Pigtails from the directory.
+              </CardDescription>
             </CardHeader>
           </Card>
         )}
 
-        {fullMock && pendingDeletes.some((d) => {
-          const r = rules.find((x) => x.id === d.ruleId)
-          return r && r.ownerUserId === me
-        }) && (
-          <Card className="border-amber-500/40 bg-amber-500/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Pending delete requests</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {pendingDeletes.map((d) => {
-                const rule = rules.find((r) => r.id === d.ruleId)
-                if (!rule || rule.ownerUserId !== me) return null
-                const who = findOrgUserById(d.requesterUserId)
-                return (
-                  <div
-                    key={d.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm"
-                  >
-                    <span>
-                      <strong>{who?.name ?? d.requesterUserId}</strong> asked to delete{" "}
-                      <em>{rule.name}</em>
-                    </span>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => resolveDeleteRequest(d.id, "rejected", me)}>
-                        Reject
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => resolveDeleteRequest(d.id, "accepted", me)}>
-                        Accept & archive
-                      </Button>
+        {fullMock &&
+          pendingDeletes.some((d) => {
+            const r = rules.find((x) => x.id === d.ruleId)
+            return r && r.ownerUserId === me
+          }) && (
+            <Card className="border-amber-500/40 bg-amber-500/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Pending delete requests</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {pendingDeletes.map((d) => {
+                  const rule = rules.find((r) => r.id === d.ruleId)
+                  if (!rule || rule.ownerUserId !== me) return null
+                  const who = findOrgUserById(d.requesterUserId)
+                  return (
+                    <div
+                      key={d.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm"
+                    >
+                      <span>
+                        <strong>{who?.name ?? d.requesterUserId}</strong> asked to delete{" "}
+                        <em>{rule.name}</em>
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => resolveDeleteRequest(d.id, "rejected", me)}
+                        >
+                          Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => resolveDeleteRequest(d.id, "accepted", me)}
+                        >
+                          Accept & archive
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </CardContent>
-          </Card>
-        )}
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
 
         {fullMock && (
           <Tabs defaultValue="active">
@@ -384,6 +635,7 @@ export function AlertSettingView() {
                 />
               ))}
 
+              {/* Create sheet */}
               <Sheet
                 open={createSheetOpen}
                 onOpenChange={(open) => {
@@ -398,12 +650,14 @@ export function AlertSettingView() {
                   <SheetHeader className="border-b border-border px-6 py-4 text-left shrink-0">
                     <SheetTitle>Create alert</SheetTitle>
                     <SheetDescription>
-                      Configure name, parameters, predicates, combine logic, schedule, and assignees,
-                      then save once. Rules are saved as draft until you activate them on the card.
+                      Configure name, parameters, conditions, schedule, and assignees, then save.
+                      Rules with assignees are saved as <strong>active</strong> so they appear on
+                      assignees' Alert Setting page right away.
                     </SheetDescription>
                   </SheetHeader>
                   <ScrollArea className="flex-1 min-h-0 px-6">
                     <div className="space-y-4 py-4 pr-3">
+                      {/* Name */}
                       <div className="space-y-2">
                         <Label htmlFor="draft-name">Alert name</Label>
                         <Input
@@ -413,6 +667,8 @@ export function AlertSettingView() {
                           placeholder="e.g. High skin temperature"
                         />
                       </div>
+
+                      {/* Parameters */}
                       <div className="space-y-2">
                         <Label>Parameters</Label>
                         <div className="grid gap-2 sm:grid-cols-2">
@@ -438,6 +694,7 @@ export function AlertSettingView() {
                         </div>
                       </div>
 
+                      {/* Condition rows */}
                       {draftParams.length > 0 && (
                         <div className="space-y-3">
                           <Separator />
@@ -454,7 +711,7 @@ export function AlertSettingView() {
                                 className="rounded-md border border-border p-3 space-y-2 bg-muted/20"
                               >
                                 <div className="text-sm font-medium">{label}</div>
-                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="grid gap-2 sm:grid-cols-3">
                                   <div className="space-y-1">
                                     <Label className="text-xs">Predicate</Label>
                                     <Select
@@ -510,22 +767,6 @@ export function AlertSettingView() {
                                       }}
                                     />
                                   </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-xs">Slope window note</Label>
-                                    <Input
-                                      value={c.windowLabel ?? ""}
-                                      onChange={(e) => {
-                                        const val = e.target.value
-                                        setDraftConditions((prev) =>
-                                          prev.map((row) =>
-                                            row.parameterId === pid
-                                              ? { ...row, windowLabel: val }
-                                              : row
-                                          )
-                                        )
-                                      }}
-                                    />
-                                  </div>
                                 </div>
                               </div>
                             )
@@ -533,6 +774,7 @@ export function AlertSettingView() {
                         </div>
                       )}
 
+                      {/* Combine */}
                       <div className="space-y-2">
                         <Label>Combine parameters with</Label>
                         <RadioGroup
@@ -548,13 +790,16 @@ export function AlertSettingView() {
                           </label>
                         </RadioGroup>
                       </div>
+
+                      {/* Schedule */}
                       <div className="space-y-2">
                         <Label>Schedule</Label>
                         <Select
                           value={draftSchedule}
-                          onValueChange={(v) =>
+                          onValueChange={(v) => {
                             setDraftSchedule(v as MockAlertRule["scheduleMode"])
-                          }
+                            setDraftScheduleFields(blankScheduleFields())
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -565,12 +810,16 @@ export function AlertSettingView() {
                             <SelectItem value="date_window">Specific dates</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Input
-                          value={draftScheduleNote}
-                          onChange={(e) => setDraftScheduleNote(e.target.value)}
-                          placeholder="Cron or window description"
+                        <SchedulePickers
+                          mode={draftSchedule}
+                          fields={draftScheduleFields}
+                          onChange={(patch) =>
+                            setDraftScheduleFields((prev) => ({ ...prev, ...patch }))
+                          }
                         />
                       </div>
+
+                      {/* Assignees */}
                       <div className="space-y-2">
                         <Label>Assignees</Label>
                         <div className="space-y-2">
@@ -581,66 +830,29 @@ export function AlertSettingView() {
                               mayDel: false,
                             }
                             return (
-                              <div
+                              <AssigneeRow
                                 key={u.id}
-                                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center"
-                              >
-                                <label className="flex items-center gap-2 text-sm min-w-[140px]">
-                                  <Checkbox
-                                    checked={row.on}
-                                    onCheckedChange={(v) =>
-                                      setDraftAssignees((prev) => ({
-                                        ...prev,
-                                        [u.id]: { ...row, on: v === true },
-                                      }))
-                                    }
-                                  />
-                                  {u.name}
-                                </label>
-                                <Select
-                                  value={row.access}
-                                  disabled={!row.on}
-                                  onValueChange={(v) =>
-                                    setDraftAssignees((prev) => ({
-                                      ...prev,
-                                      [u.id]: { ...row, access: v as AlertAssigneeAccess },
-                                    }))
-                                  }
-                                >
-                                  <SelectTrigger className="sm:w-44">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="notify_only">Notify only</SelectItem>
-                                    <SelectItem value="comment_on_alert">Comment on alert</SelectItem>
-                                    <SelectItem value="co_edit_rule">Co-edit rule</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <label className="flex items-center gap-2 text-sm">
-                                  <Checkbox
-                                    disabled={!row.on}
-                                    checked={row.mayDel}
-                                    onCheckedChange={(v) =>
-                                      setDraftAssignees((prev) => ({
-                                        ...prev,
-                                        [u.id]: { ...row, mayDel: v === true },
-                                      }))
-                                    }
-                                  />
-                                  Can request delete
-                                </label>
-                              </div>
+                                user={u}
+                                row={row}
+                                onChange={(patch) =>
+                                  setDraftAssignees((prev) => ({
+                                    ...prev,
+                                    [u.id]: { ...row, ...patch },
+                                  }))
+                                }
+                              />
                             )
                           })}
                         </div>
                       </div>
+
                       {draftCreateError && (
                         <p className="text-sm text-destructive">{draftCreateError}</p>
                       )}
                       <p className="text-[11px] text-muted-foreground flex items-center gap-1 pb-4">
                         <FlaskConical className="h-3 w-3 shrink-0" />
-                        After save, use <strong>Edit</strong> on the card to change the rule, set it{" "}
-                        <strong>Active</strong>, or run <strong>Test</strong>.
+                        After save, use <strong>Edit</strong> on the card to change the rule or run{" "}
+                        <strong>Test</strong>.
                       </p>
                     </div>
                   </ScrollArea>
@@ -652,13 +864,18 @@ export function AlertSettingView() {
                     >
                       Cancel
                     </Button>
-                    <Button type="button" onClick={handleCreate} disabled={draftParams.length === 0}>
+                    <Button
+                      type="button"
+                      onClick={handleCreate}
+                      disabled={draftParams.length === 0}
+                    >
                       Save alert
                     </Button>
                   </SheetFooter>
                 </SheetContent>
               </Sheet>
             </TabsContent>
+
             <TabsContent value="history" className="space-y-3 mt-4">
               {visibleDeleted.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No deleted alerts.</p>
@@ -671,7 +888,12 @@ export function AlertSettingView() {
                         <CardDescription>Archived (soft delete)</CardDescription>
                       </div>
                       {r.ownerUserId === me ? (
-                        <Button size="sm" variant="outline" className="gap-1" onClick={() => recoverRule(r.id)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => recoverRule(r.id)}
+                        >
                           <RotateCcw className="h-3.5 w-3.5" /> Recover
                         </Button>
                       ) : (
@@ -689,6 +911,8 @@ export function AlertSettingView() {
   )
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function cloneAlertRule(r: MockAlertRule): MockAlertRule {
   return {
     ...r,
@@ -697,6 +921,8 @@ function cloneAlertRule(r: MockAlertRule): MockAlertRule {
     assignees: r.assignees.map((a) => ({ ...a })),
   }
 }
+
+// ─── RuleCard ─────────────────────────────────────────────────────────────────
 
 function RuleCard({
   rule,
@@ -717,12 +943,17 @@ function RuleCard({
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<MockAlertRule | null>(null)
+  const [draftScheduleFields, setDraftScheduleFields] = useState<ScheduleFields>(blankScheduleFields)
   const [err, setErr] = useState<string | null>(null)
 
   const isOwner = rule.ownerUserId === me
   const myAssignee = rule.assignees.find((a) => a.userId === me)
   const canCoEdit = myAssignee?.accessLevel === "co_edit_rule"
-  const canRequestDelete = myAssignee?.mayInitiateDeleteRequest && !isOwner
+  // co_edit_rule assignees cannot request delete even if stored flag is true
+  const canRequestDelete =
+    !!myAssignee?.mayInitiateDeleteRequest &&
+    myAssignee.accessLevel !== "co_edit_rule" &&
+    !isOwner
 
   const model = editing && draft ? draft : rule
   const canTest =
@@ -736,7 +967,9 @@ function RuleCard({
 
   const beginEdit = () => {
     setErr(null)
-    setDraft(cloneAlertRule(rule))
+    const cloned = cloneAlertRule(rule)
+    setDraft(cloned)
+    setDraftScheduleFields(scheduleFieldsFromRule(rule))
     setEditing(true)
   }
 
@@ -761,7 +994,13 @@ function RuleCard({
       status: draft.status,
       combineOperator: draft.combineOperator,
       scheduleMode: draft.scheduleMode,
-      scheduleNote: draft.scheduleNote,
+      scheduleNote: "",
+      scheduleStartDate: draftScheduleFields.startDate || undefined,
+      scheduleStartTime: draftScheduleFields.startTime || undefined,
+      scheduleEndDate: draftScheduleFields.endDate || undefined,
+      scheduleEndTime: draftScheduleFields.endTime || undefined,
+      scheduleFrequency:
+        draft.scheduleMode === "recurring" ? draftScheduleFields.frequency : undefined,
       conditions: draft.conditions,
       parameterIds: draft.conditions.map((c) => c.parameterId),
       assignees: draft.assignees,
@@ -779,23 +1018,22 @@ function RuleCard({
     setErr(msgs[0] ?? null)
     setDraft((d) =>
       d
-        ? {
-            ...d,
-            conditions: next,
-            parameterIds: next.map((c) => c.parameterId),
-          }
+        ? { ...d, conditions: next, parameterIds: next.map((c) => c.parameterId) }
         : d
     )
   }
 
-  const assigneeRow = (d: MockAlertRule, uid: string) => {
+  const assigneeRowData = (d: MockAlertRule, uid: string) => {
     const a = d.assignees.find((x) => x.userId === uid)
     return a
       ? { on: true, access: a.accessLevel, mayDel: a.mayInitiateDeleteRequest }
       : { on: false, access: "notify_only" as const, mayDel: false }
   }
 
-  const setAssigneeFromRow = (uid: string, row: { on: boolean; access: AlertAssigneeAccess; mayDel: boolean }) => {
+  const setAssigneeFromRow = (
+    uid: string,
+    row: { on: boolean; access: AlertAssigneeAccess; mayDel: boolean }
+  ) => {
     setDraft((d) => {
       if (!d) return d
       let assignees = d.assignees.filter((a) => a.userId !== uid)
@@ -805,13 +1043,16 @@ function RuleCard({
           {
             userId: uid,
             accessLevel: row.access,
-            mayInitiateDeleteRequest: row.mayDel,
+            // enforce: co_edit_rule cannot have mayInitiateDeleteRequest
+            mayInitiateDeleteRequest: row.access === "co_edit_rule" ? false : row.mayDel,
           },
         ]
       }
       return { ...d, assignees }
     })
   }
+
+  void cn // suppress unused import lint
 
   return (
     <Card>
@@ -820,7 +1061,9 @@ function RuleCard({
           {!editing ? (
             <CardTitle className="text-base flex flex-wrap items-center gap-2">
               {rule.name}
-              <Badge variant={rule.status === "active" ? "default" : "secondary"}>{rule.status}</Badge>
+              <Badge variant={rule.status === "active" ? "default" : "secondary"}>
+                {rule.status}
+              </Badge>
             </CardTitle>
           ) : (
             <div className="space-y-2">
@@ -854,7 +1097,8 @@ function RuleCard({
                       <RadioGroupItem value="draft" id={`st-draft-${rule.id}`} /> Draft (only you)
                     </label>
                     <label className="flex items-center gap-2 text-sm">
-                      <RadioGroupItem value="active" id={`st-act-${rule.id}`} /> Active (assignees see it)
+                      <RadioGroupItem value="active" id={`st-act-${rule.id}`} /> Active (assignees
+                      see it)
                     </label>
                   </RadioGroup>
                 </div>
@@ -862,8 +1106,7 @@ function RuleCard({
             </div>
           )}
           <CardDescription>
-            Combine: <strong>{model.combineOperator}</strong> · Schedule: {model.scheduleMode} —{" "}
-            {model.scheduleNote}
+            Combine: <strong>{model.combineOperator}</strong> · {scheduleLabel(model)}
           </CardDescription>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -878,7 +1121,13 @@ function RuleCard({
             Test
           </Button>
           {!editing && canEnterEdit && (
-            <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1 px-2" onClick={beginEdit}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1 px-2"
+              onClick={beginEdit}
+            >
               <Pencil className="h-3 w-3" /> Edit
             </Button>
           )}
@@ -887,18 +1136,36 @@ function RuleCard({
               <Button type="button" size="sm" className="h-7 text-xs px-2" onClick={saveEdit}>
                 Done
               </Button>
-              <Button type="button" size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={cancelEdit}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs px-2"
+                onClick={cancelEdit}
+              >
                 Cancel
               </Button>
             </>
           )}
           {isOwner && (
-            <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1 px-2" onClick={onDelete}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1 px-2"
+              onClick={onDelete}
+            >
               <Trash2 className="h-3 w-3" /> Delete
             </Button>
           )}
           {canRequestDelete && (
-            <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={onRequestDelete}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs px-2"
+              onClick={onRequestDelete}
+            >
               Request delete
             </Button>
           )}
@@ -926,7 +1193,10 @@ function RuleCard({
               <Label>Schedule</Label>
               <Select
                 value={draft.scheduleMode}
-                onValueChange={(v) => patchDraft({ scheduleMode: v as MockAlertRule["scheduleMode"] })}
+                onValueChange={(v) => {
+                  patchDraft({ scheduleMode: v as MockAlertRule["scheduleMode"] })
+                  setDraftScheduleFields(blankScheduleFields())
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -937,28 +1207,36 @@ function RuleCard({
                   <SelectItem value="date_window">Specific dates</SelectItem>
                 </SelectContent>
               </Select>
-              <Input
-                value={draft.scheduleNote}
-                onChange={(e) => patchDraft({ scheduleNote: e.target.value })}
-                placeholder="Cron or window description"
+              <SchedulePickers
+                mode={draft.scheduleMode}
+                fields={draftScheduleFields}
+                onChange={(patch) =>
+                  setDraftScheduleFields((prev) => ({ ...prev, ...patch }))
+                }
               />
             </div>
           </>
         )}
 
         <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Assignees</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+            Assignees
+          </p>
           {!editing || !fieldsEditable || !draft ? (
             <div className="flex flex-wrap gap-1">
               {rule.assignees.length === 0 ? (
-                <span className="text-xs text-muted-foreground">None (owner only until you add assignees)</span>
+                <span className="text-xs text-muted-foreground">
+                  None (owner only until you add assignees)
+                </span>
               ) : (
                 rule.assignees.map((a) => {
                   const u = findOrgUserById(a.userId)
                   return (
                     <Badge key={a.userId} variant="outline">
                       {u?.name ?? a.userId} · {a.accessLevel}
-                      {a.mayInitiateDeleteRequest ? " · may request delete" : ""}
+                      {a.mayInitiateDeleteRequest && a.accessLevel !== "co_edit_rule"
+                        ? " · may request delete"
+                        : ""}
                     </Badge>
                   )
                 })
@@ -967,51 +1245,16 @@ function RuleCard({
           ) : (
             <div className="space-y-2">
               {ORG_USERS.filter((u) => u.id !== me).map((u) => {
-                const row = assigneeRow(draft, u.id)
+                const row = assigneeRowData(draft, u.id)
                 return (
-                  <div
+                  <AssigneeRow
                     key={u.id}
-                    className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center"
-                  >
-                    <label className="flex items-center gap-2 text-sm min-w-[140px]">
-                      <Checkbox
-                        checked={row.on}
-                        onCheckedChange={(v) =>
-                          setAssigneeFromRow(u.id, { ...row, on: v === true })
-                        }
-                      />
-                      {u.name}
-                    </label>
-                    <Select
-                      value={row.access}
-                      disabled={!row.on}
-                      onValueChange={(v) =>
-                        setAssigneeFromRow(u.id, {
-                          ...row,
-                          access: v as AlertAssigneeAccess,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="sm:w-44">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="notify_only">Notify only</SelectItem>
-                        <SelectItem value="comment_on_alert">Comment on alert</SelectItem>
-                        <SelectItem value="co_edit_rule">Co-edit rule</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        disabled={!row.on}
-                        checked={row.mayDel}
-                        onCheckedChange={(v) =>
-                          setAssigneeFromRow(u.id, { ...row, mayDel: v === true })
-                        }
-                      />
-                      Can request delete
-                    </label>
-                  </div>
+                    user={u}
+                    row={row}
+                    onChange={(patch) =>
+                      setAssigneeFromRow(u.id, { ...row, ...patch })
+                    }
+                  />
                 )
               })}
             </div>
@@ -1023,9 +1266,12 @@ function RuleCard({
             Conditions (per parameter)
           </p>
           {model.conditions.map((c, idx) => (
-            <div key={`${c.parameterId}-${idx}`} className="rounded-md border border-border p-3 space-y-2">
+            <div
+              key={`${c.parameterId}-${idx}`}
+              className="rounded-md border border-border p-3 space-y-2"
+            >
               <div className="text-sm font-medium">{labelFor(c.parameterId)}</div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Predicate</Label>
                   <Select
@@ -1087,28 +1333,6 @@ function RuleCard({
                       const base = editing && draft ? draft.conditions : rule.conditions
                       const next = [...base]
                       next[idx] = { ...c, b: e.target.value }
-                      if (editing && draft) setDraft((d) => (d ? { ...d, conditions: next } : d))
-                      else onUpdate(rule.id, { conditions: next })
-                    }}
-                    onBlur={() => {
-                      const conds = editing && draft ? draft.conditions : rule.conditions
-                      if (editing && draft) applyDraftConditions(conds)
-                      else {
-                        const msgs = conds.map(validateCondition).filter(Boolean) as string[]
-                        setErr(msgs[0] ?? null)
-                      }
-                    }}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Slope window note</Label>
-                  <Input
-                    value={c.windowLabel ?? ""}
-                    disabled={!fieldsEditable}
-                    onChange={(e) => {
-                      const base = editing && draft ? draft.conditions : rule.conditions
-                      const next = [...base]
-                      next[idx] = { ...c, windowLabel: e.target.value }
                       if (editing && draft) setDraft((d) => (d ? { ...d, conditions: next } : d))
                       else onUpdate(rule.id, { conditions: next })
                     }}

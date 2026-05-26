@@ -26,11 +26,12 @@ function formatTime(iso: string): string {
 export function CommentsPanel({
   dashboardId,
   myPermission,
-  onRequestPermission,
+  onRequestCommentAccess,
 }: {
   dashboardId: string
   myPermission: SharePermission | null
-  onRequestPermission?: () => void
+  /** Opens the shared access-request dialog (toolbar Comments also uses this). */
+  onRequestCommentAccess?: () => void
 }) {
   const { rawComments, addComment } = useWorkspaceStore(
     useShallow((s) => ({ rawComments: s.comments, addComment: s.addComment }))
@@ -116,9 +117,9 @@ export function CommentsPanel({
           </>
         ) : (
           <div className="text-xs text-muted-foreground text-center py-2 space-y-2">
-            <p>You have view-only access. Request comment access to participate.</p>
-            {onRequestPermission && (
-              <Button size="sm" variant="outline" onClick={onRequestPermission}>
+            <p>You have view-only access. Use the Comments button above to request access.</p>
+            {onRequestCommentAccess && (
+              <Button size="sm" variant="outline" onClick={onRequestCommentAccess}>
                 Request comment access
               </Button>
             )}

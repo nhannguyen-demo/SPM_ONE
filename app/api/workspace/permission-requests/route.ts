@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
 const bodySchema = z.object({
   dashboardId: z.string().min(1),
   requestedPermission: z.enum(["comment", "edit"]),
-  message: z.string().max(2000).nullable().optional(),
+  message: z.string().max(500).nullable().optional(),
 })
 
 /** Non-owner with dashboard access may request elevated permission. */

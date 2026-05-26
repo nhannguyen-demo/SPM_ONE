@@ -52,6 +52,12 @@
 # already used for the Workspace module (UI: **Dashboard** at `/dashboard/*`). This is
 # a routing/navigation invariant only: **no change to visible UI layout, styling, copy, or
 # interaction affordances** unless required to preserve behavior under URL-driven routing.
+# Updated May 2026: **Dashboard popup toolbar — universal actions + access requests** —
+# Comments, Publish/Unpublish, Edit, and Share are always visible and clickable on the
+# Workspace Dashboard Popup (`DashboardPopup`). Users without the needed grant open a
+# request dialog (optional note) instead of disabled controls. Publish/Share without edit
+# map to `PermissionRequest.requestedPermission = edit`. Publish/Unpublish execution
+# remains owner-only. See business_rules (Workspace popup toolbar).
 # Updated May 1 2026 (rev 2): **Auth-gated main shell + notification chrome** — unauthenticated
 # users cannot use the main app shell (`/home`, `/assets/*`, `/tools/*`, `/insights/*` as
 # implemented); they authenticate at `/login` first. Default signed-in landing remains `/home`.
@@ -592,7 +598,9 @@ entities:
 
   PermissionRequest:
     comment: "A request from a shared-with user asking for elevated permission
-      (comment or edit) on a dashboard. Resolved by the sharer via Alert action."
+      (comment or edit) on a dashboard. Resolved by the owner via Comms Notifications.
+      Raised from the Dashboard Popup when the user clicks Comments, Edit, Publish, or
+      Share without the required grant (Publish/Share without edit always request edit)."
     fields:
       id: { type: uuid }
       dashboardId: { type: uuid, references: Dashboard.id }
@@ -604,6 +612,12 @@ entities:
       requestedPermission:
         type: enum
         values: [comment, edit]
+      message:
+        type: string
+        nullable: true
+        maxLength: 500
+        comment: "Optional note from the requester; surfaced in permission_request_received
+          Notification body and owner resolution UI."
       status:
         type: enum
         values: [pending, granted, denied, cancelled]
@@ -922,10 +936,12 @@ entities:
     comment: "User-authored equipment monitoring rule created in the **Alert Setting** tool
       (`Tool.key = alert_setting`). v1 persists rules in **browser storage** (same device / origin) until a
       server-backed API exists. **draft** rules are owner-visible only; **active** rules appear to assignees in-tool.
-      In-app edits are **Edit-mode gated**. **Test** sends preview **operational_alert** notifications to the owner
-      and all assignees (deduped). **Create** collects name, parameters, predicates, combine logic, schedule, and
-      assignees before first save. **Coker 01** (`equipment-a`) has full UX; other primaries show **coming soon**
-      until fixtures align with Data & Jobs **Data Status** parameter catalogs."
+      Rules saved with at least one assignee default to **active**; owner-only rules default to **draft** and must
+      be activated manually. In-app edits are **Edit-mode gated**. **Test** sends preview **operational_alert**
+      notifications to the owner and all assignees (deduped). **Create** collects name, parameters, predicates,
+      combine logic, schedule (with date/time pickers), and assignees before first save.
+      **Coker 01** (`equipment-a`) has full UX; other primaries show **coming soon** until fixtures align with
+      Data & Jobs **Data Status** parameter catalogs."
     fields:
       id: { type: uuid }
       ownerUserId: { type: uuid, references: User.id }
@@ -938,11 +954,32 @@ entities:
       scheduleMode:
         type: enum
         values: [one_shot, recurring, date_window]
-        comment: "one_shot: fire at most once when armed; recurring: cron-like or interval (TBD);
-          date_window: active only between optional start/end instants."
-      schedulePayload:
-        type: json
-        comment: "Structured schedule details (intervals, timezone, recurrence spec) — schema TBD."
+        comment: "one_shot: fire at most once at the specified date+time; recurring: repeats at the
+          chosen frequency (daily/weekly/monthly) at a given time, optionally until an end date;
+          date_window: active only within a start–end date range with optional time bounds."
+      scheduleStartDate:
+        type: date
+        nullable: true
+        comment: "ISO date (YYYY-MM-DD). For one_shot: the fire date. For date_window / recurring: the start date.
+          Null means 'immediately / as soon as the rule is armed'."
+      scheduleStartTime:
+        type: string
+        nullable: true
+        comment: "HH:mm (24-hour). Time-of-day component for scheduleStartDate. Null means start-of-day."
+      scheduleEndDate:
+        type: date
+        nullable: true
+        comment: "ISO date (YYYY-MM-DD). For date_window: the inclusive end date. For recurring: last repeat date.
+          Null means no end (recurring runs indefinitely; date_window behaves as open-ended)."
+      scheduleEndTime:
+        type: string
+        nullable: true
+        comment: "HH:mm (24-hour). Time-of-day component for scheduleEndDate. Null means end-of-day."
+      scheduleFrequency:
+        type: enum
+        values: [daily, weekly, monthly]
+        nullable: true
+        comment: "Required when scheduleMode = recurring; ignored otherwise."
       logicalExpression:
         type: json
         comment: "Boolean DAG over condition leaves with AND / OR / NOT and explicit grouping order.
@@ -953,7 +990,8 @@ entities:
           (rate-of-change / derivative templates over a window), plus extensible statistical templates
           (moving average deviation, cumulative drift) as the product matures. Multiple predicates per
           parameter are allowed when jointly satisfiable; engine MUST reject mathematically contradictory
-          compositions at activation time."
+          compositions at activation time. The `windowLabel` helper on condition leaves is an internal hint
+          for slope predicates; it is NOT surfaced as a user-visible input field."
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
       deletedAt: { type: datetime, nullable: true, comment: "Soft delete; retained for history / recover." }
@@ -967,9 +1005,15 @@ entities:
       accessLevel:
         type: enum
         values: [notify_only, comment_on_alert, co_edit_rule]
-        comment: "notify_only: receive operational_alert only. comment_on_alert: annotate rule (mock thread TBD).
-          co_edit_rule: change conditions/schedule with owner-approved semantics (product mirrors dashboard edit trust)."
-      mayInitiateDeleteRequest: { type: boolean, default: false }
+        comment: "notify_only: receive operational_alert only. comment_on_alert: annotate rule.
+          co_edit_rule: change conditions/schedule with owner-approved semantics (product mirrors dashboard
+          edit trust). NOTE: co_edit_rule assignees may NOT initiate delete requests — only notify_only
+          and comment_on_alert may hold mayInitiateDeleteRequest = true."
+      mayInitiateDeleteRequest:
+        type: boolean
+        default: false
+        comment: "Only applicable when accessLevel IN (notify_only, comment_on_alert). MUST be false
+          for co_edit_rule — the UI should hide this option for co-editors."
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
@@ -1059,8 +1103,11 @@ business_rules:
   - "Data Status **ingest** presentation is **per sensor channel** (not a single equipment-wide 'stream' card): expected update cadence and last-pull timestamps vary by instrument class — e.g. thermocouple, pressure, coke level, steam rate, and flow channels on the order of **minutes** (~5 min sample cadence), versus **laser scan** geometry captured on **multi-month** campaign boundaries (~3 months sample cadence)."
   - "Data Status actions (transfer log, open client DB console in new tab, configure/add source form, export CSV/XML/JSON sample or future API) must not mutate Workspace, Prisma, or Zustand persisted slices beyond ephemeral UI state (open/close dialogs)."
   - "The **Alert Setting** tool (`Tool.key = alert_setting`, route `/tools/alert-setting`) is **not** the retired **Settings → Alert Settings** surface; it lives under **Tools / Insights** beside Data & Jobs, Documents, and What-If."
-  - "Alert Setting v1: users define **EquipmentAlertRule** rows scoped to an equipment, pick **one or many** monitored parameters (unlimited in product intent; initial build may cap count), compose **logicalExpression** DAGs across parameters (AND / OR / NOT with explicit grouping), attach per-parameter predicates (thresholds, interval bands, OR-outside-band forms, slope / rate-of-change templates, extensible numeric templates), choose **scheduleMode** (one_shot | recurring | date_window), assign **EquipmentAlertAssignee** users with **accessLevel** (notify_only | comment_on_alert | co_edit_rule) and optional **mayInitiateDeleteRequest**, manage multiple rules per equipment, edit when permitted, soft-delete with **archived_deleted** and **Deleted alert history** (recover + edit), and process **EquipmentAlertDeleteRequest** accept/reject flows."
+  - "Alert Setting v1: users define **EquipmentAlertRule** rows scoped to an equipment, pick **one or many** monitored parameters (unlimited in product intent; initial build may cap count), compose **logicalExpression** DAGs across parameters (AND / OR / NOT with explicit grouping), attach per-parameter predicates (thresholds, interval bands, OR-outside-band forms, slope / rate-of-change templates, extensible numeric templates), choose **scheduleMode** (one_shot | recurring | date_window) **with structured date/time pickers** (see `scheduleStartDate`, `scheduleStartTime`, `scheduleEndDate`, `scheduleEndTime`, `scheduleFrequency` on `EquipmentAlertRule`), assign **EquipmentAlertAssignee** users with **accessLevel** (notify_only | comment_on_alert | co_edit_rule) and optional **mayInitiateDeleteRequest** (only valid for notify_only and comment_on_alert — hidden for co_edit_rule), manage multiple rules per equipment, edit when permitted, soft-delete with **archived_deleted** and **Deleted alert history** (recover + edit), and process **EquipmentAlertDeleteRequest** accept/reject flows."
   - "Alert Setting scope (May 2026): **Coker 01** (`equipment-a`) has full interactive UX wired to the same **input** (Temperature via TI6001–TI6004 family, Pressure PI6001–PI6003, Coke Level CI6001, Steam Rate SI6001, Flow Rate FI6001, Laser ZI6001) and **output** names (Fatigue Damage, Stress, Remaining Life, PSLF, Bulging, Ovality, FAD, Displacement, Crack) as the Data & Jobs **Data Status** fixtures (`lib/data-jobs-mock.ts`). **HCU 01** and **SMR Pigtails** show **coming soon** in-tool until fixtures exist."
+  - "Alert Setting **schedule UI**: the free-text 'Cron or window description' input and per-condition 'Slope window note' input are **removed** from the UI. Schedule is configured exclusively through structured date/time controls: one_shot shows a date picker + time input; recurring shows a frequency select (daily/weekly/monthly) + time-of-day + optional end date; date_window shows start date + optional start time + end date + optional end time."
+  - "Alert Setting **assignee constraint**: the 'Can request delete' checkbox MUST only be shown and enabled for assignees whose `accessLevel` is `notify_only` or `comment_on_alert`. For `co_edit_rule` assignees, the option is hidden (not merely disabled), and any stored `mayInitiateDeleteRequest = true` on a co_edit_rule assignee MUST be treated as false by the UI and the delete-request guard."
+  - "Alert Setting **assignee visibility**: a rule saved with at least one assignee is automatically given `status = active` so assignees can see it on their Alert Setting page immediately. An owner-only rule (no assignees) defaults to `status = draft` and the owner must manually activate it via Edit → Done."
   - "Alert Setting **does not** evaluate live telemetry in the current build; crossing detection is **no-op** except an explicit per-rule **Test** control that enqueues a demonstration **operational_alert** Notification for every assignee (and owner if desired) with **actionHref** targeting that equipment's **Equipment Home** URL."
   - "Comms **Notifications** UI SHALL render **operational_alert** rows with **stronger visual weight** (typography, border, icon treatment) than workspace-comms categories so field alerts are immediately distinguishable."
   - "The **Edit Dashboards** action on the Equipment Home Page navigates to the **Dashboard module** (`/dashboard` or deeper, equipment filter pre-applied) so the user can open the **only** supported authoring experience: `/dashboard/dashboard/[dashboardId]/edit`. There is no second editor in `currentView: equipment` for the same product capability."
@@ -1082,9 +1129,14 @@ business_rules:
   - "Users can search and filter dashboards in their Workspace by equipment, lifecycleStatus, owner (creator), contributor, and lastChangeAt date range."
   - "Users can create, duplicate, rename, move, and soft-delete their own dashboards from the Workspace; soft-deleted dashboards live in Trash with deletedAt set."
   - "Duplicating a dashboard creates a new Dashboard with a new id, lifecycleStatus='created', sourceDashboardId set to the original, name prefixed 'Copy of ', folderId copied from the original, and ownerUserId set to the duplicating user."
-  - "The Workspace Dashboard Popup exposes three independent actions: expand-to-fullscreen (within the same tab), toggle Comments side panel, and Edit dashboard."
-  - "The Workspace Dashboard Popup additionally exposes 'Open in new tab', which navigates a new browser tab to the Full-Screen Dashboard Viewer route and closes the popup in the originating tab."
-  - "Edit and Comment in the Workspace Dashboard Popup are always enabled for the dashboard owner. For shared-with users they are enabled iff the active DashboardShare or ShareLink grants edit/comment permission, respectively."
+  - "The Workspace Dashboard Popup header toolbar exposes four primary actions in fixed order: **Comments**, **Publish** or **Unpublish** (label follows `Dashboard.lifecycleStatus`), **Edit**, **Share**. All four controls are **visible to every user** who can open the popup (owner, share recipient, or link recipient); controls MUST NOT be hidden or `disabled` solely for insufficient permission."
+  - "The Workspace Dashboard Popup additionally exposes 'Open in new tab' (when enabled by the host surface) and close; expand-to-fullscreen within the same tab is optional per host."
+  - "**Comments** click: users with `comment` or `edit` permission (or the owner) toggle the Comments side panel. Users with only `view` (or no grant) open an **access-request dialog** targeting `PermissionRequest.requestedPermission = comment` with optional `message`."
+  - "**Edit** click: users with `edit` permission (or the owner) navigate to `/dashboard/dashboard/[dashboardId]/edit`. Users without `edit` open the access-request dialog targeting `requestedPermission = edit`."
+  - "**Publish** / **Unpublish** click: the **dashboard owner** with `edit` permission executes the lifecycle transition (`created` ↔ `published`). Non-owners, or owners without edit, open the access-request dialog with `requestedPermission = edit` (publish is not a separate permission tier). The Publish/Unpublish control is placed **between Comments and Edit** in the toolbar."
+  - "**Share** click: users with `edit` permission (or the owner) open the share dialog. Users without `edit` open the access-request dialog with `requestedPermission = edit`."
+  - "The access-request dialog is a modal (or equivalent popup) with a short explanation, optional note field (maps to `PermissionRequest.message`, max 500 chars), **Request** primary CTA, and cancel/dismiss. Successful submit creates a pending `PermissionRequest` and a `permission_request_received` Notification for the owner; duplicate pending requests for the same (dashboard, requester, requestedPermission) SHOULD be idempotent or rejected with user-visible feedback."
+  - "Removing the legacy footer-only 'Request comment/edit access' affordance is allowed once all four toolbar actions route through the dialog pattern."
   - "Saving a dashboard edit by a non-owner with edit permission appends that user to Dashboard.contributorUserIds (idempotent) and updates lastChangeAt and lastChangeByUserId."
   - "The **Workspace-native / Dashboard module** editor (e.g. `components/workspace/dashboard-editor.tsx` mounted at `/dashboard/dashboard/[id]/edit`) is the **sole** interactive dashboard authoring engine. It reuses the Widget Library catalog; the legacy `EquipmentDashboard` in-shell editor is **retired** (removed or reduced to a non-editing entry point only). A single `WorkspaceDashboard` row in `useWorkspaceStore` is the only persisted layout source for widgets."
   # ── Catalog-driven dashboard library (Coker v1+; see scripts/prd.txt) ─────────
@@ -1102,7 +1154,7 @@ business_rules:
   - "DashboardShare grants are per-recipient and may be revoked; revoked shares no longer grant access and are hidden from the recipient's 'Shared with me'."
   - "ShareLink grants permission to any signed-in user that opens the link; if revoked, the link refuses access."
   - "A user with view permission may not comment or edit; comment permission implies view; edit permission implies comment+view."
-  - "Users without comment/edit permission on a shared dashboard may submit a PermissionRequest from the Dashboard Popup; this generates a 'permission_request_received' Notification for the dashboard owner."
+  - "Users without comment or edit permission on a shared dashboard submit PermissionRequest rows from the Dashboard Popup toolbar (Comments → comment; Edit, Publish, Share → edit). Each generates a 'permission_request_received' Notification for the dashboard owner when created."
   - "Resolving a PermissionRequest (granted/denied) generates a 'permission_request_resolved' Notification for the requester; granting also creates or upgrades the corresponding DashboardShare."
   - "When DashboardShare.notifyOnFirstView is true, the first time the recipient opens the dashboard popup sets DashboardShare.firstViewedAt and produces a 'dashboard_first_view' Notification for the sharer; this fires at most once per share."
   - "Comments on owner-owned dashboards do NOT generate Notifications for comment activity; sharing-related events always do. Additional operational categories (e.g. edit-lock contention) MAY surface as Notifications when implemented."
