@@ -1,104 +1,3 @@
-# SPM ONE — Domain Ontology (Canonical)
-# Revised Apr 2026 from audit + product clarifications.
-# Updated Apr 2026: Equipment Home Page, Workspace module stub, Tools scoping,
-# Data & Jobs (`data_sync` tool) filter, Dashboard popup read-only mode.
-# Updated Apr 27 2026: Full Workspace Module spec — folders, dashboard
-# lifecycle (created/published), per-user ownership, shares, share links,
-# comments, in-app alerts, full-screen dashboard viewer route, cross-tab
-# open-state signalling.
-# Updated Apr 27 2026 (rev 2): Workspace dashboards established as the
-# canonical source of truth for dashboard metadata across all modules.
-# Removed static dashboardCards registry; Equipment Home, Home Page Recents,
-# Site/Plant Overview tab stacks derive their dashboard data from published
-# WorkspaceDashboard records.
-# Updated Apr 27 2026 (rev 3): What-If Scenario result 'View Data' navigates
-# to Equipment Home for the run's equipment only — no dashboard popup auto-open.
-# Updated Apr 28 2026: AppModule `workspace` is labeled **Dashboard** in the UI;
-# code, routes, and stores keep the Workspace naming (see business_rules).
-# Updated Apr 28 2026: Mock asset tree is Site → Unit → Equipment. Site 2000
-# (id site-x) has three units: Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 -
-# Hydrogen Unit. Primary equipment ids equipment-a/b/c (Coker 01, HCU 01, SMR
-# Pigtails) are unchanged. Placeholder equipment rows have no functional surface.
-# Updated Apr 29 2026: Workspace dashboard editor external widget drop uses
-# react-grid-layout legacy onDrop(layout, item, e); drag payload remains JSON in
-# DataTransfer (`application/x-spm-widget`), consistent with prior Equipment
-# Dashboard edit mode (now superseded; see business_rules single-editor).
-# Updated Apr 29 2026 (rev 2): **Single editor engine (Option A)** — interactive
-# dashboard authoring (widget layout edit/save) is **only** the Dashboard module
-# App Router editor. The legacy in-shell `EquipmentDashboard` / `currentView: equipment`
-# editor is retired; Asset surfaces remain read-only for dashboard preview.
-# Updated Apr 30 2026: **Catalog-driven dashboard library (Coker v1 + future types)** —
-# `EquipmentKnowledgePack`, `ParameterFamily`, `CatalogWidgetTemplate`, `ParameterRequest`;
-# `WorkspaceDashboard.widgets` shall evolve to templateId + options + displayTitle; see
-# `scripts/prd.txt` (Coker catalog PRD) and PROJECT.md.
-# Updated Apr 30 2026 (rev 2): Coker **raster_image** template kind — selected
-# catalog tiles render from static files in `public/coker/widgets/` (code-mapped
-# paths in `lib/equipment-packs/coker-widget-images.ts`).
-# Updated Apr 30 2026 (rev 4): **Production workspace identity** — when built for
-# production, effective workspace user id follows Auth.js session (`ORG_USERS` ids);
-# client localStorage cannot override identity in prod.
-# Updated Apr 30 2026 (rev 3): **Workspace DB bootstrap** — signed-in clients load
-# folders, dashboards, and shares from PostgreSQL (`GET /api/workspace/bootstrap`), not
-# from localStorage as source of truth. The deterministic bundle `WORKSPACE_SEED` in
-# `lib/workspace/seed.ts` is promoted into the DB by `pnpm db:seed` via
-# `prisma/seed-workspace.ts` after users and the Site/Unit/Equipment hierarchy from
-# `lib/data.ts`. Primary catalog equipment ids remain **equipment-a** (Coker 01),
-# **equipment-b** (HCU 01), **equipment-c** (SMR Pigtails); dashboard POST validates
-# `equipmentId` against `Equipment`.
-# Updated May 1 2026: **Module URL parity** — every primary AppModule surface (Home,
-# Assets hierarchy + Equipment Home, Tools: Data & Jobs / What-If / Documents, Insights,
-# Settings as they exist) SHALL be reached via stable Next.js App Router URLs with real
-# browser navigation (back/forward, bookmarkable deep links), matching the pattern
-# already used for the Workspace module (UI: **Dashboard** at `/dashboard/*`). This is
-# a routing/navigation invariant only: **no change to visible UI layout, styling, copy, or
-# interaction affordances** unless required to preserve behavior under URL-driven routing.
-# Updated May 2026: **Dashboard popup toolbar — universal actions + access requests** —
-# Comments, Publish/Unpublish, Edit, and Share are always visible and clickable on the
-# Workspace Dashboard Popup (`DashboardPopup`). Users without the needed grant open a
-# request dialog (optional note) instead of disabled controls. Publish/Share without edit
-# map to `PermissionRequest.requestedPermission = edit`. Publish/Unpublish execution
-# remains owner-only. See business_rules (Workspace popup toolbar).
-# Updated May 1 2026 (rev 2): **Auth-gated main shell + notification chrome** — unauthenticated
-# users cannot use the main app shell (`/home`, `/assets/*`, `/tools/*`, `/insights/*` as
-# implemented); they authenticate at `/login` first. Default signed-in landing remains `/home`.
-# Comms in-app feed is labeled **Notifications** (implementation may keep route `/comms/alerts`).
-# Header bell mirrors Comms **Notifications** (unread parity); **ephemeral new-item previews** anchor
-# under the bell (compact dropdown-style cards, short TTL), not a full-width header strip and
-# not global Sonner toasts for notification delivery.
-# Updated May 1 2026 (rev 3): **Notification preview anchoring** — ephemeral previews for newly
-# received unread notifications render in a compact stack **immediately below** the header Bell
-# (same visual language as the bell dropdown, smaller), auto-dismiss after a short interval; no
-# full-width banner strip under the global header and no Sonner `toast.info` channel for those events.
-# Updated May 2 2026 (rev 5): **Notifications inbox hygiene** — `archivedAt` on
-# `Notification` (archive / restore / delete in UI; persisted via Postgres when using the workspace API);
-# **Alert Setting** create flow is a
-# single configuration step (sheet) with per-parameter conditions before save; **Test** demo
-# notifies assignees or the rule owner when no assignees.
-# Updated May 2 2026: **Data & Jobs** tool (`Tool.key` remains `data_sync`; route `/tools/data-sync`):
-# **Data Status** + **FEA Jobs**; deferred entities `ClientSensorDatabaseSource`,
-# `SensorIngestHealthSnapshot`, `EquipmentAnalysisOutputDescriptor`, `DataTransferLogEntry`.
-# Updated May 2 2026 (rev 2): **Data Status** UI groups **client DB sources**, **per-sensor
-# channel ingest** (heterogeneous cadence: process channels vs laser campaign), and
-# **product outputs**; `SensorIngestHealthSnapshot` comment distinguishes equipment roll-up
-# from per-channel presentation.
-# Updated May 2 2026 (rev 3): **Data & Jobs** UI uses **tabs** to separate **Data Status** from **FEA Jobs**
-# on `/tools/data-sync` (see business_rules).
-# Updated May 3 2026: **Settings** `AppModule` is **in-app application settings** (appearance, locale,
-# workspace defaults, tools/export defaults, privacy, about) — non-persistent in sidebar rail and `/settings` until backend wiring.
-# Retired from Settings nav: **General**, **Integrations**, **Alert Settings** (notification feed and
-# preferences remain **Comms → Notifications**; no duplicate Alert Settings row in Settings).
-# Updated May 2026: **Alert Setting** tool (`Tool.key = alert_setting`, route `/tools/alert-setting`) under
-# **Tools / Insights** — equipment-scoped rules with **draft** vs **active** visibility (assignees only see **active**),
-# **Edit**-gated field changes, **Test** preview notifications to owner + assignees, schedules, delete workflow,
-# soft-deleted history. v1 stores rules in **browser `localStorage`** (shared for all users on the same origin /
-# device — not synced across separate browsers or servers until a persistence API exists). **Create** saves as
-# **active** when the rule has assignees (so they appear on assignees' Alert Setting immediately), otherwise **draft**.
-# **Coker 01** (`equipment-a`) has full UX; other primaries show **coming soon** until fixtures align with Data & Jobs.
-# Firings integrate with **Comms → Notifications** via `operational_alert`; deep-link to Equipment Home.
-# Updated May 3 2026 (rev 2): **Tools module** primary tool pages share one **page chrome** (breadcrumb,
-# title, description, optional route chip, gradient shell) in `components/tools/tool-page-layout.tsx` for
-# visual consistency; URLs, behavior, and store sync rules are unchanged.
-
 entities:
   User:
     fields:
@@ -355,10 +254,58 @@ entities:
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
+  CokerParameter:
+    comment: "A physical measurement or computed value for Coker equipment.
+      Inputs are live sensor readings (Temperature, Pressure, Coke Level,
+      Steam Rate, Flow Rate) or inspection inputs (Bulging from laser-scan).
+      Outputs are FEA / analysis results (Fatigue Damage, Stress, Remaining
+      Life, PSLF, Ovality, Displacement, Crack).
+      One widget instance in a dashboard always represents exactly one parameter.
+      The product team owns the catalog; end users cannot create new parameters.
+      The 'FAD' visual type is not a standalone parameter — it is a valid visual
+      type of the Crack parameter (see CatalogWidgetTemplate.kind: fad_chart)."
+    fields:
+      id: { type: uuid }
+      packId: { type: uuid, references: EquipmentKnowledgePack.id }
+      key:
+        type: string
+        comment: "Stable snake_case id, e.g. 'temperature', 'fatigue_damage',
+          'remaining_life'. Used as parameterId in GridWidget."
+      displayName: { type: string, comment: "e.g. 'Temperature', 'Fatigue Damage'" }
+      unit:
+        type: string
+        nullable: true
+        comment: "Engineering unit shown in widget header and KPI values,
+          e.g. '°C', 'Barg', '%', 'years', 'MPa'. Null for dimensionless outputs."
+      parameterType:
+        type: enum
+        values: [input, output]
+        comment: "input = operational sensor reading or inspection data;
+          output = FEA / integrity-analysis result."
+      librarySection:
+        type: enum
+        values: [operational_input, inspection, analysis_output]
+        comment: "Groups the parameter inside the Widget Library sidebar 'Parameters'
+          section. operational_input: Temperature, Pressure, Coke Level, Steam Rate,
+          Flow Rate. inspection: Bulging. analysis_output: Fatigue Damage, Stress,
+          Remaining Life, PSLF, Ovality, Displacement, Crack."
+      validVisualTypeKeys:
+        type: array
+        items: { type: string, comment: "CatalogWidgetTemplate.key" }
+        comment: "Ordered list of visual type template keys valid for this parameter.
+          Shown in Step 1 of the widget-creation popup. Product-team-defined only."
+      defaultVisualTypeKey:
+        type: string
+        nullable: true
+        comment: "Pre-selected visual type key in the popup (recommended default)."
+      description: { type: string, nullable: true }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
   ParameterFamily:
-    comment: "Stable approved parameter for an equipment type; library grouping
-      and data-contract anchor. Category matches UX: Asset Information, Asset
-      Efficiency, Event Visualization, Other."
+    comment: "SUPERSEDED by CokerParameter (May 2026). Retained for backward
+      compatibility with existing widget seeds that reference parameterFamilyId.
+      New code MUST use CokerParameter and cokerParameterId instead."
     fields:
       id: { type: uuid }
       packId: { type: uuid, references: EquipmentKnowledgePack.id }
@@ -376,46 +323,115 @@ entities:
       updatedAt: { type: datetime }
 
   CatalogWidgetTemplate:
-    comment: "Presentation template (PRD: WidgetTemplate): one row per approved
-      visual; links to a ParameterFamily or a control family; whitelisted
-      options schema; references images as acceptance baseline for QA."
+    comment: "Visual type definition: one row per renderable chart / table / control
+      kind that the product team approves. In the new parameter-driven model, each
+      entry describes how a CokerParameter can be visualised. Entries with
+      widgetOrigin = reference_tool are non-parameter widgets (Equipment Data,
+      3D Model, Sensor Location, time controls) placed directly without a popup.
+      The `kind` field drives the renderer selection in CokerTemplateView."
     fields:
       id: { type: uuid }
       packId: { type: uuid, references: EquipmentKnowledgePack.id }
-      key: { type: string, comment: "Stable template id, e.g. coker_fatigue_heatmap" }
+      key: { type: string, comment: "Stable template id, e.g. 'coker_fatigue_heatmap'" }
       displayName: { type: string }
+      cokerParameterId:
+        type: uuid
+        nullable: true
+        references: CokerParameter.id
+        comment: "The CokerParameter this visual type belongs to. Null only for
+          reference_tool widgets (Equipment Data, 3D Model, controls)."
       parameterFamilyId:
         type: uuid
         nullable: true
         references: ParameterFamily.id
-        comment: "Null when template is a dashboard control (e.g. time information)."
+        comment: "DEPRECATED — use cokerParameterId. Kept for backward compat."
+      widgetOrigin:
+        type: enum
+        values: [parameter, reference_tool]
+        default: parameter
+        comment: "parameter: backed by a CokerParameter; triggered by Step 1 popup.
+          reference_tool: Equipment Data table, 3D Model, Sensor Location schematic,
+          Time Range control, Cycle Selector control — placed directly with no popup."
       kind:
         type: enum
         values:
-          - kpi_card
-          - time_series
-          - gauge
-          - area_chart
-          - data_table
-          - heatmap_2d
-          - schematic_3d
-          - polar_plot
-          - bar_chart
-          - fad_chart
-          - unwrapped_map
-          - control_time_range
-          - multi_tab_panel
-          - empty_state
-          - composite_kpi_strip
-          - raster_image
+          # ── Single-value visuals ─────────────────────────────────────────
+          - kpi_card          # one scalar value with optional aggregation config
+          - gauge             # arc gauge with configurable zone thresholds
+          # ── Time-series charts ───────────────────────────────────────────
+          - time_series       # line chart; supports multi-sensor overlay
+          - area_chart        # filled area; e.g. accumulated damage over cycles
+          # ── Distribution / spatial charts ───────────────────────────────
+          - bar_chart         # vertical or horizontal bars; e.g. damage by elevation
+          - polar_plot        # radar / polar; e.g. top-drum displacement N/E/S/W
+          - fad_chart         # Failure Assessment Diagram (Lr/Kr); Crack parameter only
+          - ovality_chart     # polar cross-section (original vs actual diameter)
+                              # + elevation selector + stats panel; Ovality only
+          # ── Tabular visuals ──────────────────────────────────────────────
+          - data_table        # generic key-value or column table
+          - damage_table      # fatigue damage locations (Azimuth, Elevation, Dir,
+                              # Group, Damage%) with configurable columns + top-N filter
+          - severity_table    # bulging severity (PSLF, Likelihood, Zone) with
+                              # configurable sort and likelihood filter
+          - crack_table       # crack details (Location, Cycle, Zone, Lr, Kr)
+                              # with configurable columns
+          # ── Image / schematic ────────────────────────────────────────────
+          - raster_image      # full-tile static image from public/coker/widgets/
+          - heatmap_2d        # colour-mapped shell heatmap (fatigue, bulging)
+          - unwrapped_map     # unwrapped shell map (crack inspection)
+          - schematic_3d      # vessel schematic with sensor callouts
+          # ── Dashboard controls (reference_tool only) ────────────────────
+          - control_time_range   # time duration / from-to range selector
+          - control_cycle        # cycle selector (id, datetime range, status)
+          # ── DEPRECATED — do not use for new widgets ──────────────────────
+          - composite_kpi_strip  # was multi-value row; replaced by individual kpi_cards
+          - empty_state          # was placeholder; replaced by proper visuals
+          - multi_tab_panel      # was tabbed media; split into separate parameter widgets
       followsDashboardContext: { type: boolean, default: true }
-      optionSchema: { type: json, comment: "Whitelisted options; no style keys." }
+      configSchema:
+        type: json
+        comment: "JSON Schema describing the typed widget config for this visual type.
+          Drives Step 2 (configuration) of the widget-creation popup.
+          Examples: { aggregation: max|min|avg|latest } for kpi_card;
+          { timeRange, sensorKeys[] } for time_series;
+          { columns[], topN, sortBy } for damage_table."
+      optionSchema:
+        type: json
+        nullable: true
+        comment: "DEPRECATED — use configSchema."
       defaultW: { type: integer }
       defaultH: { type: integer }
       minW: { type: integer }
       minH: { type: integer }
       thumbnailRef: { type: string, nullable: true }
       referenceScreenId: { type: string, nullable: true, comment: "e.g. R1–R6" }
+      createdAt: { type: datetime }
+      updatedAt: { type: datetime }
+
+  CokerReferenceWidgetDef:
+    comment: "Non-parameter widget definition for equipment-fixed information and
+      dashboard controls. These appear in the 'Reference & Tools' section of the
+      Widget Library sidebar and are placed directly onto the grid without the
+      multi-step creation popup. Examples: Equipment Data table, 3D Model image,
+      Sensor Location schematic, Time Range control, Cycle Selector control."
+    fields:
+      id: { type: uuid }
+      packId: { type: uuid, references: EquipmentKnowledgePack.id }
+      key:
+        type: string
+        comment: "Stable id, e.g. 'equipment_data', 'model_3d', 'sensor_location',
+          'time_range', 'cycle_selector'."
+      displayName: { type: string }
+      kind:
+        type: string
+        comment: "References a CatalogWidgetTemplate.kind value, e.g.
+          'data_table', 'raster_image', 'schematic_3d', 'control_time_range',
+          'control_cycle'."
+      description: { type: string, nullable: true }
+      defaultW: { type: integer }
+      defaultH: { type: integer }
+      minW: { type: integer }
+      minH: { type: integer }
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
@@ -1031,11 +1047,13 @@ entities:
       resolvedAt: { type: datetime, nullable: true }
 
 relationships:
-  - "An **Equipment** has an `equipmentTypeKey` that selects which **EquipmentKnowledgePack** and **CatalogWidgetTemplate** rows apply in the Widget Library (filter: pack.equipmentTypeKey match)."
-  - "A **ParameterFamily** belongs to one **EquipmentKnowledgePack**; pack rows are versioned; only the product team creates or updates packs via release processes (not in customer UI)."
-  - "A **CatalogWidgetTemplate** belongs to one **EquipmentKnowledgePack**; it references zero or one **ParameterFamily** (null for control-only templates such as time range)."
+  - "An **Equipment** has an `equipmentTypeKey` that selects which **EquipmentKnowledgePack**, **CokerParameter**, **CatalogWidgetTemplate**, and **CokerReferenceWidgetDef** rows apply in the Widget Library."
+  - "A **CokerParameter** belongs to one **EquipmentKnowledgePack**; it declares `validVisualTypeKeys[]` referencing **CatalogWidgetTemplate** keys that are permitted visual types for that parameter."
+  - "A **CatalogWidgetTemplate** with `widgetOrigin = parameter` references one **CokerParameter** via `cokerParameterId`; entries with `widgetOrigin = reference_tool` have null `cokerParameterId` and are defined instead in **CokerReferenceWidgetDef**."
+  - "A **CokerReferenceWidgetDef** belongs to one **EquipmentKnowledgePack**; it has a single fixed `kind` and is placed directly without the multi-step creation popup."
+  - "A **ParameterFamily** (superseded) belongs to one **EquipmentKnowledgePack**; retained for backward-compatible widget seeds only."
   - "A **ParameterRequest** is created by a **User**; it optionally references an **Equipment**; only **User**s with `role = product_team` (or an admin surface) list and update request status in v1."
-  - "Workspace Zustand `WorkspaceDashboard.widgets[]` (implementation) shall store per-tile: `templateKey` (or id), `x`, `y`, `w`, `h`, `minW`, `minH`, `displayTitle` override, `options` JSON, and `packVersion` string at save time — see PROJECT.md and `scripts/prd.txt`."
+  - "Workspace Zustand `WorkspaceDashboard.widgets[]` (implementation) shall store per-tile: `parameterId` (CokerParameter.key or null for reference_tool), `visualTypeId` (CatalogWidgetTemplate.key), `config` (typed per visual type, replaces options JSON), `referenceWidgetId` (CokerReferenceWidgetDef.key, null for parameter widgets), `x`, `y`, `w`, `h`, `minW`, `minH`, `displayTitle` override, and `packVersion` string. Legacy fields `templateKey` and `options` remain on older widget rows for backward compatibility but MUST NOT be written by new code."
   - "A Site has many Units; a Unit belongs to one Site. (Mock JSON uses `site.units`.)"
   - "A Unit has many Equipment; an Equipment belongs to one Unit (Equipment.unitId).
     Optional: Site may also have Plants for other deployments; the Apr 2026 mock
@@ -1139,18 +1157,28 @@ business_rules:
   - "Removing the legacy footer-only 'Request comment/edit access' affordance is allowed once all four toolbar actions route through the dialog pattern."
   - "Saving a dashboard edit by a non-owner with edit permission appends that user to Dashboard.contributorUserIds (idempotent) and updates lastChangeAt and lastChangeByUserId."
   - "The **Workspace-native / Dashboard module** editor (e.g. `components/workspace/dashboard-editor.tsx` mounted at `/dashboard/dashboard/[id]/edit`) is the **sole** interactive dashboard authoring engine. It reuses the Widget Library catalog; the legacy `EquipmentDashboard` in-shell editor is **retired** (removed or reduced to a non-editing entry point only). A single `WorkspaceDashboard` row in `useWorkspaceStore` is the only persisted layout source for widgets."
-  # ── Catalog-driven dashboard library (Coker v1+; see scripts/prd.txt) ─────────
-  - "The product team ships **EquipmentKnowledgePack** versions per `equipmentTypeKey` (e.g. coker); end users and customers do not author new **ParameterFamily** or **CatalogWidgetTemplate** rows in the UI."
-  - "The Widget Library in the Dashboard module editor lists only **CatalogWidgetTemplate** entries whose pack matches the dashboard’s equipment `equipmentTypeKey` (and any **ParameterFamily** add-ons in `Equipment.parameterAddonKeys`)."
-  - "Each placed widget instance stores a **template key**, **whitelisted options**, user **display title** override, grid box, and **packVersion**; global **dashboard time/cycle** context applies to templates with `followsDashboardContext = true`."
-  - "Users may submit a **ParameterRequest** from the app; requests are listed only for **product_team** (or a designated admin surface), not for general share-link recipients."
-  - "Duplicating a dashboard to another **Equipment** requires the same **equipmentTypeKey**; cross-type duplicate is blocked with a user-visible message."
-  - "Full-screen dashboard viewer and export/print must use the same **CatalogWidgetTemplate** renderers and **Coker** (or type) **theme** as the editor preview for pixel-consistent reports (see NFR in PRD)."
-  - "Coker v1 templates of **kind** `raster_image` (3D model, bulging inspection heatmap, total fatigue damage shell, crack inspection / unwrapped map) render from **static image files** under the app’s `public/coker/widgets/` directory; canonical URL paths are defined in `lib/equipment-packs/coker-widget-images.ts` until a CMS or API provides assets."
+  # ── Catalog-driven dashboard library (Coker v1+) ──────────────────────────────
+  - "The product team ships **EquipmentKnowledgePack** versions per `equipmentTypeKey` (e.g. coker); end users cannot author new **CokerParameter**, **CatalogWidgetTemplate**, or **CokerReferenceWidgetDef** rows in the UI."
+  # ── Widget Library structure ───────────────────────────────────────────────────
+  - "The Widget Library sidebar has two sections: **Parameters** (all CokerParameter entries grouped by librarySection: Operational Inputs, Inspection, Analysis Outputs) and **Reference & Tools** (all CokerReferenceWidgetDef entries). The old single flat catalog list is superseded."
+  - "Dragging a **CokerParameter** triggers the three-step widget-creation popup (Step 1: visual type — Step 2: configure — Step 3: name/confirm). Dragging a **CokerReferenceWidgetDef** places it directly without any popup."
+  # ── Widget creation popup configuration per visual type ────────────────────────
+  - "Step 2 config options by kind: kpi_card — aggregation (max|min|avg|latest), optional RAG thresholds, unit toggle. time_series/area_chart — time range, sensor selection, Y-axis override. bar_chart — group-by axis, zone filter. gauge — zone thresholds (Remaining Life default: 0–5 red/5–25 amber/25+ green). damage_table — column visibility (Damage%, Azimuth, Elevation, Direction, Group), sort, top-N. severity_table — sort (PSLF|likelihood), likelihood filter, top-N. crack_table — column visibility (Location, Cycle, Zone, Lr, Kr). ovality_chart — default elevation. fad_chart — crack location when multiple cracks exist. raster_image/heatmap_2d/unwrapped_map — no user config."
+  # ── One parameter = one widget ─────────────────────────────────────────────────────
+  - "One widget tile = exactly one CokerParameter + one visual type. composite_kpi_strip is prohibited; use individual kpi_card tiles instead. kpi_card tiles may be resized smaller than other widget types."
+  - "Sensor tag names in Coker time-series charts are human-readable engineering descriptions (e.g. 'Temperature Sensor 1', 'Pressure Sensor A'), not raw PI tag codes."
+  # ── Widget focus overlay (view-only mode) ──────────────────────────────────────────
+  - "In read-only surfaces (Equipment Home popup, Workspace popup, Full-Screen Viewer), hovering a widget tile reveals a focus/expand button. Clicking opens a lightbox overlay (full viewport, no layout shift) with more detail (additional table rows; chart respects user-configured time range). Dismissed by × or backdrop. Not available in edit mode."
+  # ── Backward compatibility ────────────────────────────────────────────────────────────
+  - "Legacy widget rows with templateKey (and no parameterId) continue rendering via the old CokerTemplateView path. New widget creation via the popup writes parameterId + visualTypeId + config; must NOT write templateKey or options."
+  - "New widget instance stores: parameterId (CokerParameter.key or null for reference_tool), visualTypeId (CatalogWidgetTemplate.key), config JSON (typed per visual type), referenceWidgetId (CokerReferenceWidgetDef.key or null), displayTitle override, grid box (x,y,w,h,minW,minH), and packVersion."
+  - "Users may submit a **ParameterRequest** from the app; visible only to product_team role."
+  - "Duplicating a dashboard to another Equipment requires the same equipmentTypeKey; cross-type duplicate is blocked."
+  - "Full-screen viewer and export/print use the same CatalogWidgetTemplate renderers and Coker theme as the editor preview."
+  - "Coker v1 raster_image / heatmap_2d / unwrapped_map tiles load static files from public/coker/widgets/; paths in lib/equipment-packs/coker-widget-images.ts."
   - "**Authentication (production):** identity is bound to a server-side **Session** (and optional **Account** for OAuth) referencing **User**; `passwordHash` and tokens are never exposed in API responses. The legacy mock **user switcher** and `isCurrentUser` are development-only; remove or gate behind `NODE_ENV` before GA."
   - "**Cross-device data:** per-user **Workspace** state (dashboards, folders, shares, notifications) must be loaded from a **server-authoritative** database, not from browser `localStorage` alone, so all signed-in devices see the same data."
   - "**UI mock free-text (explicit OUT OF SCOPE for first cloud milestone):** change log, recent activity rows, What-If run list display strings, and similar copy in `lib/data.ts` / static fixtures may keep mock names until a later epic migrates them to user-linked audit rows; do not require replacing these strings in the initial auth + workspace persistence work."
-  # ── (end catalog-driven) ─────────────────────────────────────────────────
   - "DashboardShare grants are per-recipient and may be revoked; revoked shares no longer grant access and are hidden from the recipient's 'Shared with me'."
   - "ShareLink grants permission to any signed-in user that opens the link; if revoked, the link refuses access."
   - "A user with view permission may not comment or edit; comment permission implies view; edit permission implies comment+view."

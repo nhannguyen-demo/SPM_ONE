@@ -1002,16 +1002,338 @@
         "status": "done",
         "subtasks": [],
         "updatedAt": "2026-05-26T02:00:41.771Z"
+      },
+      {
+        "id": 9,
+        "title": "Define core TypeScript types and interfaces for parameter-driven model",
+        "description": "Add new TypeScript types and interfaces to support the parameter-driven widget model including CokerParameterDef, CokerReferenceWidgetDef, WidgetConfig, and update existing types.",
+        "details": "In `lib/equipment-packs/types.ts`:\n1. Add CokerParameterId union type with all 13 parameter keys: 'temperature' | 'pressure' | 'coke_level' | 'steam_rate' | 'flow_rate' | 'bulging' | 'fatigue_damage' | 'stress' | 'remaining_life' | 'pslf' | 'ovality' | 'displacement' | 'crack'\n2. Define CokerParameterDef interface with fields: key (CokerParameterId), displayName (string), unit (string | null), parameterType ('input' | 'output'), librarySection ('operational_input' | 'inspection' | 'analysis_output'), validVisualTypeKeys (string[]), defaultVisualTypeKey (string), description (optional string)\n3. Define CokerReferenceWidgetDef interface with: key (string), displayName (string), kind (CatalogTemplateKind), description (optional string), defaultW/H/minW/minH (number)\n4. Add WidgetConfig type alias: Record<string, unknown>\n5. Extend CatalogTemplateKind union to include: 'ovality_chart' | 'damage_table' | 'severity_table' | 'crack_table' | 'control_cycle'\n6. In `components/dashboard/layouts.ts`, update WidgetData interface to add optional fields: parameterId (string | null), visualTypeId (string), config (WidgetConfig), referenceWidgetId (string | null)\n7. Ensure backward compatibility by keeping existing templateKey, options, and viewType fields as optional",
+        "testStrategy": "1. Verify TypeScript compilation succeeds with no type errors\n2. Check that all new types are properly exported and importable\n3. Validate that existing code using WidgetData still compiles (backward compatibility)\n4. Run type checking: `npm run type-check` or `tsc --noEmit`\n5. Verify IDE autocomplete works for new union types",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Create COKER_PARAMETERS constant with 13 parameter definitions",
+        "description": "Define the complete array of 13 Coker parameter definitions with their display names, units, types, valid visual types, and defaults in coker-v1.ts.",
+        "details": "In `lib/equipment-packs/coker-v1.ts`:\n1. Import CokerParameterDef from types.ts\n2. Create COKER_PARAMETERS constant as CokerParameterDef[] with 13 entries:\n   - temperature: displayName='Temperature', unit='°C', parameterType='input', librarySection='operational_input', validVisualTypeKeys=['kpi_card','time_series','bar_chart'], defaultVisualTypeKey='time_series'\n   - pressure: displayName='Pressure', unit='Barg', parameterType='input', librarySection='operational_input', validVisualTypeKeys=['kpi_card','time_series','bar_chart'], defaultVisualTypeKey='time_series'\n   - coke_level: displayName='Coke Level', unit='%', parameterType='input', librarySection='operational_input', validVisualTypeKeys=['kpi_card','gauge','time_series'], defaultVisualTypeKey='kpi_card'\n   - steam_rate: displayName='Steam Rate', unit='t/h', parameterType='input', librarySection='operational_input', validVisualTypeKeys=['kpi_card','time_series'], defaultVisualTypeKey='time_series'\n   - flow_rate: displayName='Flow Rate', unit='m³/h', parameterType='input', librarySection='operational_input', validVisualTypeKeys=['kpi_card','time_series'], defaultVisualTypeKey='time_series'\n   - bulging: displayName='Bulging', unit=null, parameterType='input', librarySection='inspection', validVisualTypeKeys=['heatmap_2d','severity_table','kpi_card'], defaultVisualTypeKey='heatmap_2d'\n   - fatigue_damage: displayName='Fatigue Damage', unit='%', parameterType='output', librarySection='analysis_output', validVisualTypeKeys=['kpi_card','area_chart','bar_chart','damage_table','heatmap_2d'], defaultVisualTypeKey='area_chart'\n   - stress: displayName='Stress', unit='MPa', parameterType='output', librarySection='analysis_output', validVisualTypeKeys=['kpi_card','heatmap_2d','time_series'], defaultVisualTypeKey='kpi_card'\n   - remaining_life: displayName='Remaining Life', unit='years', parameterType='output', librarySection='analysis_output', validVisualTypeKeys=['kpi_card','gauge'], defaultVisualTypeKey='gauge'\n   - pslf: displayName='PSLF', unit=null, parameterType='output', librarySection='analysis_output', validVisualTypeKeys=['kpi_card'], defaultVisualTypeKey='kpi_card'\n   - ovality: displayName='Ovality', unit='%', parameterType='output', librarySection='analysis_output', validVisualTypeKeys=['ovality_chart'], defaultVisualTypeKey='ovality_chart'\n   - displacement: displayName='Displacement', unit='m', parameterType='output', librarySection='analysis_output', validVisualTypeKeys=['polar_plot','kpi_card'], defaultVisualTypeKey='polar_plot'\n   - crack: displayName='Crack', unit=null, parameterType='output', librarySection='analysis_output', validVisualTypeKeys=['crack_table','fad_chart','unwrapped_map'], defaultVisualTypeKey='crack_table'\n3. Export COKER_PARAMETERS constant",
+        "testStrategy": "1. Verify all 13 parameters are defined with correct keys matching CokerParameterId type\n2. Check that each parameter has all required fields populated\n3. Validate that validVisualTypeKeys arrays match the specification table\n4. Confirm defaultVisualTypeKey is present in validVisualTypeKeys for each parameter\n5. Test import in other modules to ensure proper export\n6. Verify librarySection values match the three categories: operational_input, inspection, analysis_output",
+        "priority": "high",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Create COKER_REFERENCE_WIDGETS constant with 5 reference widget definitions",
+        "description": "Define the array of 5 reference/tool widget definitions that can be placed directly without the configuration popup.",
+        "details": "In `lib/equipment-packs/coker-v1.ts`:\n1. Import CokerReferenceWidgetDef from types.ts\n2. Create COKER_REFERENCE_WIDGETS constant as CokerReferenceWidgetDef[] with 5 entries:\n   - equipment_data: key='equipment_data', displayName='Equipment Data', kind='data_table', defaultW=4, defaultH=3, minW=3, minH=2\n   - model_3d: key='model_3d', displayName='3D Model', kind='raster_image', defaultW=4, defaultH=4, minW=3, minH=3\n   - sensor_location: key='sensor_location', displayName='Sensor Location', kind='schematic_3d', defaultW=4, defaultH=4, minW=3, minH=3\n   - time_range: key='time_range', displayName='Time Range', kind='control_time_range', defaultW=3, defaultH=1, minW=2, minH=1\n   - cycle_selector: key='cycle_selector', displayName='Cycle Selector', kind='control_cycle', defaultW=3, defaultH=1, minW=2, minH=1\n3. Export COKER_REFERENCE_WIDGETS constant\n4. Update COKER_V1_PACK to include references to both COKER_PARAMETERS and COKER_REFERENCE_WIDGETS",
+        "testStrategy": "1. Verify all 5 reference widgets are defined with unique keys\n2. Check that kind values are valid CatalogTemplateKind values\n3. Validate that defaultW/H and minW/H are positive numbers and minW <= defaultW, minH <= defaultH\n4. Test that COKER_V1_PACK properly exports the new constants\n5. Verify imports work correctly in consuming modules",
+        "priority": "high",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Add mock data for flow rate, steam rate, stress, and ovality",
+        "description": "Extend coker-mock.ts with new mock data series and KPI values for flow rate, steam rate, stress, and ovality parameters.",
+        "details": "In `lib/equipment-packs/coker-mock.ts`:\n1. Add mockFlowRateSeries: Array of 5 time-series data points with timestamps and values ranging 120-145 m³/h\n   Example: [{ timestamp: '2026-05-01T08:00:00Z', value: 132.4 }, { timestamp: '2026-05-01T08:05:00Z', value: 128.7 }, ...]\n2. Add mockSteamRateSeries: Array of 5 time-series data points with values ranging 1.2-1.6 t/h\n3. Add mockStressKpi: { value: 287, unit: 'MPa', location: 'Elev. 0.1 m' }\n4. Add mockOvalityData: { originalDiameter: 2.734, actualDiameter: 2.821, elevations: [-8.5, -6.782, -4.2, -2.0, 0, 2.0, 4.2, 6.782, 8.5], maxOvalityPct: 10.101, atElevation: -6.782, measurements: array of { elevation, innerDiameterMax, innerDiameterMin, ovalityPct } }\n5. Update existing mockSeriesMulti or create new mockTemperatureMultiSeries with renamed traces: 'Temperature Sensor 1', 'Temperature Sensor 2', 'Temperature Sensor 3' (replace PI tag codes)\n6. Create mockPressureMultiSeries with traces: 'Pressure Sensor A', 'Pressure Sensor B', 'Pressure Sensor C'\n7. Export all new mock data constants",
+        "testStrategy": "1. Verify all mock data structures match expected TypeScript interfaces\n2. Check that time-series data has realistic timestamps in chronological order\n3. Validate that numeric values are within reasonable ranges for each parameter\n4. Test that sensor names are human-readable (no PI tag codes)\n5. Verify ovality data includes all required fields for polar chart rendering\n6. Import mock data in test file and verify structure",
+        "priority": "high",
+        "dependencies": [
+          9,
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Implement dual-routing logic in coker-template-view.tsx",
+        "description": "Rewrite the main widget renderer to support both new parameter-driven widgets and legacy templateKey-based widgets for backward compatibility.",
+        "details": "In `components/dashboard/coker-template-view.tsx`:\n1. Update main render function to implement routing logic:\n   ```typescript\n   function renderCokerWidget(widget: GridWidget, context: DashboardContext) {\n     // New path: parameterId + visualTypeId\n     if (widget.parameterId && widget.visualTypeId) {\n       return renderParameterWidget(widget.parameterId, widget.visualTypeId, widget.config || {}, context);\n     }\n     // Legacy path: templateKey (backward compat)\n     if (widget.templateKey) {\n       return renderLegacyTemplate(widget.templateKey, context);\n     }\n     // Oldest path: viewType\n     if (widget.viewType) {\n       return renderLegacyViewType(widget.viewType, context);\n     }\n     return <div>Unknown widget type</div>;\n   }\n   ```\n2. Implement renderParameterWidget function that switches on parameterId + visualTypeId combination\n3. Keep existing renderLegacyTemplate function for backward compatibility\n4. Import COKER_PARAMETERS and COKER_REFERENCE_WIDGETS for metadata lookup\n5. Add helper function to resolve parameter definition: getParameterDef(parameterId)\n6. Ensure all rendering paths receive proper context (equipmentId, timeRange, etc.)",
+        "testStrategy": "1. Test rendering of new parameter-driven widgets with various parameterId + visualTypeId combinations\n2. Verify legacy widgets with templateKey still render correctly\n3. Test fallback to viewType for oldest widget format\n4. Validate that unknown widget types show appropriate error message\n5. Check that context is properly passed to all renderer functions\n6. Test with both mock data and empty states",
+        "priority": "high",
+        "dependencies": [
+          9,
+          10,
+          11,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Build gauge renderer for remaining_life parameter",
+        "description": "Create a new arc gauge visualization component for the remaining_life parameter with colored zones (red/amber/green) and configurable thresholds.",
+        "details": "Create gauge renderer in `components/dashboard/coker-template-view.tsx` or separate component file:\n1. Accept config: { zoneRed: number, zoneAmber: number, unit?: string }\n2. Default values for remaining_life: zoneRed=5, zoneAmber=25\n3. Render arc gauge (180° or 270° arc) using SVG or canvas:\n   - Red zone: 0 to zoneRed\n   - Amber zone: zoneRed to zoneAmber\n   - Green zone: zoneAmber to max value\n4. Display needle or fill indicator pointing to current value\n5. Show value label in center with unit (e.g., \"18.5 years\")\n6. Use mock data: mockRemainingLifeValue = { value: 18.5, unit: 'years' }\n7. Make gauge responsive to container size\n8. Consider using a library like recharts, nivo, or custom D3.js implementation\n9. Apply consistent styling with dashboard theme",
+        "testStrategy": "1. Verify gauge renders with correct color zones based on config\n2. Test with various values: below zoneRed, between zones, above zoneAmber\n3. Validate that needle/indicator points to correct position\n4. Check responsive behavior at different container sizes\n5. Test with custom zoneRed and zoneAmber values\n6. Verify unit display is correct\n7. Test accessibility (ARIA labels, keyboard navigation if interactive)",
+        "priority": "high",
+        "dependencies": [
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Build time_series renderer for flow_rate and steam_rate parameters",
+        "description": "Create or update time-series line chart renderer to support flow_rate and steam_rate parameters with proper units and mock data.",
+        "details": "In time-series renderer (likely in `components/dashboard/coker-template-view.tsx` or chart component):\n1. Accept config: { timeRange, customFrom, customTo, sensorKeys, showMultiSeries, yMin, yMax }\n2. For flow_rate parameter:\n   - Use mockFlowRateSeries data\n   - Y-axis label: 'Flow Rate (m³/h)'\n   - Line color: blue\n3. For steam_rate parameter:\n   - Use mockSteamRateSeries data\n   - Y-axis label: 'Steam Rate (t/h)'\n   - Line color: orange\n4. Implement time range filtering based on config.timeRange ('7d', '30d', 'last_cycle', 'custom')\n5. Support multi-series display if config.showMultiSeries is true\n6. Apply yMin/yMax bounds if specified in config\n7. Use recharts or similar library for line chart rendering\n8. Add tooltip showing timestamp and value on hover\n9. Format timestamps appropriately (e.g., 'MMM DD HH:mm')\n10. Ensure chart is responsive and handles empty data gracefully",
+        "testStrategy": "1. Verify flow_rate time series displays with correct unit (m³/h)\n2. Verify steam_rate time series displays with correct unit (t/h)\n3. Test time range filtering for all supported options\n4. Validate yMin/yMax bounds are applied correctly\n5. Check tooltip displays correct values and timestamps\n6. Test responsive behavior at various widths\n7. Verify empty data state shows appropriate message\n8. Test with single and multi-series configurations",
+        "priority": "medium",
+        "dependencies": [
+          13,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Build KPI card renderer for stress parameter",
+        "description": "Create or update KPI card renderer to display stress parameter with max value and location sub-label.",
+        "details": "In KPI card renderer:\n1. Accept config: { aggregation: 'max'|'min'|'avg'|'latest', showUnit: boolean, ragMin?: number, ragMax?: number }\n2. For stress parameter with aggregation='max':\n   - Use mockStressKpi data: { value: 287, unit: 'MPa', location: 'Elev. 0.1 m' }\n   - Display large value: '287' with unit 'MPa'\n   - Display location as sub-label below value: 'Elev. 0.1 m'\n3. Apply RAG (Red-Amber-Green) coloring if ragMin/ragMax are specified:\n   - Red: value > ragMax\n   - Amber: ragMin < value <= ragMax\n   - Green: value <= ragMin\n4. Support other aggregation types (min, avg, latest) for future use\n5. Make card responsive with appropriate font scaling\n6. Add optional trend indicator (up/down arrow) if historical data available\n7. Ensure consistent styling with other KPI cards",
+        "testStrategy": "1. Verify stress KPI card displays value 287 MPa\n2. Check that location sub-label 'Elev. 0.1 m' is visible\n3. Test RAG coloring with various ragMin/ragMax configurations\n4. Validate aggregation logic for max/min/avg/latest\n5. Test responsive behavior at different card sizes\n6. Verify unit display can be toggled with showUnit config\n7. Check styling consistency with existing KPI cards",
+        "priority": "medium",
+        "dependencies": [
+          13,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Build heatmap_2d renderer for stress parameter",
+        "description": "Create heatmap renderer for stress distribution visualization on vessel shell using raster image placeholder.",
+        "details": "In heatmap renderer:\n1. Accept config: {} (no additional config for stress heatmap)\n2. Render a placeholder raster image representing stress distribution on coker vessel shell\n3. Use a 2D unwrapped view of the cylindrical vessel showing stress values as color gradient\n4. Color scale: blue (low stress) → green → yellow → red (high stress)\n5. Add color scale legend on the right side with MPa values\n6. X-axis: Azimuth (0° to 360°)\n7. Y-axis: Elevation (bottom to top of vessel)\n8. For MVP, use static placeholder image at `/assets/stress-heatmap-placeholder.png` or generate programmatically with canvas\n9. Add hover tooltip showing stress value at cursor position (mock data)\n10. Ensure image scales responsively to container",
+        "testStrategy": "1. Verify heatmap renders with proper aspect ratio\n2. Check color scale legend is visible and labeled correctly\n3. Test responsive scaling at different container sizes\n4. Validate axis labels (Azimuth, Elevation) are present\n5. Test hover tooltip displays mock stress values\n6. Verify placeholder image loads or canvas renders correctly\n7. Check that heatmap is visually distinct from other visualization types",
+        "priority": "medium",
+        "dependencies": [
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Build ovality_chart renderer with polar cross-section visualization",
+        "description": "Create the specialized ovality chart renderer showing polar cross-section with original vs actual inner diameter, elevation selector, and stats panel.",
+        "details": "Create ovality chart component:\n1. Accept config: { defaultElevation: number }\n2. Use mockOvalityData from coker-mock.ts\n3. Render polar plot (circular cross-section view):\n   - Blue solid circle: original inner diameter (2.734 m)\n   - Red dashed circle: actual inner diameter (varies by angle, max 2.821 m)\n   - Center point at origin\n   - Radial grid lines at 0°, 90°, 180°, 270°\n4. Add elevation dropdown selector:\n   - Populate with mockOvalityData.elevations array\n   - Default to config.defaultElevation or first elevation\n   - On change, update polar plot with data for selected elevation\n5. Add stats panel (table or card) showing:\n   - Max Inner Diameter: 2.821 m\n   - Min Inner Diameter: 2.647 m\n   - Ovality %: 10.101%\n   - At Elevation: -6.782 m\n6. Use D3.js or recharts for polar plot rendering\n7. Reference image: `/assets/image-c2b008cf-e9d6-4431-8696-4cb91f6fde4e.png`\n8. Ensure responsive layout with chart and stats side-by-side or stacked",
+        "testStrategy": "1. Verify polar plot renders two concentric circles (original and actual)\n2. Check that original diameter circle is blue and solid\n3. Verify actual diameter circle is red and dashed\n4. Test elevation selector populates with all elevations from mock data\n5. Validate that changing elevation updates the polar plot\n6. Check stats panel displays all four metrics correctly\n7. Test responsive layout at different container sizes\n8. Verify visual similarity to reference image\n9. Test with different defaultElevation config values",
+        "priority": "high",
+        "dependencies": [
+          13,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Build sensor_location schematic renderer",
+        "description": "Create reference widget renderer for sensor location schematic showing vessel with labeled sensor callout positions.",
+        "details": "Create sensor location schematic component:\n1. Render simplified vessel schematic (side view or 3D perspective)\n2. Show coker vessel outline with key structural features (drum, head, skirt)\n3. Add labeled sensor callouts with leader lines:\n   - T1, T2, T3, T4: Temperature sensors at different elevations\n   - P1, P2, P3: Pressure sensors\n   - C1: Coke level sensor\n4. Use SVG for vector graphics (scalable)\n5. Position sensors at realistic locations on vessel:\n   - Temperature sensors: distributed vertically along drum\n   - Pressure sensors: near top, middle, bottom\n   - Coke level sensor: lower section\n6. Add legend explaining sensor types\n7. Make interactive: hover over sensor shows tooltip with sensor name and type\n8. Use consistent color coding: temperature (red), pressure (blue), coke level (brown)\n9. Ensure schematic is responsive and maintains aspect ratio",
+        "testStrategy": "1. Verify vessel schematic renders with recognizable shape\n2. Check all 8 sensors (T1-T4, P1-P3, C1) are labeled and visible\n3. Test hover tooltips show sensor details\n4. Validate color coding is consistent (red/blue/brown)\n5. Test responsive scaling maintains aspect ratio\n6. Verify leader lines connect labels to sensor positions clearly\n7. Check legend is present and explains sensor types\n8. Test accessibility (ARIA labels for sensors)",
+        "priority": "medium",
+        "dependencies": [
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Build multi-sensor time_series renderer for temperature and pressure",
+        "description": "Enhance time-series renderer to support multi-sensor display with human-readable sensor names for temperature and pressure parameters.",
+        "details": "Extend time-series renderer:\n1. Accept config.sensorKeys array and config.showMultiSeries boolean\n2. For temperature parameter with showMultiSeries=true:\n   - Use mockTemperatureMultiSeries with 3 traces\n   - Legend labels: 'Temperature Sensor 1', 'Temperature Sensor 2', 'Temperature Sensor 3'\n   - Line colors: red, orange, pink\n3. For pressure parameter with showMultiSeries=true:\n   - Use mockPressureMultiSeries with 3 traces\n   - Legend labels: 'Pressure Sensor A', 'Pressure Sensor B', 'Pressure Sensor C'\n   - Line colors: blue, cyan, navy\n4. Replace all PI tag codes (e.g., '118PI5420A.PV') with human-readable names in legends and tooltips\n5. Add legend toggle to show/hide individual series\n6. Ensure all series share same X-axis (time) and Y-axis (parameter unit)\n7. Add tooltip showing all series values at hovered timestamp\n8. Support config.sensorKeys to filter which sensors to display\n9. Handle case where showMultiSeries=false (show only first sensor or aggregate)",
+        "testStrategy": "1. Verify temperature multi-series displays 3 traces with readable names\n2. Verify pressure multi-series displays 3 traces with readable names\n3. Check that no PI tag codes appear in legends or tooltips\n4. Test legend toggle functionality (show/hide series)\n5. Validate tooltip shows all series values at hovered point\n6. Test sensorKeys filtering (display subset of sensors)\n7. Test single-series mode (showMultiSeries=false)\n8. Verify color differentiation between series is clear\n9. Check responsive behavior with multiple series",
+        "priority": "medium",
+        "dependencies": [
+          15,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Build damage_table renderer with configurable columns and sorting",
+        "description": "Create table renderer for fatigue damage parameter showing damage locations with configurable columns, sorting, and top-N filtering.",
+        "details": "Create damage table component:\n1. Accept config: { columns: Array<'damage_pct'|'azimuth'|'elevation'|'direction'|'group'>, sortBy: 'damage_pct'|'azimuth'|'elevation', topN: number }\n2. Create mock data: array of damage locations with fields:\n   - damage_pct: number (e.g., 87.3, 72.1, 65.8, ...)\n   - azimuth: number (0-360 degrees)\n   - elevation: number (meters)\n   - direction: string ('Hoop', 'Axial', 'Radial')\n   - group: string ('A', 'B', 'C', ...)\n3. Render sortable table with columns based on config.columns array\n4. Implement sorting by config.sortBy column (default descending for damage_pct)\n5. Apply top-N filter: show only top N rows by sort column\n6. Add column headers with sort indicators (up/down arrows)\n7. Format damage_pct with 1 decimal place and % symbol\n8. Format azimuth and elevation with appropriate precision\n9. Add row highlighting on hover\n10. Make table scrollable if content exceeds container height\n11. In expanded view (focus overlay), remove topN limit and show all rows",
+        "testStrategy": "1. Verify table renders with columns specified in config.columns\n2. Test sorting by each sortable column (damage_pct, azimuth, elevation)\n3. Validate topN filter shows correct number of rows\n4. Check that damage_pct values are formatted with % symbol\n5. Test column visibility toggling via config.columns\n6. Verify sort indicators appear in column headers\n7. Test row hover highlighting\n8. Validate scrolling behavior with many rows\n9. Test expanded view shows all rows (no topN limit)\n10. Check responsive behavior at narrow widths",
+        "priority": "medium",
+        "dependencies": [
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Build severity_table renderer for bulging parameter",
+        "description": "Create table renderer for bulging severity showing PSLF, likelihood, and zone with filtering and sorting capabilities.",
+        "details": "Create severity table component:\n1. Accept config: { sortBy: 'pslf'|'likelihood', likelihoodFilter: 'all'|'LIKELY'|'POSSIBLE', topN: number }\n2. Create mock data: array of bulging severity records with fields:\n   - pslf: number (PSLF percentage, e.g., 92.5, 78.3, 65.0, ...)\n   - likelihood: string ('LIKELY', 'POSSIBLE', 'UNLIKELY')\n   - zone: string (e.g., 'Zone A-1', 'Zone B-3', ...)\n3. Render table with columns: PSLF %, Likelihood, Zone\n4. Apply likelihood filter based on config.likelihoodFilter:\n   - 'all': show all rows\n   - 'LIKELY': show only LIKELY rows\n   - 'POSSIBLE': show LIKELY and POSSIBLE rows\n5. Sort by config.sortBy column (default descending)\n6. Apply topN filter to show top N rows\n7. Add likelihood badge with color coding:\n   - LIKELY: red badge\n   - POSSIBLE: amber/yellow badge\n   - UNLIKELY: green badge\n8. Format PSLF with 1 decimal place and % symbol\n9. Make table sortable by clicking column headers\n10. In expanded view, remove topN limit",
+        "testStrategy": "1. Verify table renders with PSLF %, Likelihood, and Zone columns\n2. Test likelihood filter for 'all', 'LIKELY', and 'POSSIBLE' options\n3. Validate topN filter shows correct number of rows\n4. Check likelihood badge colors (red/amber/green)\n5. Test sorting by PSLF and likelihood columns\n6. Verify PSLF values formatted with % symbol\n7. Test expanded view shows all rows\n8. Validate filter combinations (likelihood + topN + sort)\n9. Check responsive behavior\n10. Test with empty data (no records matching filter)",
+        "priority": "medium",
+        "dependencies": [
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "Build crack_table renderer with configurable columns",
+        "description": "Create table renderer for crack parameter showing crack details with configurable column visibility.",
+        "details": "Create crack table component:\n1. Accept config: { columns: Array<'location'|'cycle'|'zone'|'lr'|'kr'> }\n2. Create mock data: array of crack records with fields:\n   - location: string (e.g., 'Weld-A', 'Shell-B', ...)\n   - cycle: number (cycle ID, e.g., 145, 146, 147)\n   - zone: string (e.g., 'Zone 1', 'Zone 2', ...)\n   - lr: number (Lr ratio, e.g., 0.67, 0.82, ...)\n   - kr: number (Kr ratio, e.g., 0.45, 0.53, ...)\n3. Render table with columns based on config.columns array\n4. Column headers: Location, Cycle, Zone, Lr, Kr\n5. Format Lr and Kr with 2 decimal places\n6. Make table sortable by any column\n7. Add row highlighting on hover\n8. Support column reordering based on config.columns order\n9. Handle case where config.columns is empty (show all columns)\n10. Make table scrollable if content exceeds container height",
+        "testStrategy": "1. Verify table renders only columns specified in config.columns\n2. Test with different column combinations\n3. Validate Lr and Kr formatting (2 decimal places)\n4. Test sorting by each column\n5. Check column order matches config.columns order\n6. Test with empty config.columns (should show all)\n7. Verify row hover highlighting\n8. Test scrolling with many rows\n9. Check responsive behavior at narrow widths\n10. Validate data alignment (text left, numbers right)",
+        "priority": "medium",
+        "dependencies": [
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "Build control_cycle renderer for cycle selector reference widget",
+        "description": "Create control widget renderer for cycle selector showing cycle ID, datetime range, and status badge.",
+        "details": "Create cycle selector control component:\n1. No config required (reference widget placed directly)\n2. Create mock current cycle data:\n   - cycleId: number (e.g., 147)\n   - startDate: ISO string (e.g., '2026-04-15T06:00:00Z')\n   - endDate: ISO string or null (e.g., '2026-05-01T14:30:00Z' or null for ongoing)\n   - status: 'active' | 'completed' | 'planned'\n3. Render compact control card showing:\n   - Label: 'Cycle'\n   - Cycle ID: large text (e.g., '147')\n   - Date range: formatted (e.g., 'Apr 15 - May 1, 2026' or 'Apr 15 - Present')\n   - Status badge: colored pill (green=active, blue=completed, gray=planned)\n4. Add dropdown or navigation arrows to switch between cycles (mock functionality)\n5. Style as control widget (distinct from data visualization widgets)\n6. Emit cycle change event when user selects different cycle (for future integration)\n7. Make responsive with appropriate text scaling",
+        "testStrategy": "1. Verify cycle ID displays prominently\n2. Check date range formatting is human-readable\n3. Validate status badge shows correct color for each status\n4. Test with ongoing cycle (endDate=null) shows 'Present'\n5. Test cycle navigation controls (if implemented)\n6. Verify responsive behavior at different widths\n7. Check styling is distinct from data widgets\n8. Test accessibility (labels, keyboard navigation)",
+        "priority": "low",
+        "dependencies": [
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "Redesign catalog-module-library.tsx with two-section layout",
+        "description": "Rewrite the widget library UI to show Parameters section (with subsections) and Reference & Tools section, replacing the flat template list.",
+        "details": "In `components/catalog-module-library.tsx`:\n1. Import COKER_PARAMETERS and COKER_REFERENCE_WIDGETS\n2. Create two-section layout:\n   **Section A - Parameters:**\n   - Use tabs or accordion for subsections: 'Operational Inputs', 'Inspection', 'Analysis Outputs'\n   - Group parameters by librarySection field\n   - Each parameter entry shows:\n     * Display name (e.g., 'Temperature')\n     * Unit badge (e.g., '°C')\n     * Type badge (input/output) with color coding (blue=input, green=output)\n   - Make each parameter draggable\n   **Section B - Reference & Tools:**\n   - Flat list of 5 reference widgets\n   - Each entry shows display name and icon\n   - Make each reference widget draggable\n3. Implement drag handlers:\n   - For parameters: emit ParameterDragPayload with mode='parameter', parameterId, packVersion\n   - For reference widgets: emit ReferenceToolDragPayload with mode='reference_tool', referenceWidgetId, packVersion, defaultW/H, minW/H\n4. Use HTML5 drag-and-drop API with dataTransfer.setData('application/x-spm-widget', JSON.stringify(payload))\n5. Add visual drag feedback (ghost image or cursor change)\n6. Style sections with clear visual separation\n7. Add search/filter functionality for parameters",
+        "testStrategy": "1. Verify library shows two distinct sections\n2. Check parameters are grouped into 3 subsections correctly\n3. Validate parameter entries show name, unit, and type badge\n4. Test dragging parameters emits correct ParameterDragPayload\n5. Test dragging reference widgets emits correct ReferenceToolDragPayload\n6. Verify drag payloads contain all required fields\n7. Check visual feedback during drag operation\n8. Test search/filter functionality\n9. Verify responsive layout at different widths\n10. Test keyboard navigation and accessibility",
+        "priority": "high",
+        "dependencies": [
+          10,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 26,
+        "title": "Create WidgetConfigPopup component with three-step flow",
+        "description": "Build the multi-step popup component for configuring parameter widgets: choose visual type, configure options, and name the widget.",
+        "details": "Create `components/workspace/widget-config-popup.tsx`:\n1. Define props:\n   ```typescript\n   interface WidgetConfigPopupProps {\n     parameterId: string;\n     dropPosition: { x: number; y: number; w: number; h: number };\n     onConfirm: (widget: GridWidget) => void;\n     onCancel: () => void;\n   }\n   ```\n2. Implement three-step wizard:\n   **Step 1 - Choose Visual Type:**\n   - Look up parameter definition from COKER_PARAMETERS\n   - Display grid of visual type cards (only validVisualTypeKeys)\n   - Each card shows: icon, kind label, brief description\n   - Pre-select defaultVisualTypeKey\n   - Next button enabled when selection made\n   **Step 2 - Configure:**\n   - Render typed config form based on selected visual type\n   - Forms for each type (kpi_card, time_series, gauge, etc.) with appropriate inputs\n   - Provide sensible defaults for all config fields\n   - Show 'No additional configuration required' for types with empty config\n   - Validate inputs (e.g., zoneRed < zoneAmber for gauge)\n   **Step 3 - Name:**\n   - Auto-generate title: '{Parameter Display Name} — {Visual Type Label}'\n   - Editable text input\n   - Show preview of widget card with title\n   - Confirm and Cancel buttons\n3. On Confirm: construct GridWidget object with parameterId, visualTypeId, config, title, layout from dropPosition\n4. On Cancel: call onCancel callback\n5. Style as modal dialog with backdrop\n6. Add step indicator (1/3, 2/3, 3/3) and Back button\n7. Support keyboard navigation (Enter to advance, Esc to cancel)",
+        "testStrategy": "1. Verify popup opens with Step 1 showing valid visual types for parameter\n2. Check defaultVisualTypeKey is pre-selected\n3. Test navigation through all three steps\n4. Validate each config form renders correctly for its visual type\n5. Test auto-generated title format\n6. Verify title is editable in Step 3\n7. Test Confirm creates correct GridWidget object\n8. Test Cancel closes popup without creating widget\n9. Verify Back button navigates to previous step\n10. Test keyboard shortcuts (Enter, Esc)\n11. Check form validation prevents invalid configs\n12. Test with different parameters and visual type combinations",
+        "priority": "high",
+        "dependencies": [
+          10,
+          25
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Update dashboard-editor.tsx to integrate WidgetConfigPopup",
+        "description": "Modify the dashboard editor to open the configuration popup for parameter drops and handle reference widget drops directly.",
+        "details": "In `components/workspace/dashboard-editor.tsx`:\n1. Add state: `pendingDrop: { parameterId: string; dropPosition: LayoutItem } | null`\n2. Update onDropFromLibrary handler:\n   ```typescript\n   function onDropFromLibrary(e: DragEvent, dropPosition: LayoutItem) {\n     const payload = JSON.parse(e.dataTransfer.getData('application/x-spm-widget'));\n     if (payload.mode === 'parameter') {\n       // Open popup\n       setPendingDrop({ parameterId: payload.parameterId, dropPosition });\n     } else if (payload.mode === 'reference_tool') {\n       // Create widget directly\n       const refWidget = COKER_REFERENCE_WIDGETS.find(w => w.key === payload.referenceWidgetId);\n       const widget: GridWidget = {\n         id: generateId(),\n         referenceWidgetId: payload.referenceWidgetId,\n         visualTypeId: refWidget.kind,\n         parameterId: null,\n         config: {},\n         title: refWidget.displayName,\n         layout: { ...dropPosition, w: refWidget.defaultW, h: refWidget.defaultH, minW: refWidget.minW, minH: refWidget.minH }\n       };\n       appendWidget(widget);\n     }\n   }\n   ```\n3. Render WidgetConfigPopup conditionally:\n   ```typescript\n   {pendingDrop && (\n     <WidgetConfigPopup\n       parameterId={pendingDrop.parameterId}\n       dropPosition={pendingDrop.dropPosition}\n       onConfirm={(widget) => { appendWidget(widget); setPendingDrop(null); }}\n       onCancel={() => setPendingDrop(null)}\n     />\n   )}\n   ```\n4. Ensure appendWidget function adds widget to grid state and persists\n5. Import COKER_REFERENCE_WIDGETS for reference widget lookup\n6. Add generateId helper if not present (e.g., UUID or timestamp-based)",
+        "testStrategy": "1. Test dropping parameter from library opens WidgetConfigPopup\n2. Verify popup receives correct parameterId and dropPosition\n3. Test confirming popup adds widget to grid\n4. Test canceling popup closes without adding widget\n5. Test dropping reference widget adds it directly without popup\n6. Verify reference widget uses correct defaultW/H and minW/H\n7. Test multiple drops in sequence\n8. Verify widget IDs are unique\n9. Test that widgets persist after page refresh (if persistence implemented)\n10. Check error handling for invalid drag payloads",
+        "priority": "high",
+        "dependencies": [
+          26
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Create WidgetFocusOverlay component for expanded widget view",
+        "description": "Build the lightbox overlay component that displays a widget in expanded/focused view when user clicks the expand icon.",
+        "details": "Create `components/workspace/widget-focus-overlay.tsx`:\n1. Define props:\n   ```typescript\n   interface WidgetFocusOverlayProps {\n     widget: GridWidget;\n     equipmentId: string;\n     context?: DashboardTimeContext;\n     scenarioRuns?: WhatIfRunSession[];\n     viewedDataIds?: string[];\n     onClose: () => void;\n   }\n   ```\n2. Render as React portal mounted to document.body\n3. Create full-screen backdrop (semi-transparent dark overlay)\n4. Render centered card (e.g., 90vw × 90vh max) with:\n   - Widget title in header\n   - Close button (×) in top-right corner\n   - Widget content using DashboardWidgetBody component\n5. Pass expanded=true flag to widget renderer to remove topN limits for tables\n6. Handle click outside card to close (click on backdrop)\n7. Handle Esc key to close\n8. Prevent body scroll when overlay is open\n9. Add smooth fade-in/fade-out animation\n10. Ensure overlay is above all other UI elements (z-index: 9999)\n11. Make card responsive (smaller on mobile)",
+        "testStrategy": "1. Verify overlay renders as full-screen portal\n2. Check backdrop is semi-transparent and covers entire viewport\n3. Test widget content renders at full size in card\n4. Verify close button (×) closes overlay\n5. Test clicking backdrop closes overlay\n6. Test Esc key closes overlay\n7. Verify body scroll is prevented when overlay is open\n8. Test animation is smooth (fade in/out)\n9. Check z-index ensures overlay is on top\n10. Test with different widget types (tables, charts, etc.)\n11. Verify tables show all rows (no topN limit) in expanded view\n12. Test responsive behavior on mobile",
+        "priority": "medium",
+        "dependencies": [
+          13
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 29,
+        "title": "Update read-only-grid.tsx to add expand button and integrate WidgetFocusOverlay",
+        "description": "Modify the read-only dashboard grid to show expand icon on widget hover and mount the focus overlay when clicked.",
+        "details": "In `components/workspace/read-only-grid.tsx`:\n1. Add state: `focusedWidgetId: string | null`\n2. Wrap each grid tile content in a hover group:\n   ```typescript\n   <div className=\"widget-tile-wrapper\" onMouseEnter={() => setHoveredWidgetId(widget.id)} onMouseLeave={() => setHoveredWidgetId(null)}>\n     {hoveredWidgetId === widget.id && (\n       <button className=\"expand-button\" onClick={() => setFocusedWidgetId(widget.id)}>\n         <ExpandIcon />\n       </button>\n     )}\n     <DashboardWidgetBody widget={widget} {...context} />\n   </div>\n   ```\n3. Position expand button absolutely in top-right corner of tile\n4. Style expand button: small icon button, semi-transparent background, appears on hover\n5. Mount WidgetFocusOverlay portal when focusedWidgetId is set:\n   ```typescript\n   {focusedWidgetId && (\n     <WidgetFocusOverlay\n       widget={widgets.find(w => w.id === focusedWidgetId)!}\n       equipmentId={equipmentId}\n       context={context}\n       onClose={() => setFocusedWidgetId(null)}\n     />\n   )}\n   ```\n6. Do NOT add expand button in DashboardEditor (edit mode)\n7. Add CSS for hover effects and button positioning\n8. Use appropriate icon for expand (e.g., maximize, fullscreen, or expand arrows)",
+        "testStrategy": "1. Verify expand button appears on widget hover in read-only grid\n2. Check expand button does NOT appear in edit mode (DashboardEditor)\n3. Test clicking expand button opens WidgetFocusOverlay\n4. Verify correct widget is passed to overlay\n5. Test overlay closes and focusedWidgetId is cleared\n6. Check expand button positioning (top-right corner)\n7. Test hover state transitions smoothly\n8. Verify button is accessible (keyboard focus, ARIA label)\n9. Test with multiple widgets (hover different tiles)\n10. Check button styling is consistent with design system",
+        "priority": "medium",
+        "dependencies": [
+          28
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 30,
+        "title": "Update DashboardWidgetBody to route through new parameter-driven logic",
+        "description": "Modify the main widget body component to check parameterId first, then fall back to legacy templateKey and viewType for backward compatibility.",
+        "details": "In `components/dashboard/dashboard-widget-body.tsx`:\n1. Update main render logic to implement routing priority:\n   ```typescript\n   function DashboardWidgetBody({ widget, ...context }: Props) {\n     // Priority 1: New parameter-driven model\n     if (widget.parameterId && widget.visualTypeId) {\n       return <CokerTemplateView widget={widget} context={context} mode=\"parameter\" />;\n     }\n     // Priority 2: Legacy templateKey\n     if (widget.templateKey) {\n       return <CokerTemplateView widget={widget} context={context} mode=\"legacy-template\" />;\n     }\n     // Priority 3: Oldest viewType\n     if (widget.viewType) {\n       return <CokerTemplateView widget={widget} context={context} mode=\"legacy-viewtype\" />;\n     }\n     // Fallback: unknown widget type\n     return <div className=\"widget-error\">Unknown widget configuration</div>;\n   }\n   ```\n2. Pass mode flag to CokerTemplateView to help with routing\n3. Ensure all context props (equipmentId, timeRange, scenarioRuns, etc.) are passed through\n4. Add error boundary to catch rendering errors\n5. Add loading state for async data fetching (future)\n6. Ensure backward compatibility: existing widgets with only templateKey or viewType still render\n7. Add prop validation/type checking",
+        "testStrategy": "1. Test rendering new parameter-driven widgets (parameterId + visualTypeId)\n2. Test rendering legacy widgets with templateKey\n3. Test rendering oldest widgets with viewType\n4. Verify routing priority: parameterId > templateKey > viewType\n5. Test fallback error message for unknown widget types\n6. Verify all context props are passed to renderer\n7. Test error boundary catches rendering errors gracefully\n8. Check backward compatibility with existing seed dashboards\n9. Test with various widget configurations\n10. Verify no console errors or warnings",
+        "priority": "high",
+        "dependencies": [
+          13,
+          27
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 31,
+        "title": "Add comprehensive unit tests for parameter definitions and widget creation flow",
+        "description": "Create test suite covering parameter definitions, reference widgets, drag payloads, popup flow, and widget rendering routing.",
+        "details": "Create test files:\n1. `lib/equipment-packs/coker-v1.test.ts`:\n   - Test COKER_PARAMETERS has 13 entries with correct structure\n   - Verify each parameter has valid validVisualTypeKeys and defaultVisualTypeKey\n   - Test COKER_REFERENCE_WIDGETS has 5 entries\n   - Verify all keys are unique\n   - Test parameter lookup by key\n2. `components/workspace/widget-config-popup.test.tsx`:\n   - Test popup renders Step 1 with correct visual types\n   - Test navigation through all steps\n   - Test config form rendering for each visual type\n   - Test auto-generated title format\n   - Test Confirm creates correct GridWidget\n   - Test Cancel closes without creating widget\n3. `components/dashboard/coker-template-view.test.tsx`:\n   - Test routing logic: parameterId path, templateKey path, viewType path\n   - Test each renderer with mock data\n   - Test error handling for unknown widget types\n4. `components/catalog-module-library.test.tsx`:\n   - Test library renders two sections\n   - Test parameter grouping by librarySection\n   - Test drag payload generation\n5. Use React Testing Library for component tests\n6. Use Jest for unit tests\n7. Aim for >80% code coverage on new code",
+        "testStrategy": "1. Run test suite: `npm test` or `jest`\n2. Verify all tests pass\n3. Check code coverage report\n4. Test edge cases (empty data, invalid configs, etc.)\n5. Test error handling paths\n6. Verify no console errors during tests\n7. Test async behavior (if any)\n8. Run tests in CI/CD pipeline",
+        "priority": "medium",
+        "dependencies": [
+          10,
+          11,
+          26,
+          30
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 32,
+        "title": "Create integration test for end-to-end widget creation and rendering",
+        "description": "Build integration test that simulates the complete flow: drag parameter from library, configure in popup, add to grid, render, and expand in overlay.",
+        "details": "Create `components/workspace/widget-creation-flow.integration.test.tsx`:\n1. Set up test environment with full dashboard editor\n2. Test flow:\n   a. Render catalog library with parameters\n   b. Simulate drag-and-drop of temperature parameter\n   c. Verify WidgetConfigPopup opens\n   d. Select time_series visual type\n   e. Configure time range and sensors\n   f. Enter custom widget name\n   g. Click Confirm\n   h. Verify widget appears in grid\n   i. Verify widget renders with correct data\n   j. Simulate hover on widget in read-only grid\n   k. Verify expand button appears\n   l. Click expand button\n   m. Verify WidgetFocusOverlay opens with widget\n   n. Close overlay\n3. Test reference widget flow:\n   a. Drag sensor_location reference widget\n   b. Verify it's added directly without popup\n   c. Verify it renders correctly\n4. Test backward compatibility:\n   a. Load dashboard with legacy templateKey widgets\n   b. Verify they render correctly\n5. Use Playwright or Cypress for E2E testing, or React Testing Library for integration tests\n6. Mock API calls and data fetching\n7. Test error scenarios (network errors, invalid data, etc.)",
+        "testStrategy": "1. Run integration test suite\n2. Verify complete flow executes without errors\n3. Check that widgets are created with correct structure\n4. Verify rendering at each step\n5. Test with different parameters and visual types\n6. Test reference widget direct placement\n7. Test legacy widget backward compatibility\n8. Verify overlay interaction (open/close)\n9. Check for memory leaks (unmount cleanup)\n10. Run in headless and headed modes\n11. Test on different viewport sizes",
+        "priority": "low",
+        "dependencies": [
+          27,
+          29,
+          30
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
-      "version": "1.0.0",
-      "lastModified": "2026-05-26T02:00:41.771Z",
-      "taskCount": 8,
-      "completedCount": 8,
-      "tags": [
-        "dashboard-toolbar-access-may2026"
-      ]
+      "created": "2026-05-26T09:30:15.540Z",
+      "updated": "2026-05-26T09:30:15.541Z",
+      "description": "Tasks for dashboard-toolbar-access-may2026 context"
     }
   }
 }

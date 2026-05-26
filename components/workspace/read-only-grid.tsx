@@ -13,6 +13,11 @@ import { DashboardWidgetBody } from "@/components/dashboard/dashboard-widget-bod
 import { DEFAULT_GRIDS } from "@/components/dashboard/layouts"
 import { cn } from "@/lib/utils"
 import type { WorkspaceDashboard } from "@/lib/workspace/types"
+import {
+  WidgetFocusTrigger,
+  WidgetFocusOverlay,
+  useWidgetFocus,
+} from "@/components/dashboard/widget-focus-overlay"
 
 const ROW_HEIGHT = 70
 const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }
@@ -52,6 +57,7 @@ export function ResponsiveDashboardGrid({
   const whatIfRunSessions = useAppStore((s) => s.whatIfRunSessions)
   const scenarioRuns = scenarioRunsProp ?? whatIfRunSessions
   const coker = getEquipmentTypeKey(dashboard.equipmentId) === "coker"
+  const { focusedWidget, focus, blur } = useWidgetFocus()
   const widgets = useMemo(() => {
     if (dashboard.widgets.length > 0) return dashboard.widgets
     if (useEmptyFallback === false) return []
@@ -103,8 +109,8 @@ export function ResponsiveDashboardGrid({
           <div
             key={w.id}
             className={cn(
-              "rounded-xl border shadow-sm overflow-hidden",
-              coker && w.templateKey
+              "group relative rounded-xl border shadow-sm overflow-hidden",
+              coker && (w.templateKey || w.parameterId || w.referenceWidgetId)
                 ? "bg-[hsl(var(--coker-card))] border-[hsl(var(--coker-border))] coker-theme"
                 : "bg-card border-border"
             )}
@@ -123,8 +129,17 @@ export function ResponsiveDashboardGrid({
                 />
               </WidgetErrorBoundary>
             </div>
+            <WidgetFocusTrigger onClick={() => focus(w)} />
           </div>
         ))}
+        {focusedWidget && (
+          <WidgetFocusOverlay
+            widget={focusedWidget}
+            equipmentId={dashboard.equipmentId}
+            context={dashboard.dashboardContext ?? undefined}
+            onClose={blur}
+          />
+        )}
       </ResponsiveGridLayout>
     </div>
   )

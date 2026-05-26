@@ -25,7 +25,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { ModuleLibrary, SPM_WIDGET_DRAG_TYPE, type LibraryModule } from "@/components/module-library"
-import { CatalogModuleLibrary, type CatalogDragPayload } from "@/components/catalog-module-library"
+import {
+  CatalogModuleLibrary,
+  type AnyDragPayload,
+  type CatalogDragPayload,
+} from "@/components/catalog-module-library"
 import {
   RGL_DROP_PLACEHOLDER_ID,
   SPM_WIDGET_LIBRARY_SPECS,
@@ -33,6 +37,7 @@ import {
 } from "@/components/dashboard/layouts"
 import { WidgetErrorBoundary } from "@/components/dashboard/widget-view-resolver"
 import { DashboardWidgetBody } from "@/components/dashboard/dashboard-widget-body"
+import { WidgetConfigPopup, type WidgetCreationResult } from "@/components/dashboard/widget-config-popup"
 import { DashboardContextBar } from "@/components/workspace/dashboard-context-bar"
 import { LEGACY_COKER_VIEW } from "@/lib/equipment-packs"
 import type { DashboardContextState } from "@/lib/workspace/types"
@@ -85,7 +90,10 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [draggingFromLibrary, setDraggingFromLibrary] = useState(false)
   const placeholderInsertedRef = useRef(false)
-  const dragModuleRef = useRef<LibraryModule | CatalogDragPayload | null>(null)
+  const dragModuleRef = useRef<LibraryModule | AnyDragPayload | null>(null)
+  // Pending parameter drag — waits for popup to confirm before adding widget
+  const [pendingParamId, setPendingParamId] = useState<string | null>(null)
+  const pendingDropPositionRef = useRef<{ x: number; y: number } | null>(null)
   const [ctx, setCtx] = useState<DashboardContextState>({
     cycleId: "2751",
     durationKey: "7d",
@@ -160,6 +168,12 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
     return () => window.removeEventListener("beforeunload", handler)
   }, [dirty])
 
+  /* ── Dashboard context change ─────────────────────────────────────────── */
+  const onCtxChange = useCallback((v: DashboardContextState) => {
+    setCtx(v)
+    setDirty(true)
+  }, [])
+
   /* ── Layout change ────────────────────────────────────────────────────── */
   const onLayoutChange = (layout: readonly LayoutItem[]) => {
     setWidgets((prev) => {
@@ -178,10 +192,34 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
         }
         return w
       })
-      if (changed) setDirty(true)
+      // CRITICAL: return the same reference when nothing changed — React bails out
+      // and does not re-render, breaking the potential react-grid-layout ↔ state loop.
+      if (!changed) return prev
+      setDirty(true)
       return next
     })
   }
+
+  /* ── Widget creation from popup result ────────────────────────────────── */
+  const addWidgetFromPopup = useCallback(
+    (result: WidgetCreationResult, position?: { x: number; y: number }) => {
+      const id = `w-${Date.now().toString(36)}`
+      const { w, h, minW, minH } = result.layout
+      const pos = position ?? { x: 0, y: nextRowY(widgets) }
+      const newWidget: GridWidget = {
+        id,
+        viewType: LEGACY_COKER_VIEW,
+        parameterId: result.parameterId,
+        visualTypeId: result.visualTypeId,
+        config: result.config,
+        title: result.title,
+        layout: { i: id, x: pos.x, y: pos.y, w: Math.min(w, 12), h, minW, minH },
+      }
+      setWidgets((p) => [...p, newWidget])
+      setDirty(true)
+    },
+    [widgets]
+  )
 
   /* ── Drag-drop from library (RGL legacy onDrop: layout, item, drag Event as 3rd arg) ─ */
   const onDropFromLibrary = (
@@ -191,10 +229,10 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
   ) => {
     if (!item) return
     const de = e as DragEvent
-    let rawPayload: LibraryModule | CatalogDragPayload | null = null
+    let rawPayload: LibraryModule | AnyDragPayload | null = null
     try {
       const raw = de.dataTransfer?.getData(SPM_WIDGET_DRAG_TYPE)
-      if (raw) rawPayload = JSON.parse(raw) as LibraryModule | CatalogDragPayload
+      if (raw) rawPayload = JSON.parse(raw) as LibraryModule | AnyDragPayload
     } catch {
       rawPayload = null
     }
@@ -202,8 +240,40 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
     dragModuleRef.current = null
     if (!rawPayload?.id) return
 
+    // Parameter drag → open creation popup
+    if ("mode" in rawPayload && rawPayload.mode === "parameter") {
+      pendingDropPositionRef.current = { x: item.x, y: item.y }
+      setPendingParamId(rawPayload.parameterId)
+      return
+    }
+
+    // Reference widget → place directly
+    if ("mode" in rawPayload && rawPayload.mode === "reference") {
+      const r = rawPayload as import("@/components/catalog-module-library").ReferenceDragPayload
+      const id = `w-${Date.now().toString(36)}`
+      const newWidget: GridWidget = {
+        id,
+        viewType: LEGACY_COKER_VIEW,
+        referenceWidgetId: r.referenceWidgetId,
+        title: r.name,
+        layout: {
+          i: id,
+          x: item.x,
+          y: item.y,
+          w: Math.min(r.defaultW, 12),
+          h: r.defaultH,
+          minW: r.minW,
+          minH: r.minH,
+        },
+      }
+      setWidgets((p) => [...p, newWidget])
+      setDirty(true)
+      return
+    }
+
+    // Legacy catalog drag
     if ("mode" in rawPayload && rawPayload.mode === "catalog") {
-      const c = rawPayload
+      const c = rawPayload as CatalogDragPayload
       const id = `w-${Date.now().toString(36)}`
       const newWidget: GridWidget = {
         id,
@@ -249,7 +319,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
     setDirty(true)
   }
 
-  const onDragStartFromLibrary = (mod: LibraryModule | CatalogDragPayload) => {
+  const onDragStartFromLibrary = (mod: LibraryModule | AnyDragPayload) => {
     dragModuleRef.current = mod
     setDraggingFromLibrary(true)
   }
@@ -281,25 +351,49 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
     setDirty(true)
   }, [])
 
-  const appendCatalog = useCallback((c: CatalogDragPayload) => {
+  const appendCatalog = useCallback((c: AnyDragPayload) => {
+    if (c.mode === "parameter") {
+      // Add to bottom of grid and open popup
+      setPendingParamId(c.parameterId)
+      pendingDropPositionRef.current = null
+      return
+    }
+    if (c.mode === "reference") {
+      const r = c as import("@/components/catalog-module-library").ReferenceDragPayload
+      setWidgets((prev) => {
+        const y = nextRowY(prev)
+        const id = `w-${Date.now().toString(36)}`
+        const w: GridWidget = {
+          id,
+          viewType: LEGACY_COKER_VIEW,
+          referenceWidgetId: r.referenceWidgetId,
+          title: r.name,
+          layout: { i: id, x: 0, y, w: Math.min(r.defaultW, 12), h: r.defaultH, minW: r.minW, minH: r.minH },
+        }
+        return [...prev, w]
+      })
+      setDirty(true)
+      return
+    }
+    const legacy = c as CatalogDragPayload
     setWidgets((prev) => {
       const y = nextRowY(prev)
       const id = `w-${Date.now().toString(36)}`
       const w: GridWidget = {
         id,
         viewType: LEGACY_COKER_VIEW,
-        templateKey: c.templateKey,
-        packVersion: c.packVersion,
+        templateKey: legacy.templateKey,
+        packVersion: legacy.packVersion,
         options: {},
-        title: c.name,
+        title: legacy.name,
         layout: {
           i: id,
           x: 0,
           y,
-          w: Math.min(c.defaultW, 12),
-          h: c.defaultH,
-          minW: c.minW,
-          minH: c.minH,
+          w: Math.min(legacy.defaultW, 12),
+          h: legacy.defaultH,
+          minW: legacy.minW,
+          minH: legacy.minH,
         },
       }
       return [...prev, w]
@@ -374,6 +468,22 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
 
   return (
     <div className="flex-1 min-w-0 flex flex-col">
+      {/* Widget creation popup (parameter-driven) */}
+      {pendingParamId && (
+        <WidgetConfigPopup
+          parameterId={pendingParamId}
+          open={!!pendingParamId}
+          onClose={() => {
+            setPendingParamId(null)
+            pendingDropPositionRef.current = null
+          }}
+          onConfirm={(result) => {
+            addWidgetFromPopup(result, pendingDropPositionRef.current ?? undefined)
+            setPendingParamId(null)
+            pendingDropPositionRef.current = null
+          }}
+        />
+      )}
       {/* Header */}
       <div className="border-b border-border bg-background px-4 py-3 flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => router.back()} className="gap-1">
@@ -487,10 +597,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
       {equipmentType === "coker" && (
         <DashboardContextBar
           value={ctx}
-          onChange={(v) => {
-            setCtx(v)
-            setDirty(true)
-          }}
+          onChange={onCtxChange}
         />
       )}
 
@@ -501,9 +608,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
               equipmentId={dashboard.equipmentId}
               onWidgetDragStart={onDragStartFromLibrary}
               onWidgetDragEnd={onDragEndFromLibrary}
-              onAddModule={(m) => {
-                if ("mode" in m && m.mode === "catalog") appendCatalog(m as CatalogDragPayload)
-              }}
+              onAddModule={appendCatalog}
             />
           ) : (
             <ModuleLibrary
@@ -539,7 +644,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
                 draggingFromLibrary
                   ? (() => {
                       const d = dragModuleRef.current
-                      if (d && "mode" in d && d.mode === "catalog")
+                      if (d && "mode" in d && (d.mode === "catalog" || d.mode === "parameter" || d.mode === "reference"))
                         return {
                           i: RGL_DROP_PLACEHOLDER_ID,
                           w: d.defaultW,
@@ -566,7 +671,7 @@ export function DashboardEditor({ dashboardId }: { dashboardId: string }) {
                   key={w.id}
                   className={cn(
                     "group rounded-xl border shadow-sm overflow-hidden",
-                    equipmentType === "coker" && w.templateKey
+                    equipmentType === "coker" && (w.templateKey || w.parameterId || w.referenceWidgetId)
                       ? "bg-[hsl(var(--coker-card))] border-[hsl(var(--coker-border))] coker-theme"
                       : "bg-card border-border"
                   )}

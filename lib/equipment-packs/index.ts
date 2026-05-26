@@ -3,7 +3,16 @@ import { COKER_V1_PACK, getCokerTemplateDef } from "./coker-v1"
 import type { CatalogWidgetTemplateDef } from "./types"
 
 export * from "./types"
-export { COKER_V1_PACK, COKER_V1_VERSION, getCokerTemplateDef } from "./coker-v1"
+export {
+  COKER_V1_PACK,
+  COKER_V1_VERSION,
+  getCokerTemplateDef,
+  getCokerParameter,
+  getCokerReferenceWidget,
+  COKER_PARAMETERS,
+  COKER_REFERENCE_WIDGETS,
+  VISUAL_TYPE_DISPLAY,
+} from "./coker-v1"
 
 /** UI category labels (Module Library tabs). */
 export const CATEGORY_LABEL: Record<ParameterCategory, string> = {
