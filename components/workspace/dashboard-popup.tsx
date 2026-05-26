@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Maximize2,
@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Eye,
   MessageSquare,
+  Globe2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -17,11 +18,19 @@ import { cn } from "@/lib/utils"
 import { ResponsiveDashboardGrid } from "./read-only-grid"
 import { CommentsPanel } from "./comments-panel"
 import { ShareDialog } from "./share-dialog"
+import { AccessRequestDialog } from "./access-request-dialog"
 import {
   useWorkspaceStore,
   selectMyPermissionOn,
 } from "@/lib/workspace/store"
-import { permissionAtLeast } from "@/lib/workspace/types"
+import {
+  canCommentOnDashboard,
+  canEditOnDashboard,
+  canPublishOnDashboard,
+  canShareOnDashboard,
+  isDashboardOwner,
+} from "@/lib/workspace/dashboard-permissions"
+import type { SharePermission } from "@/lib/workspace/types"
 import { findOrgUserById } from "@/lib/workspace/identity"
 import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
 import { sites } from "@/lib/data"
@@ -61,7 +70,8 @@ export function DashboardPopup({
   )
   const recordOpened = useWorkspaceStore((s) => s.recordDashboardOpened)
   const markFirstViewed = useWorkspaceStore((s) => s.markShareFirstViewed)
-  const requestPermission = useWorkspaceStore((s) => s.requestPermission)
+  const publishDashboard = useWorkspaceStore((s) => s.publishDashboard)
+  const unpublishDashboard = useWorkspaceStore((s) => s.unpublishDashboard)
   const incomingShare = useWorkspaceStore((s) => {
     void s.workspaceIdentityRevision
     if (!dashboardId) return null
@@ -77,6 +87,11 @@ export function DashboardPopup({
 
   const [mode, setMode] = useState<"view" | "comments">(initialMode)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false)
+  const [accessRequestPermission, setAccessRequestPermission] = useState<
+    Exclude<SharePermission, "view">
+  >("edit")
+  const [publishing, setPublishing] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -94,12 +109,64 @@ export function DashboardPopup({
   if (!open || !dashboard) return null
 
   const owner = findOrgUserById(dashboard.ownerUserId)
-  const isOwner = dashboard.ownerUserId === me
-  const canEdit = permissionAtLeast(myPermission, "edit")
+  const ownerName = owner?.name ?? "owner"
+  const isOwner = isDashboardOwner(dashboard, me)
+  const canComment = canCommentOnDashboard(myPermission, isOwner)
+  const canEdit = canEditOnDashboard(myPermission, isOwner)
+  const canPublish = canPublishOnDashboard(dashboard, me)
+  const canShare = canShareOnDashboard(myPermission, isOwner)
 
-  const handleEdit = () => {
+  const openAccessRequest = (permission: Exclude<SharePermission, "view">) => {
+    setAccessRequestPermission(permission)
+    setAccessDialogOpen(true)
+  }
+
+  const handleCommentsClick = () => {
+    if (canComment) {
+      setMode((m) => (m === "comments" ? "view" : "comments"))
+      return
+    }
+    openAccessRequest("comment")
+  }
+
+  const handlePublishClick = () => {
+    if (!canPublish) {
+      openAccessRequest("edit")
+      return
+    }
+    setPublishing(true)
+    void (async () => {
+      try {
+        if (dashboard.lifecycleStatus === "published") {
+          await unpublishDashboard(dashboard.id)
+          toast.success("Dashboard unpublished")
+        } else {
+          await publishDashboard(dashboard.id)
+          toast.success("Dashboard published to Asset Module")
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Publish failed")
+      } finally {
+        setPublishing(false)
+      }
+    })()
+  }
+
+  const handleEditClick = () => {
+    if (!canEdit) {
+      openAccessRequest("edit")
+      return
+    }
     onClose()
     router.push(`/dashboard/dashboard/${dashboard.id}/edit`)
+  }
+
+  const handleShareClick = () => {
+    if (!canShare) {
+      openAccessRequest("edit")
+      return
+    }
+    setShareDialogOpen(true)
   }
 
   const handleOpenInNewTab = () => {
@@ -107,20 +174,7 @@ export function DashboardPopup({
     window.open(`/dashboards/${dashboard.id}/full`, "_blank", "noopener")
   }
 
-  const handleRequestPermission = () => {
-    if (!dashboard) return
-    const desired: "comment" | "edit" =
-      myPermission === "comment" ? "edit" : "comment"
-    void requestPermission({
-      dashboardId: dashboard.id,
-      requestedPermission: desired,
-      message: undefined,
-    }).then((req) => {
-      if (req) {
-        toast.success(`Requested ${desired} access from ${owner?.name ?? "owner"}`)
-      }
-    })
-  }
+  const isPublished = dashboard.lifecycleStatus === "published"
 
   return (
     <>
@@ -142,14 +196,14 @@ export function DashboardPopup({
                 <span
                   className={cn(
                     "inline-flex items-center gap-1 text-[10px] font-semibold px-1 py-0 rounded",
-                    dashboard.lifecycleStatus === "published"
+                    isPublished
                       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
-                  {dashboard.lifecycleStatus === "published" ? "Published" : "Draft"}
+                  {isPublished ? "Published" : "Draft"}
                 </span>{" "}
-                · Owner: {owner?.name ?? "Unknown"}
+                · Owner: {ownerName}
               </div>
               <h2 className="text-lg font-bold text-foreground truncate">{dashboard.name}</h2>
             </div>
@@ -157,8 +211,9 @@ export function DashboardPopup({
               <Button
                 size="sm"
                 variant={mode === "comments" ? "default" : "outline"}
-                onClick={() => setMode(mode === "comments" ? "view" : "comments")}
+                onClick={handleCommentsClick}
                 className="gap-1"
+                aria-pressed={mode === "comments"}
               >
                 <MessageSquare className="w-4 h-4" />
                 Comments
@@ -166,22 +221,29 @@ export function DashboardPopup({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={handleEdit}
-                disabled={!canEdit}
+                onClick={handlePublishClick}
+                disabled={publishing}
+                className="gap-1"
+              >
+                <Globe2 className="w-4 h-4" />
+                {isPublished ? "Unpublish" : "Publish"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleEditClick}
                 className="gap-1"
               >
                 <Pencil className="w-4 h-4" /> Edit
               </Button>
-              {(isOwner || canEdit) && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShareDialogOpen(true)}
-                  className="gap-1"
-                >
-                  <Share2 className="w-4 h-4" /> Share
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleShareClick}
+                className="gap-1"
+              >
+                <Share2 className="w-4 h-4" /> Share
+              </Button>
               {showOpenInNewTab && (
                 <Button
                   size="sm"
@@ -219,33 +281,20 @@ export function DashboardPopup({
                 <CommentsPanel
                   dashboardId={dashboard.id}
                   myPermission={myPermission}
-                  onRequestPermission={
-                    !permissionAtLeast(myPermission, "comment") && !isOwner
-                      ? handleRequestPermission
-                      : undefined
+                  onRequestCommentAccess={
+                    !canComment ? () => openAccessRequest("comment") : undefined
                   }
                 />
               </div>
             )}
           </div>
 
-          {/* Footer with permission affordance */}
           {!isOwner && (
-            <div className="border-t border-border px-4 py-2 flex items-center justify-between bg-muted/20">
+            <div className="border-t border-border px-4 py-2 flex items-center bg-muted/20">
               <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5" />
                 You have <strong>{myPermission ?? "no"}</strong> access.
               </div>
-              {!canEdit && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleRequestPermission}
-                  className="text-xs"
-                >
-                  Request {myPermission === "comment" ? "edit" : "comment"} access
-                </Button>
-              )}
             </div>
           )}
         </div>
@@ -255,9 +304,16 @@ export function DashboardPopup({
         open={shareDialogOpen}
         onOpenChange={setShareDialogOpen}
       />
+      <AccessRequestDialog
+        open={accessDialogOpen}
+        onOpenChange={setAccessDialogOpen}
+        dashboardId={dashboard.id}
+        dashboardName={dashboard.name}
+        ownerName={ownerName}
+        requestedPermission={accessRequestPermission}
+      />
     </>
   )
 }
 
-// also export Maximize2 to keep tree-shaker friendly when consumers want it
 export { Maximize2 }

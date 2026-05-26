@@ -10,18 +10,23 @@ export type AlertAssigneeAccess = "notify_only" | "comment_on_alert" | "co_edit_
 export interface MockAlertAssignee {
   userId: string
   accessLevel: AlertAssigneeAccess
+  /**
+   * Only valid when accessLevel is notify_only or comment_on_alert.
+   * Must be false (and hidden in UI) for co_edit_rule.
+   */
   mayInitiateDeleteRequest: boolean
 }
 
 export type AlertScheduleMode = "one_shot" | "recurring" | "date_window"
+export type AlertScheduleFrequency = "daily" | "weekly" | "monthly"
 
 export interface MockParameterCondition {
   parameterId: string
   predicateKind: AlertPredicateKindId
-  /** Primary bound(s) / threshold — string inputs until evaluation is wired. */
+  /** Primary bound / threshold — string until evaluation is wired. */
   a: string
   b: string
-  /** Window label for slope / rate predicates. */
+  /** Internal hint for slope predicates — not surfaced as a user input. */
   windowLabel?: string
 }
 
@@ -35,7 +40,18 @@ export interface MockAlertRule {
   combineOperator: "AND" | "OR"
   conditions: MockParameterCondition[]
   scheduleMode: AlertScheduleMode
+  /** @deprecated kept for backward compat; no longer shown in UI */
   scheduleNote: string
+  /** For one_shot / date_window / recurring: the fire/start date (YYYY-MM-DD). */
+  scheduleStartDate?: string
+  /** HH:mm — time component for scheduleStartDate. */
+  scheduleStartTime?: string
+  /** For date_window: end date. For recurring: optional last repeat date. */
+  scheduleEndDate?: string
+  /** HH:mm — time component for scheduleEndDate. */
+  scheduleEndTime?: string
+  /** Required when scheduleMode = recurring. */
+  scheduleFrequency?: AlertScheduleFrequency
   assignees: MockAlertAssignee[]
   createdAt: string
   updatedAt: string
@@ -79,11 +95,13 @@ const defaultRule: MockAlertRule = {
   parameterIds: ["input-temperature", "input-pressure"],
   combineOperator: "AND",
   conditions: [
-    { parameterId: "input-temperature", predicateKind: "gt", a: "420", b: "", windowLabel: "" },
-    { parameterId: "input-pressure", predicateKind: "between_closed", a: "180", b: "220", windowLabel: "" },
+    { parameterId: "input-temperature", predicateKind: "gt", a: "420", b: "" },
+    { parameterId: "input-pressure", predicateKind: "between_closed", a: "180", b: "220" },
   ],
   scheduleMode: "recurring",
-  scheduleNote: "Evaluate each pull cycle",
+  scheduleNote: "",
+  scheduleFrequency: "daily",
+  scheduleStartTime: "06:00",
   assignees: [
     { userId: "user-ben", accessLevel: "comment_on_alert", mayInitiateDeleteRequest: true },
     { userId: "user-alex", accessLevel: "notify_only", mayInitiateDeleteRequest: false },
@@ -185,8 +203,13 @@ export const useAlertSettingStore = create<AlertSettingState>()(
     }),
     {
       name: "spm-one:alert-setting-v1",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persisted, fromVersion) => {
+        // v1 → v2: new schedule date/time fields default to undefined — no structural change needed.
+        void fromVersion
+        return persisted as ReturnType<typeof seedState>
+      },
       partialize: (s) => ({
         rules: s.rules,
         deletedRules: s.deletedRules,

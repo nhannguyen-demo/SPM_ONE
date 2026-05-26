@@ -482,9 +482,6 @@ function ConfigureRunPanel({
       <div className="p-6 max-w-3xl space-y-8">
         <section>
           <h3 className="font-semibold text-foreground mb-1">1. Parameter input method</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Client agreements define how data is ingested. Choose the pattern that matches your scenario contract.
-          </p>
           <div className="grid sm:grid-cols-2 gap-3">
             {inputModeOptions.map((opt) => (
               <button
@@ -917,9 +914,6 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
             </div>
             <div className="bg-card border border-border rounded-2xl p-6">
               <h3 className="font-semibold text-foreground mb-3">Available Result Dashboards</h3>
-              <p className="mb-4 text-xs text-muted-foreground leading-relaxed">
-                Published dashboards for this equipment (same as Asset module Equipment Home). Click to open on Equipment Home.
-              </p>
               <PublishedResultDashboards scenarioId={scenarioId} equipmentId={scenario.equipmentId} />
             </div>
             <div className="bg-amber-500/5 border border-amber-400/20 rounded-2xl p-5 flex items-start gap-3">

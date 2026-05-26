@@ -562,7 +562,9 @@
         "details": "`components/sidebar.tsx` SettingsPanel; optional `PanelNavItem` `title` tooltips; `NAV_SEARCH_PLACEHOLDERS.settings` unchanged or refined.",
         "testStrategy": "Open Settings rail panel; search filters; rows are inert.",
         "status": "done",
-        "dependencies": [1],
+        "dependencies": [
+          1
+        ],
         "priority": "high",
         "subtasks": [],
         "updatedAt": "2026-05-03T12:00:00.000Z"
@@ -574,7 +576,9 @@
         "details": "Update `.taskmaster/docs/module-url-parity.md` when route exists. `fallbackMainRouteForModule('settings')` should return `/settings` instead of `/home`.",
         "testStrategy": "Signed-in user can open `/settings` and see mirrored mock sections.",
         "status": "done",
-        "dependencies": [2],
+        "dependencies": [
+          2
+        ],
         "priority": "low",
         "subtasks": [],
         "updatedAt": "2026-05-03T18:00:00.000Z"
@@ -596,7 +600,9 @@
       "lastModified": "2026-05-03T18:00:00.000Z",
       "taskCount": 4,
       "completedCount": 3,
-      "tags": ["settings-in-app-may2026"],
+      "tags": [
+        "settings-in-app-may2026"
+      ],
       "created": "2026-05-03T12:00:00.000Z",
       "description": "In-app Settings module (mock → persist)",
       "updated": "2026-05-03T18:00:00.000Z"
@@ -623,7 +629,9 @@
         "details": "Align tag names with `cokerSensorChannels` + `cokerOutputDescriptors`; document mapping in layers doc if split files.",
         "testStrategy": "Unit-less: TypeScript compiles; Data & Jobs and Alert Setting import same constants for Coker 01.",
         "status": "done",
-        "dependencies": [1],
+        "dependencies": [
+          "1"
+        ],
         "priority": "high",
         "subtasks": [],
         "updatedAt": "2026-05-04T12:00:00.000Z"
@@ -635,7 +643,9 @@
         "details": "`lib/main-routes.ts`, `lib/store.ts`, `components/main-route-sync.tsx`, new page; optional `fallbackMainRouteForModule` if insights fallback should open alert tool (product choice — default keep `whatIf` or document).",
         "testStrategy": "Reload `/tools/alert-setting?equipment=equipment-a` hydrates store; back/forward works.",
         "status": "done",
-        "dependencies": [2],
+        "dependencies": [
+          "2"
+        ],
         "priority": "high",
         "subtasks": [],
         "updatedAt": "2026-05-04T12:00:00.000Z"
@@ -647,7 +657,9 @@
         "details": "`components/sidebar.tsx`, `components/views/equipment-home.tsx`; search placeholder / nav copy if needed.",
         "testStrategy": "From Equipment Home Coker → tool opens with filter; HCU/SMR tile may route with coming-soon gate inside tool.",
         "status": "done",
-        "dependencies": [3],
+        "dependencies": [
+          "3"
+        ],
         "priority": "high",
         "subtasks": [],
         "updatedAt": "2026-05-04T12:00:00.000Z"
@@ -659,7 +671,9 @@
         "details": "Prefer dedicated Zustand slice under `lib/` or colocated store module; no Prisma. Respect org user list for assignee picker mock.",
         "testStrategy": "Create two rules, assign two users, delete one, recover from history, edit recovered rule (mock).",
         "status": "done",
-        "dependencies": [4],
+        "dependencies": [
+          "4"
+        ],
         "priority": "medium",
         "subtasks": [],
         "updatedAt": "2026-05-04T12:00:00.000Z"
@@ -671,7 +685,9 @@
         "details": "Client-side validation for contradictory math; no live series evaluation. Reference ontology `logicalExpression` comment for predicate taxonomy.",
         "testStrategy": "Save rule with two parameters and mixed AND/OR; switch equipment to HCU → coming soon copy.",
         "status": "done",
-        "dependencies": [5],
+        "dependencies": [
+          "5"
+        ],
         "priority": "medium",
         "subtasks": [],
         "updatedAt": "2026-05-04T12:00:00.000Z"
@@ -683,7 +699,9 @@
         "details": "`lib/workspace/store.ts` notification factory paths; `app/comms/alerts/page.tsx`, header bell dropdown components; reuse `notificationHref`.",
         "testStrategy": "Click Test → unread increments; row opens Equipment Home for Coker; visual regression by inspection.",
         "status": "done",
-        "dependencies": [6],
+        "dependencies": [
+          "6"
+        ],
         "priority": "medium",
         "subtasks": [],
         "updatedAt": "2026-05-04T12:00:00.000Z"
@@ -695,20 +713,77 @@
         "details": "Migrations, `/api/equipment-alerts/*`, authz by equipment access, background worker for crossings — post mock sign-off.",
         "testStrategy": "Integration tests for firing + notification dedupe by `equipmentAlertRuleId`.",
         "status": "deferred",
-        "dependencies": [7],
+        "dependencies": [
+          "7"
+        ],
         "priority": "low",
         "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Alert Setting R1: Fix assignee visibility — active-status save + identity reactivity",
+        "description": "Ensure that when an owner creates an alert rule with at least one assignee, the rule is saved as `status: 'active'` so assignees can immediately see it on their Alert Setting page. Also ensure the `me` identity variable used in `visibleRules` always reflects the currently signed-in user, even after a session switch (full re-render when `workspaceIdentityRevision` bumps).",
+        "details": "**Files to touch:**\n- `components/views/alert-setting-view.tsx`\n  - Verify `handleCreate` computes `const status = assignees.length > 0 ? 'active' : 'draft'` before `addRule()` (already present from previous fix — confirm it is applied and working).\n  - Subscribe the `visibleRules` filter to the Zustand `workspaceIdentityRevision` so it recomputes when identity changes. Currently `me` comes from `useWorkspaceCurrentUserId()` which subscribes to `workspaceIdentityRevision`. Confirm this chain propagates correctly to `visibleRules`.\n  - If the dev identity switcher (not next-auth session) can change `spm-one:current-user-id` in localStorage without bumping `workspaceIdentityRevision`, add a `storage` event listener in the hook or in the view to force re-render.\n- `lib/workspace/use-workspace-user-id.ts`\n  - Confirm the hook subscribes to `workspaceIdentityRevision` (done) and returns `getCurrentUserId()` (not a stale closure).\n- `lib/alert-setting-store.ts`\n  - Confirm persist key `spm-one:alert-setting-v1` is shared across all same-origin sessions so all signed-in users on the same device share the rule store.\n- `lib/workspace/identity.ts` (if dev switcher exists)\n  - If `setCurrentUserId` is ever called outside `AuthIdentitySync`, ensure `bumpWorkspaceIdentityRevision()` is also called afterward.\n\n**Test scenario:** Log in as Nhan, create a rule for Coker 01 with Ben Tran as assignee (any access level). Log out / switch to Ben. Open Alert Setting → Active rules tab. The new rule should appear.",
+        "testStrategy": "1. Create rule as Nhan with Ben as `notify_only` assignee → rule saved as `active`. 2. Switch identity to Ben. 3. Alert Setting page shows the rule in Active rules tab. 4. Ben does NOT see Nhan's draft (owner-only) rules. 5. Check that `me` correctly shows `user-ben` in the browser console after login.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-25T16:26:30.739Z"
+      },
+      {
+        "id": 10,
+        "title": "Alert Setting R2: 'Can request delete' hidden for co_edit_rule assignees",
+        "description": "The 'Can request delete' checkbox must only be shown and enabled for assignees with `notify_only` or `comment_on_alert` access levels. It must be hidden entirely for `co_edit_rule` assignees. Additionally, when a user switches an assignee's access level to `co_edit_rule`, clear the `mayDel` flag to false.",
+        "details": "**Files to touch:**\n- `components/views/alert-setting-view.tsx`\n\n**Create sheet (lines ~619–631):**\nWrap the 'Can request delete' label/Checkbox in a conditional:\n```tsx\n{row.access !== 'co_edit_rule' && (\n  <label className=\"flex items-center gap-2 text-sm\">\n    <Checkbox\n      disabled={!row.on}\n      checked={row.mayDel}\n      onCheckedChange={(v) =>\n        setDraftAssignees((prev) => ({\n          ...prev,\n          [u.id]: { ...row, mayDel: v === true },\n        }))\n      }\n    />\n    Can request delete\n  </label>\n)}\n```\nWhen `onValueChange` for the access Select fires and the new value is `'co_edit_rule'`, also reset `mayDel` to false:\n```tsx\nonValueChange={(v) =>\n  setDraftAssignees((prev) => ({\n    ...prev,\n    [u.id]: { ...row, access: v as AlertAssigneeAccess, mayDel: v === 'co_edit_rule' ? false : row.mayDel },\n  }))\n}\n```\n\n**RuleCard edit mode (lines ~1004–1013):**\nApply the same conditional rendering and access-change side-effect to the `setAssigneeFromRow` call, clearing `mayDel` when new access is `co_edit_rule`.\n\n**`canRequestDelete` guard (line ~725):**\n```typescript\nconst canRequestDelete = myAssignee?.mayInitiateDeleteRequest &&\n  myAssignee.accessLevel !== 'co_edit_rule' && !isOwner\n```\nThis prevents showing the 'Request delete' button even if persisted data has an inconsistent `mayInitiateDeleteRequest = true` on a co_edit_rule assignee.",
+        "testStrategy": "1. Open Create sheet, add Ben as notify_only → 'Can request delete' checkbox visible. 2. Change Ben to co_edit_rule → checkbox disappears (not disabled, fully hidden). 3. Change Ben back to comment_on_alert → checkbox reappears, unchecked. 4. In RuleCard Edit mode, same behaviour. 5. Confirm that if a persisted rule has a co_edit_rule assignee with mayInitiateDeleteRequest=true, the 'Request delete' button is NOT shown for that user.",
+        "status": "done",
+        "dependencies": [
+          "9"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-25T16:26:34.614Z"
+      },
+      {
+        "id": 11,
+        "title": "Alert Setting R3: Remove 'Cron/window description' and 'Slope window note' inputs",
+        "description": "Remove the 'Cron or window description' free-text input from the Schedule section and the 'Slope window note' input column from the per-parameter condition rows. Both appear in the Create sheet and in the RuleCard edit mode. The `windowLabel` field on `MockParameterCondition` and `scheduleNote` on `MockAlertRule` can be kept in the data types for backwards-compat persistence but must not render a visible input.",
+        "details": "**Files to touch:**\n- `components/views/alert-setting-view.tsx`\n\n**Create sheet — Schedule section (around line 568–572):**\nDelete the `<Input value={draftScheduleNote} ... placeholder=\"Cron or window description\" />` block entirely.\n\n**Create sheet — Condition rows (around lines 513–528):**\nDelete the fourth grid column (`<div className=\"space-y-1\"><Label className=\"text-xs\">Slope window note</Label>...`) and change the grid to 3 columns: `sm:grid-cols-2 lg:grid-cols-3`.\n\n**RuleCard edit mode — Schedule section (around lines 940–945):**\nDelete the `<Input value={draft.scheduleNote} ... placeholder=\"Cron or window description\" />` block.\n\n**RuleCard edit mode — Condition rows (around lines 1103–1123):**\nDelete the fourth column (Slope window note Input + onChange/onBlur handlers) and update grid to `sm:grid-cols-2 lg:grid-cols-3`.\n\n**RuleCard read-only display (line ~866):**\nUpdate the `CardDescription` to stop referencing `scheduleNote`:\n```tsx\n<CardDescription>\n  Combine: <strong>{model.combineOperator}</strong> · Schedule: {model.scheduleMode}\n</CardDescription>\n```\n(schedule details will be shown by the new date/time fields in task R4).\n\n**State cleanup:** Remove `draftScheduleNote` useState, `setDraftScheduleNote` from `resetDraft`, from the `handleCreate` call (`scheduleNote: draftScheduleNote || '—'`), and from the RuleCard `saveEdit` payload (`scheduleNote: draft.scheduleNote`).\nThe store action may keep `scheduleNote` as an optional field that defaults to `''`.",
+        "testStrategy": "1. Open Create sheet → Schedule section shows only the mode dropdown; no free-text input below it. 2. Open Create sheet → Conditions section shows only Predicate / A / B columns (no Slope window note column). 3. Open RuleCard Edit mode → same: no Cron input, no Slope window note column. 4. Existing saved rules with a non-empty scheduleNote still load without errors (field silently preserved). 5. No TypeScript compile errors.",
+        "status": "done",
+        "dependencies": [
+          "9"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-25T16:26:34.617Z"
+      },
+      {
+        "id": 12,
+        "title": "Alert Setting R4: Schedule date/time pickers (one_shot / recurring / date_window)",
+        "description": "Replace the free-text schedule note with structured date/time pickers that vary based on `scheduleMode`. Three modes: (1) `one_shot` — date picker + time input (when to fire once); (2) `recurring` — frequency select (daily/weekly/monthly) + time-of-day + optional end date; (3) `date_window` — start date + optional start time + end date + optional end time. These new fields must also be stored on the rule and persisted to localStorage.",
+        "details": "**Files to touch:**\n\n### 1. `lib/alert-setting-store.ts`\n- Add optional fields to `MockAlertRule`:\n```typescript\nscheduleStartDate?: string   // YYYY-MM-DD\nscheduleStartTime?: string   // HH:mm\nscheduleEndDate?: string     // YYYY-MM-DD\nscheduleEndTime?: string     // HH:mm\nscheduleFrequency?: 'daily' | 'weekly' | 'monthly'\n```\n- Update `defaultRule` seed: add `scheduleStartDate: undefined` etc. (all undefined).\n- `updateRule` patch already merges, so no change needed there.\n\n### 2. `components/views/alert-setting-view.tsx`\n\n**New state in `AlertSettingView`:**\n```typescript\nconst [draftScheduleStartDate, setDraftScheduleStartDate] = useState('')\nconst [draftScheduleStartTime, setDraftScheduleStartTime] = useState('')\nconst [draftScheduleEndDate, setDraftScheduleEndDate] = useState('')\nconst [draftScheduleEndTime, setDraftScheduleEndTime] = useState('')\nconst [draftScheduleFrequency, setDraftScheduleFrequency] = useState<'daily'|'weekly'|'monthly'>('daily')\n```\nAdd to `resetDraft`. Pass to `addRule` in `handleCreate`.\n\n**Schedule UI block (in Create sheet, replacing old note input):**\n```tsx\n{draftSchedule === 'one_shot' && (\n  <div className=\"grid gap-2 sm:grid-cols-2\">\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">Date</Label>\n      <Input type=\"date\" value={draftScheduleStartDate} onChange={(e) => setDraftScheduleStartDate(e.target.value)} />\n    </div>\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">Time</Label>\n      <Input type=\"time\" value={draftScheduleStartTime} onChange={(e) => setDraftScheduleStartTime(e.target.value)} />\n    </div>\n  </div>\n)}\n{draftSchedule === 'recurring' && (\n  <div className=\"grid gap-2 sm:grid-cols-3\">\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">Frequency</Label>\n      <Select value={draftScheduleFrequency} onValueChange={(v) => setDraftScheduleFrequency(v as 'daily'|'weekly'|'monthly')}>\n        <SelectTrigger><SelectValue /></SelectTrigger>\n        <SelectContent>\n          <SelectItem value=\"daily\">Daily</SelectItem>\n          <SelectItem value=\"weekly\">Weekly</SelectItem>\n          <SelectItem value=\"monthly\">Monthly</SelectItem>\n        </SelectContent>\n      </Select>\n    </div>\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">Time of day</Label>\n      <Input type=\"time\" value={draftScheduleStartTime} onChange={(e) => setDraftScheduleStartTime(e.target.value)} />\n    </div>\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">End date (optional)</Label>\n      <Input type=\"date\" value={draftScheduleEndDate} onChange={(e) => setDraftScheduleEndDate(e.target.value)} />\n    </div>\n  </div>\n)}\n{draftSchedule === 'date_window' && (\n  <div className=\"grid gap-2 sm:grid-cols-2\">\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">Start date</Label>\n      <Input type=\"date\" value={draftScheduleStartDate} onChange={(e) => setDraftScheduleStartDate(e.target.value)} />\n    </div>\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">Start time (optional)</Label>\n      <Input type=\"time\" value={draftScheduleStartTime} onChange={(e) => setDraftScheduleStartTime(e.target.value)} />\n    </div>\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">End date</Label>\n      <Input type=\"date\" value={draftScheduleEndDate} onChange={(e) => setDraftScheduleEndDate(e.target.value)} />\n    </div>\n    <div className=\"space-y-1\">\n      <Label className=\"text-xs\">End time (optional)</Label>\n      <Input type=\"time\" value={draftScheduleEndTime} onChange={(e) => setDraftScheduleEndTime(e.target.value)} />\n    </div>\n  </div>\n)}\n```\n\n**RuleCard** (`RuleCard` component):\n- In `patchDraft` / local draft, also track `scheduleStartDate`, `scheduleStartTime`, `scheduleEndDate`, `scheduleEndTime`, `scheduleFrequency`.\n- In edit mode schedule section, render the same conditional UI blocks as above, reading from / writing to `draft`.\n- In `saveEdit`, include all five new fields in the `onUpdate` patch.\n- In read-only `CardDescription`, add a human-readable schedule summary next to `scheduleMode` (e.g. 'daily at 08:00 until 2026-12-31').\n\n### No new npm packages required — uses native `<input type='date'>` and `<input type='time'>` which are sufficient for this phase; shadcn Calendar can replace them in a future polish pass.",
+        "testStrategy": "1. Select 'One time only' → date picker and HH:mm input appear. 2. Select 'Recurring' → frequency dropdown (daily/weekly/monthly), time-of-day input, and optional end-date picker appear. 3. Select 'Specific dates' → start date + end date (with optional times) appear. 4. Save rule, reload page, reopen Edit → all date/time fields persist correctly. 5. Existing seed rule loads without crashing (all new fields nullable). 6. No TypeScript errors.",
+        "status": "done",
+        "dependencies": [
+          "11"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-25T16:26:34.637Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-04T12:00:00.000Z",
-      "taskCount": 8,
-      "completedCount": 7,
-      "tags": ["alert-setting-may2026"],
-      "created": "2026-05-03T20:00:00.000Z",
-      "description": "Tools module — Alert Setting (mock → persist)",
-      "updated": "2026-05-04T12:00:00.000Z"
+      "lastModified": "2026-05-25T16:26:34.637Z",
+      "taskCount": 12,
+      "completedCount": 11,
+      "tags": [
+        "alert-setting-may2026"
+      ],
+      "created": "2026-05-26T01:55:20.966Z",
+      "description": "Tasks for alert-setting-may2026 context"
     }
   },
   "whatif-published-dashboards-may2026": {
@@ -731,7 +806,9 @@
         "details": "Coker + HCU scenario objects only. Grep repo for availableDashboards and fix compile errors in follow-up tasks.",
         "testStrategy": "pnpm exec tsc --noEmit surfaces all call sites; no remaining references in lib/data.ts.",
         "status": "done",
-        "dependencies": [1],
+        "dependencies": [
+          1
+        ],
         "priority": "high",
         "subtasks": []
       },
@@ -742,7 +819,9 @@
         "details": "Resolve equipmentId from whatIfScenarios by id; return EquipmentHomeDashCard[]. No React imports.",
         "testStrategy": "Unit-less: import from whatif-tool-view; Coker scenario returns same length as getPublishedDashboardsForEquipment('equipment-a', WORKSPACE_SEED dashboards) in dev.",
         "status": "done",
-        "dependencies": [2],
+        "dependencies": [
+          2
+        ],
         "priority": "high",
         "subtasks": []
       },
@@ -753,7 +832,9 @@
         "details": "components/views/whatif-tool-view.tsx; use useWorkspaceStore + useShallow; reuse DashboardCard or compact row. Match Equipment Home sort order.",
         "testStrategy": "Publish new dashboard in Workspace for Coker → appears in What-If Overview without reload (if store syncs) or after refresh; click opens correct dashboard popup.",
         "status": "done",
-        "dependencies": [3],
+        "dependencies": [
+          3
+        ],
         "priority": "high",
         "subtasks": []
       },
@@ -764,7 +845,9 @@
         "details": "lib/store.ts, lib/data.ts, whatif-tool-view.tsx ConfigureRunPanel. Optionally derive selectedDashboards display names from ids for results UI during migration.",
         "testStrategy": "Start run from tool → session stores workspace dashboard ids; View Data on result still navigates to equipment home.",
         "status": "done",
-        "dependencies": [4],
+        "dependencies": [
+          4
+        ],
         "priority": "medium",
         "subtasks": []
       },
@@ -775,7 +858,9 @@
         "details": "Find equipment scenario via whatIfScenarios.find(equipmentId); first published dashboard id or currentPath.tab mapped via getWorkspaceDashboardIdForTag if needed.",
         "testStrategy": "Open legacy modal from equipment dashboard tab → selectedDashboards uses valid published id/name.",
         "status": "done",
-        "dependencies": [5],
+        "dependencies": [
+          5
+        ],
         "priority": "medium",
         "subtasks": []
       },
@@ -786,7 +871,9 @@
         "details": "Checklist in .taskmaster/docs/whatif-published-dashboards-layers.md acceptance criteria.",
         "testStrategy": "Document pass/fail for equipment-a and equipment-b; no user-visible static dashboard name list in What-If Overview.",
         "status": "done",
-        "dependencies": [6],
+        "dependencies": [
+          6
+        ],
         "priority": "low",
         "subtasks": []
       }
@@ -796,10 +883,135 @@
       "lastModified": "2026-05-19T18:00:00.000Z",
       "taskCount": 7,
       "completedCount": 7,
-      "tags": ["whatif-published-dashboards-may2026"],
+      "tags": [
+        "whatif-published-dashboards-may2026"
+      ],
       "created": "2026-05-19T12:00:00.000Z",
       "description": "What-If Tool — bind Available Result Dashboards to published WorkspaceDashboard (Asset parity)",
       "updated": "2026-05-19T12:00:00.000Z"
+    }
+  },
+  "dashboard-toolbar-access-may2026": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Create reusable AccessRequestDialog component",
+        "description": "Build a shared modal dialog component that allows users to request permissions (comment or edit) with an optional message field (max 500 chars) and Request/Cancel actions.",
+        "details": "Create `components/workspace/AccessRequestDialog.tsx` as a reusable component.\n\n**Props interface:**\n```typescript\ninterface AccessRequestDialogProps {\n  isOpen: boolean;\n  onClose: () => void;\n  dashboardId: string;\n  requestedPermission: 'comment' | 'edit';\n  dashboardTitle?: string;\n  onSuccess?: () => void;\n}\n```\n\n**Implementation:**\n- Use controlled dialog/modal component (e.g., Radix UI Dialog, shadcn/ui Dialog, or MUI Dialog)\n- Display title based on permission type: \"Request Comment Access\" or \"Request Edit Access\"\n- Show explanation text: \"You don't have permission to [action]. Request access from the dashboard owner.\"\n- Include optional textarea for message with character counter (max 500 chars)\n- Validate message length client-side\n- \"Request\" button calls `requestPermission({ dashboardId, requestedPermission, message })` API function\n- Show loading state during submission\n- On success: close dialog, show success toast (\"Access request sent\"), call onSuccess callback\n- On error: display error message inline without closing dialog\n- \"Cancel\" button closes dialog without action\n\n**Styling:**\n- Match existing workspace UI patterns\n- Responsive layout for mobile/desktop\n- Accessible (ARIA labels, focus management, ESC to close)",
+        "testStrategy": "Unit tests: Render dialog with different permission types, verify message validation (500 char limit), test character counter updates. Integration tests: Mock requestPermission API call, verify success toast appears, verify onSuccess callback fires, test error handling displays inline error. Accessibility tests: Keyboard navigation (Tab, ESC), screen reader announcements, focus trap within dialog.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T02:00:41.678Z"
+      },
+      {
+        "id": "2",
+        "title": "Implement requestPermission API function and endpoint",
+        "description": "Create or update the API endpoint POST /api/workspace/permission-requests to accept dashboardId, requestedPermission, and message fields, persisting the request in the data store.",
+        "details": "**API Route:** `POST /api/workspace/permission-requests`\n\n**Request body schema:**\n```typescript\ninterface PermissionRequestBody {\n  dashboardId: string;\n  requestedPermission: 'comment' | 'edit';\n  message?: string; // optional, max 500 chars\n}\n```\n\n**Implementation:**\n- Validate request body (dashboardId required, requestedPermission enum, message max 500 chars)\n- Authenticate user from session/token\n- Verify dashboard exists and user has at least view access\n- Check if user already has requested permission (return early with appropriate message)\n- Check for duplicate pending requests (optional: prevent spam)\n- Persist to database:\n  - If Prisma: verify `PermissionRequest` model has `message` field (String?, optional)\n  - If missing, add migration: `message String? @db.VarChar(500)`\n  - Create record with userId, dashboardId, requestedPermission, message, status='pending', createdAt\n- Optionally create notification for dashboard owner\n- Return 201 with created request object\n\n**Client function:**\n```typescript\n// lib/api/workspace.ts or similar\nexport async function requestPermission(params: {\n  dashboardId: string;\n  requestedPermission: 'comment' | 'edit';\n  message?: string;\n}): Promise<PermissionRequest> {\n  const response = await fetch('/api/workspace/permission-requests', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify(params),\n  });\n  if (!response.ok) throw new Error('Failed to request permission');\n  return response.json();\n}\n```\n\n**Mock store:** If using mock/local mode, store requests in memory/localStorage for testing.",
+        "testStrategy": "API tests: Test successful request creation with/without message, verify 400 for invalid permission type, verify 401 for unauthenticated, verify 404 for non-existent dashboard, test message length validation (501 chars rejected). Database tests: Verify PermissionRequest record created with correct fields, verify message field persists correctly. Integration tests: Call from client function, verify response structure, test error handling for network failures.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T02:00:41.708Z"
+      },
+      {
+        "id": "3",
+        "title": "Add permission checking utilities and hooks",
+        "description": "Create utility functions and React hooks to check user permissions (canComment, canEdit, isOwner) for a given dashboard, to be used throughout the toolbar components.",
+        "details": "**Create utility file:** `lib/permissions/dashboard-permissions.ts`\n\n```typescript\nimport { Dashboard, User, Permission } from '@/types';\n\nexport function canComment(dashboard: Dashboard, user: User): boolean {\n  if (!user || !dashboard) return false;\n  if (dashboard.ownerId === user.id) return true;\n  const permission = dashboard.permissions?.find(p => p.userId === user.id);\n  return permission?.level === 'comment' || permission?.level === 'edit';\n}\n\nexport function canEdit(dashboard: Dashboard, user: User): boolean {\n  if (!user || !dashboard) return false;\n  if (dashboard.ownerId === user.id) return true;\n  const permission = dashboard.permissions?.find(p => p.userId === user.id);\n  return permission?.level === 'edit';\n}\n\nexport function isOwner(dashboard: Dashboard, user: User): boolean {\n  if (!user || !dashboard) return false;\n  return dashboard.ownerId === user.id;\n}\n\nexport function canPublish(dashboard: Dashboard, user: User): boolean {\n  // Only owner can publish/unpublish per spec\n  return isOwner(dashboard, user);\n}\n\nexport function canShare(dashboard: Dashboard, user: User): boolean {\n  // Owner or edit permission can share\n  return isOwner(dashboard, user) || canEdit(dashboard, user);\n}\n```\n\n**Create React hook:** `hooks/use-dashboard-permissions.ts`\n\n```typescript\nimport { useMemo } from 'react';\nimport { useCurrentUser } from '@/hooks/use-current-user';\nimport { Dashboard } from '@/types';\nimport * as perms from '@/lib/permissions/dashboard-permissions';\n\nexport function useDashboardPermissions(dashboard: Dashboard | null) {\n  const user = useCurrentUser();\n  \n  return useMemo(() => {\n    if (!dashboard || !user) {\n      return {\n        canComment: false,\n        canEdit: false,\n        isOwner: false,\n        canPublish: false,\n        canShare: false,\n      };\n    }\n    \n    return {\n      canComment: perms.canComment(dashboard, user),\n      canEdit: perms.canEdit(dashboard, user),\n      isOwner: perms.isOwner(dashboard, user),\n      canPublish: perms.canPublish(dashboard, user),\n      canShare: perms.canShare(dashboard, user),\n    };\n  }, [dashboard, user]);\n}\n```",
+        "testStrategy": "Unit tests: Test each permission function with different user roles (owner, edit sharee, comment sharee, view sharee, no access). Test edge cases (null user, null dashboard, missing permissions array). Hook tests: Mock useCurrentUser, test hook returns correct permissions for different scenarios, verify memoization works correctly.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T02:00:41.714Z"
+      },
+      {
+        "id": "4",
+        "title": "Refactor dashboard-popup toolbar to fixed order with all four buttons",
+        "description": "Update the dashboard popup toolbar in components/workspace/dashboard-popup.tsx to display Comments, Publish/Unpublish, Edit, and Share buttons in fixed order for all users, removing any disabled states based on permissions.",
+        "details": "**Update:** `components/workspace/dashboard-popup.tsx`\n\n**Toolbar structure:**\n```tsx\nimport { useDashboardPermissions } from '@/hooks/use-dashboard-permissions';\nimport { MessageSquare, Globe, Edit, Share2 } from 'lucide-react';\n\nfunction DashboardPopupToolbar({ dashboard }: { dashboard: Dashboard }) {\n  const permissions = useDashboardPermissions(dashboard);\n  const [showAccessDialog, setShowAccessDialog] = useState(false);\n  const [requestType, setRequestType] = useState<'comment' | 'edit'>('edit');\n  \n  const handleCommentsClick = () => {\n    if (permissions.canComment) {\n      // Toggle comments panel\n      toggleCommentsPanel();\n    } else {\n      setRequestType('comment');\n      setShowAccessDialog(true);\n    }\n  };\n  \n  const handlePublishClick = () => {\n    if (permissions.canPublish) {\n      // Execute publish/unpublish\n      togglePublishStatus(dashboard.id);\n    } else {\n      setRequestType('edit');\n      setShowAccessDialog(true);\n    }\n  };\n  \n  const handleEditClick = () => {\n    if (permissions.canEdit) {\n      // Navigate to editor\n      router.push(`/dashboard/${dashboard.id}/edit`);\n    } else {\n      setRequestType('edit');\n      setShowAccessDialog(true);\n    }\n  };\n  \n  const handleShareClick = () => {\n    if (permissions.canShare) {\n      // Open share dialog\n      setShowShareDialog(true);\n    } else {\n      setRequestType('edit');\n      setShowAccessDialog(true);\n    }\n  };\n  \n  return (\n    <div className=\"toolbar\">\n      <Button onClick={handleCommentsClick} variant=\"ghost\">\n        <MessageSquare /> Comments\n      </Button>\n      <Button onClick={handlePublishClick} variant=\"ghost\">\n        <Globe /> {dashboard.lifecycleStatus === 'published' ? 'Unpublish' : 'Publish'}\n      </Button>\n      <Button onClick={handleEditClick} variant=\"ghost\">\n        <Edit /> Edit\n      </Button>\n      <Button onClick={handleShareClick} variant=\"ghost\">\n        <Share2 /> Share\n      </Button>\n      \n      <AccessRequestDialog\n        isOpen={showAccessDialog}\n        onClose={() => setShowAccessDialog(false)}\n        dashboardId={dashboard.id}\n        requestedPermission={requestType}\n        dashboardTitle={dashboard.title}\n      />\n    </div>\n  );\n}\n```\n\n**Key changes:**\n- Remove all `disabled={!canX}` attributes\n- Fixed order: Comments · Publish/Unpublish · Edit · Share\n- All buttons always clickable\n- Conditional logic inside click handlers",
+        "testStrategy": "Component tests: Render toolbar for owner, verify all buttons visible and enabled. Render for view-only user, verify all buttons visible and enabled, click each button and verify AccessRequestDialog opens with correct permission type. Render for comment user, click Comments and verify panel toggles, click Edit/Publish/Share and verify dialog opens. Render for edit user (non-owner), verify Edit and Share work, verify Publish opens dialog. Visual regression tests: Screenshot toolbar in different states.",
+        "priority": "high",
+        "dependencies": [
+          "3"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T02:00:41.757Z"
+      },
+      {
+        "id": "5",
+        "title": "Implement Comments button behavior with access request flow",
+        "description": "Wire up the Comments button to toggle the comments panel for users with comment permission, or show the access request dialog for users without comment permission.",
+        "details": "**Implementation in dashboard-popup.tsx:**\n\nThe Comments button handler is already outlined in task 4. This task focuses on:\n\n1. **Comments panel state management:**\n   - Use existing comments panel state (likely in workspace context or local state)\n   - Toggle function: `toggleCommentsPanel()` or `setCommentsPanelOpen(prev => !prev)`\n\n2. **Visual feedback:**\n   - Button should show active/selected state when comments panel is open\n   - Use `variant=\"ghost\"` normally, `variant=\"secondary\"` or add `data-active` when panel open\n\n3. **Access request flow:**\n   - Already handled in task 4 click handler\n   - Opens AccessRequestDialog with `requestedPermission='comment'`\n\n4. **Optional cleanup:**\n   - If comments panel has inline \"Request comment access\" button/footer, consider:\n     - Removing it in favor of toolbar button only, OR\n     - Making it delegate to same AccessRequestDialog for consistency\n   - Update `comments-panel.tsx` to import and use AccessRequestDialog if keeping inline request\n\n**Example active state:**\n```tsx\n<Button \n  onClick={handleCommentsClick} \n  variant={commentsPanelOpen ? \"secondary\" : \"ghost\"}\n  className={commentsPanelOpen ? \"bg-accent\" : \"\"}\n>\n  <MessageSquare /> Comments\n</Button>\n```",
+        "testStrategy": "Integration tests: User with comment permission clicks Comments, verify panel opens/closes, verify button shows active state when open. User without comment permission clicks Comments, verify AccessRequestDialog opens with requestedPermission='comment', submit request and verify success. Test comments panel inline request button (if kept) also opens same dialog. Test keyboard accessibility (Enter/Space to activate button).",
+        "priority": "medium",
+        "dependencies": [
+          "1",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T02:00:41.762Z"
+      },
+      {
+        "id": "6",
+        "title": "Implement Publish/Unpublish button with owner-only execution and access request",
+        "description": "Add Publish/Unpublish button functionality that allows only the dashboard owner to execute publish/unpublish transitions, while non-owners see the access request dialog.",
+        "details": "**Implementation in dashboard-popup.tsx:**\n\n1. **Button label logic:**\n   - Show \"Publish\" when `dashboard.lifecycleStatus !== 'published'`\n   - Show \"Unpublish\" when `dashboard.lifecycleStatus === 'published'`\n   - Icon: `Globe` or `Eye`/`EyeOff` for published/unpublished\n\n2. **Owner publish/unpublish:**\n```typescript\nconst togglePublishStatus = async (dashboardId: string) => {\n  try {\n    const newStatus = dashboard.lifecycleStatus === 'published' ? 'draft' : 'published';\n    await updateDashboardLifecycle(dashboardId, newStatus);\n    // Update local state/store\n    toast.success(newStatus === 'published' ? 'Dashboard published' : 'Dashboard unpublished');\n  } catch (error) {\n    toast.error('Failed to update publish status');\n  }\n};\n```\n\n3. **API integration:**\n   - Use existing store/API for lifecycle updates\n   - Likely: `PATCH /api/workspace/dashboards/${id}` with `{ lifecycleStatus: 'published' | 'draft' }`\n   - Ensure Asset visibility updates per existing logic (published → visible in Asset module)\n\n4. **Non-owner behavior:**\n   - Per spec: non-owners (including edit users) request edit access\n   - Click handler opens AccessRequestDialog with `requestedPermission='edit'`\n   - Dialog explanation: \"Only the dashboard owner can publish. Request edit access to collaborate.\"\n\n5. **Loading state:**\n   - Show spinner/disable button during API call\n   - Re-enable after success/error\n\n**Note:** This is additive to existing editor publish button; both can coexist.",
+        "testStrategy": "Integration tests: Owner clicks Publish on draft dashboard, verify API called with lifecycleStatus='published', verify success toast, verify button label changes to Unpublish, verify Asset visibility updated. Owner clicks Unpublish, verify reverse flow. Non-owner (edit user) clicks Publish, verify AccessRequestDialog opens with requestedPermission='edit'. View-only user clicks Publish, verify same dialog. Test error handling (API failure shows error toast, button re-enables).",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T02:00:41.765Z"
+      },
+      {
+        "id": "7",
+        "title": "Implement Edit button navigation with access request flow",
+        "description": "Wire up the Edit button to navigate users with edit permission to the dashboard editor, or show the access request dialog for users without edit permission.",
+        "details": "**Implementation in dashboard-popup.tsx:**\n\n1. **Edit navigation for authorized users:**\n```typescript\nconst handleEditClick = () => {\n  if (permissions.canEdit) {\n    // Navigate to editor\n    router.push(`/dashboard/${dashboard.id}/edit`);\n    // Or if using Next.js Link:\n    // Already handled by router.push in click handler\n  } else {\n    setRequestType('edit');\n    setShowAccessDialog(true);\n  }\n};\n```\n\n2. **Route validation:**\n   - Ensure `/dashboard/[id]/edit` route exists and is protected\n   - Editor page should verify edit permission server-side\n   - Redirect to view mode if permission revoked between click and navigation\n\n3. **Access request dialog:**\n   - Opens with `requestedPermission='edit'`\n   - Explanation: \"You don't have permission to edit this dashboard. Request edit access from the owner.\"\n\n4. **Visual feedback:**\n   - Optional: Show loading indicator during navigation\n   - Consider closing popup after navigation starts\n\n5. **Keyboard shortcut (optional enhancement):**\n   - Consider adding `Cmd/Ctrl+E` shortcut for edit (if user has permission)\n   - Show tooltip with shortcut hint",
+        "testStrategy": "Integration tests: User with edit permission clicks Edit, verify navigation to /dashboard/[id]/edit, verify popup closes. User without edit permission clicks Edit, verify AccessRequestDialog opens with requestedPermission='edit', verify no navigation occurs. Test owner clicks Edit, verify navigation works. Test comment-only user clicks Edit, verify dialog opens. Test navigation with invalid dashboard ID (404 handling). Test permission check on editor page load (unauthorized redirect).",
+        "priority": "medium",
+        "dependencies": [
+          "1",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T02:00:41.769Z"
+      },
+      {
+        "id": "8",
+        "title": "Implement Share button with dialog and access request flow",
+        "description": "Wire up the Share button to open the share dialog for users with edit permission or owner, or show the access request dialog for users without sufficient permissions.",
+        "details": "**Implementation in dashboard-popup.tsx:**\n\n1. **Share dialog for authorized users:**\n```typescript\nconst [showShareDialog, setShowShareDialog] = useState(false);\n\nconst handleShareClick = () => {\n  if (permissions.canShare) {\n    setShowShareDialog(true);\n  } else {\n    setRequestType('edit');\n    setShowAccessDialog(true);\n  }\n};\n```\n\n2. **Share dialog component:**\n   - Use existing share dialog component (likely already exists for workspace)\n   - Import: `import { ShareDialog } from '@/components/workspace/share-dialog'`\n   - Pass dashboard ID and current permissions\n   - Dialog should allow:\n     - Adding users by email with permission level (view/comment/edit)\n     - Removing existing shares (if owner)\n     - Copying share link\n     - Managing permission levels for existing shares\n\n3. **Access request for non-edit users:**\n   - Opens AccessRequestDialog with `requestedPermission='edit'`\n   - Explanation: \"You need edit permission to share this dashboard. Request access from the owner.\"\n   - Per spec: Share requires edit permission (not just comment)\n\n4. **Integration:**\n```tsx\n<ShareDialog\n  isOpen={showShareDialog}\n  onClose={() => setShowShareDialog(false)}\n  dashboardId={dashboard.id}\n  currentPermissions={dashboard.permissions}\n  isOwner={permissions.isOwner}\n/>\n```\n\n5. **Permission updates:**\n   - Share dialog should call API to update permissions\n   - Refresh dashboard permissions after changes\n   - Show success toast on share update",
+        "testStrategy": "Integration tests: Owner clicks Share, verify ShareDialog opens with full permissions management. Edit user clicks Share, verify ShareDialog opens (may have limited options vs owner). Comment user clicks Share, verify AccessRequestDialog opens with requestedPermission='edit'. View-only user clicks Share, verify same access request dialog. Test share dialog functionality: add user, remove user, change permission level, copy link. Test permission refresh after share updates. Test dialog close behavior (ESC, backdrop click, close button).",
+        "priority": "medium",
+        "dependencies": [
+          "1",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T02:00:41.771Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-26T02:00:41.771Z",
+      "taskCount": 8,
+      "completedCount": 8,
+      "tags": [
+        "dashboard-toolbar-access-may2026"
+      ]
     }
   }
 }
