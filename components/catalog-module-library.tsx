@@ -1,48 +1,62 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { X, Search, Plus, BarChart3, Table, LineChart, PieChart, List, Grid3X3 } from "lucide-react"
+import {
+  Search,
+  Plus,
+  BarChart3,
+  Table,
+  LineChart,
+  Gauge,
+  Layers,
+  MapPin,
+  Clock,
+  Box,
+  Thermometer,
+  Waves,
+  Droplets,
+  Activity,
+  AlertTriangle,
+  Zap,
+  Timer,
+  CircleDot,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SPM_WIDGET_DRAG_TYPE, type LibraryModule } from "@/components/module-library"
 import {
-  CATEGORY_LABEL,
-  getCatalogTemplatesForType,
+  COKER_PARAMETERS,
+  COKER_REFERENCE_WIDGETS,
   COKER_V1_VERSION,
-  listCategoryOrder,
 } from "@/lib/equipment-packs"
-import type { ParameterCategory } from "@/lib/equipment-packs/types"
-import { getSiteEquipment } from "@/lib/data"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { useWorkspaceStore } from "@/lib/workspace/store"
-import { findOrgUserById } from "@/lib/workspace/identity"
-import { useWorkspaceCurrentUserId } from "@/lib/workspace/use-workspace-user-id"
-import { toast } from "sonner"
+import type { CokerParameterDef, CokerReferenceWidgetDef } from "@/lib/equipment-packs/types"
 
-const iconMap: Record<string, React.ReactNode> = {
-  "bar-chart": <BarChart3 className="w-4 h-4" />,
-  table: <Table className="w-4 h-4" />,
-  "line-chart": <LineChart className="w-4 h-4" />,
-  "pie-chart": <PieChart className="w-4 h-4" />,
-  list: <List className="w-4 h-4" />,
-  chart: <BarChart3 className="w-4 h-4" />,
-  grid: <Grid3X3 className="w-4 h-4" />,
+// ---------------------------------------------------------------------------
+// Drag payloads
+// ---------------------------------------------------------------------------
+
+/** Drag payload for a parameter (triggers the 3-step creation popup). */
+export type ParameterDragPayload = LibraryModule & {
+  mode: "parameter"
+  parameterId: string
+  packVersion: string
+  defaultW: number
+  defaultH: number
+  minW: number
+  minH: number
 }
 
-const UI_CATEGORY: Record<ParameterCategory, string> = {
-  asset_information: CATEGORY_LABEL.asset_information,
-  asset_efficiency: CATEGORY_LABEL.asset_efficiency,
-  event_visualization: CATEGORY_LABEL.event_visualization,
-  other: CATEGORY_LABEL.other,
+/** Drag payload for a reference/tool widget (placed directly). */
+export type ReferenceDragPayload = LibraryModule & {
+  mode: "reference"
+  referenceWidgetId: string
+  packVersion: string
+  defaultW: number
+  defaultH: number
+  minW: number
+  minH: number
 }
 
+/** Drag payload for a legacy catalog template (backward compat). */
 export type CatalogDragPayload = LibraryModule & {
   mode: "catalog"
   templateKey: string
@@ -53,187 +67,294 @@ export type CatalogDragPayload = LibraryModule & {
   minH: number
 }
 
+export type AnyDragPayload = ParameterDragPayload | ReferenceDragPayload | CatalogDragPayload
+
+// ---------------------------------------------------------------------------
+// Icons
+// ---------------------------------------------------------------------------
+
+const PARAMETER_ICONS: Record<string, React.ReactNode> = {
+  temperature: <Thermometer className="w-4 h-4" />,
+  pressure: <Gauge className="w-4 h-4" />,
+  coke_level: <Layers className="w-4 h-4" />,
+  steam_rate: <Waves className="w-4 h-4" />,
+  flow_rate: <Droplets className="w-4 h-4" />,
+  bulging: <AlertTriangle className="w-4 h-4" />,
+  fatigue_damage: <Activity className="w-4 h-4" />,
+  stress: <Zap className="w-4 h-4" />,
+  remaining_life: <Timer className="w-4 h-4" />,
+  pslf: <AlertTriangle className="w-4 h-4" />,
+  ovality: <CircleDot className="w-4 h-4" />,
+  displacement: <BarChart3 className="w-4 h-4" />,
+  crack: <AlertTriangle className="w-4 h-4" />,
+}
+
+const REFERENCE_ICONS: Record<string, React.ReactNode> = {
+  equipment_data: <Table className="w-4 h-4" />,
+  model_3d: <Box className="w-4 h-4" />,
+  sensor_location: <MapPin className="w-4 h-4" />,
+  time_range: <Clock className="w-4 h-4" />,
+  cycle_selector: <LineChart className="w-4 h-4" />,
+}
+
+// ---------------------------------------------------------------------------
+// Section labels
+// ---------------------------------------------------------------------------
+
+const SECTION_LABELS = {
+  operational_input: "Operational Inputs",
+  inspection: "Inspection",
+  analysis_output: "Analysis Outputs",
+} as const
+
+type LibrarySection = "parameters" | "reference"
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function CatalogModuleLibrary({
-  equipmentId,
-  onClose,
+  equipmentId: _equipmentId,
+  onClose: _onClose,
   onAddModule,
   onWidgetDragStart,
   onWidgetDragEnd,
-  onRequestSubmitted,
 }: {
   equipmentId: string
   onClose?: () => void
-  onAddModule?: (mod: LibraryModule) => void
-  onWidgetDragStart?: (mod: LibraryModule) => void
+  onAddModule?: (mod: AnyDragPayload) => void
+  onWidgetDragStart?: (mod: AnyDragPayload) => void
   onWidgetDragEnd?: () => void
-  onRequestSubmitted?: () => void
 }) {
-  const equ = getSiteEquipment(equipmentId)
-  const meId = useWorkspaceCurrentUserId()
-  const typeKey = equ?.equipmentTypeKey ?? "other"
-  const addOn = equ?.parameterAddonKeys ?? []
-  const [active, setActive] = useState<ParameterCategory>(listCategoryOrder()[0]!)
+  const [section, setSection] = useState<LibrarySection>("parameters")
   const [q, setQ] = useState("")
-  const [reqOpen, setReqOpen] = useState(false)
-  const [reqBody, setReqBody] = useState("")
-  const [reqCat, setReqCat] = useState("")
 
-  const submit = useWorkspaceStore((s) => s.submitCatalogParameterRequest)
-  const currentRole = findOrgUserById(meId)?.role
+  const filteredParams = useMemo(() => {
+    if (!q.trim()) return COKER_PARAMETERS
+    const m = q.toLowerCase()
+    return COKER_PARAMETERS.filter(
+      (p) =>
+        p.displayName.toLowerCase().includes(m) ||
+        p.key.toLowerCase().includes(m) ||
+        (p.unit ?? "").toLowerCase().includes(m)
+    )
+  }, [q])
 
-  const templates = useMemo(() => {
-    const all = getCatalogTemplatesForType(typeKey, addOn)
-    const m = q.trim().toLowerCase()
-    if (m) {
-      return all.filter(
-        (t) => t.displayName.toLowerCase().includes(m) || t.key.toLowerCase().includes(m)
-      )
-    }
-    return all.filter((t) => t.category === active)
-  }, [typeKey, addOn, active, q])
+  const filteredRefs = useMemo(() => {
+    if (!q.trim()) return COKER_REFERENCE_WIDGETS
+    const m = q.toLowerCase()
+    return COKER_REFERENCE_WIDGETS.filter(
+      (r) => r.displayName.toLowerCase().includes(m) || r.key.toLowerCase().includes(m)
+    )
+  }, [q])
 
-  const toPayload = (t: (typeof templates)[0]): CatalogDragPayload => ({
-    id: t.key,
-    name: t.displayName,
-    icon: t.icon,
-    mode: "catalog",
-    templateKey: t.key,
+  const toParamPayload = (p: CokerParameterDef): ParameterDragPayload => ({
+    id: p.key,
+    name: p.displayName,
+    icon: "activity",
+    mode: "parameter",
+    parameterId: p.key,
     packVersion: COKER_V1_VERSION,
-    defaultW: t.defaultW,
-    defaultH: t.defaultH,
-    minW: t.minW,
-    minH: t.minH,
+    defaultW: p.defaultVisualTypeKey === "kpi_card" ? 2 : 6,
+    defaultH: p.defaultVisualTypeKey === "kpi_card" ? 2 : 4,
+    minW: p.defaultVisualTypeKey === "kpi_card" ? 2 : 4,
+    minH: p.defaultVisualTypeKey === "kpi_card" ? 2 : 3,
   })
+
+  const toRefPayload = (r: CokerReferenceWidgetDef): ReferenceDragPayload => ({
+    id: r.key,
+    name: r.displayName,
+    icon: "grid",
+    mode: "reference",
+    referenceWidgetId: r.key,
+    packVersion: COKER_V1_VERSION,
+    defaultW: r.defaultW,
+    defaultH: r.defaultH,
+    minW: r.minW,
+    minH: r.minH,
+  })
+
+  // Group parameters by library section
+  const grouped = useMemo(() => {
+    const sections: Record<string, CokerParameterDef[]> = {}
+    for (const p of filteredParams) {
+      const s = p.librarySection
+      if (!sections[s]) sections[s] = []
+      sections[s]!.push(p)
+    }
+    return sections
+  }, [filteredParams])
 
   return (
     <div className="w-full bg-card flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <h3 className="font-semibold text-foreground">Coker library</h3>
-        {onClose && (
-          <button type="button" onClick={onClose} className="p-1 hover:bg-secondary rounded">
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
-        )}
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <h3 className="font-semibold text-foreground text-sm">Widget Library</h3>
       </div>
-      <div className="p-4 border-b border-border">
+
+      {/* Search */}
+      <div className="px-3 pb-2">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search templates…"
-            className="w-full h-10 pl-10 pr-4 bg-secondary rounded-lg text-sm"
+            placeholder="Search parameters…"
+            className="w-full h-8 pl-9 pr-3 bg-secondary rounded-md text-xs"
           />
         </div>
       </div>
-      <div className="flex border-b border-border overflow-x-auto">
-        {listCategoryOrder().map((c) => (
+
+      {/* Section tabs */}
+      <div className="flex border-b border-border">
+        {(["parameters", "reference"] as LibrarySection[]).map((s) => (
           <button
-            key={c}
+            key={s}
             type="button"
-            onClick={() => setActive(c)}
+            onClick={() => setSection(s)}
             className={cn(
-              "flex-shrink-0 px-3 py-2 text-xs font-medium border-b-2",
-              active === c
+              "flex-1 py-2 text-xs font-medium border-b-2 transition-colors",
+              section === s
                 ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            {UI_CATEGORY[c]}
+            {s === "parameters" ? "Parameters" : "Reference & Tools"}
           </button>
         ))}
       </div>
-      <div className="flex-1 overflow-y-auto p-2 min-h-0">
-        {templates.length === 0 && (
-          <p className="text-xs text-muted-foreground p-2">No templates in this category.</p>
-        )}
-        {templates.map((t) => {
-          const payload = toPayload(t)
-          return (
-            <div
-              key={t.key}
-              role="button"
-              tabIndex={0}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData(SPM_WIDGET_DRAG_TYPE, JSON.stringify(payload))
-                e.dataTransfer.effectAllowed = "copy"
-                onWidgetDragStart?.(payload)
-              }}
-              onDragEnd={() => onWidgetDragEnd?.()}
-              onClick={() => onAddModule?.(payload)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  onAddModule?.(payload)
-                }
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary text-left cursor-grab"
-            >
-              <div className="w-8 h-8 rounded bg-secondary flex items-center justify-center flex-shrink-0">
-                {iconMap[t.icon] || <BarChart3 className="w-4 h-4" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium truncate">{t.displayName}</div>
-                {t.referenceScreenId && (
-                  <div className="text-[10px] text-muted-foreground">Ref {t.referenceScreenId}</div>
-                )}
-              </div>
-              <Plus className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto min-h-0 py-1">
+        {section === "parameters" ? (
+          <>
+            {Object.keys(grouped).length === 0 && (
+              <p className="text-xs text-muted-foreground px-3 py-4 text-center">No parameters found.</p>
+            )}
+            {(["operational_input", "inspection", "analysis_output"] as const).map((grp) => {
+              const params = grouped[grp]
+              if (!params?.length) return null
+              return (
+                <div key={grp}>
+                  <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {SECTION_LABELS[grp]}
+                  </div>
+                  {params.map((p) => {
+                    const payload = toParamPayload(p)
+                    return (
+                      <DraggableItem
+                        key={p.key}
+                        icon={PARAMETER_ICONS[p.key] ?? <BarChart3 className="w-4 h-4" />}
+                        name={p.displayName}
+                        sub={p.unit ? `${p.validVisualTypeKeys.length} visual types · ${p.unit}` : `${p.validVisualTypeKeys.length} visual types`}
+                        badge={p.parameterType === "input" ? "INPUT" : "OUTPUT"}
+                        badgeColor={p.parameterType === "input" ? "bg-sky-500/10 text-sky-700" : "bg-violet-500/10 text-violet-700"}
+                        payload={payload}
+                        onDragStart={onWidgetDragStart}
+                        onDragEnd={onWidgetDragEnd}
+                        onClick={onAddModule}
+                      />
+                    )
+                  })}
+                </div>
+              )
+            })}
+            <div className="px-3 pt-4 pb-2 text-[9px] text-muted-foreground text-center">
+              Drag a parameter to the dashboard to choose a visual type.
             </div>
-          )
-        })}
+          </>
+        ) : (
+          <>
+            {filteredRefs.length === 0 && (
+              <p className="text-xs text-muted-foreground px-3 py-4 text-center">No reference widgets found.</p>
+            )}
+            <div className="pt-1">
+              {filteredRefs.map((r) => {
+                const payload = toRefPayload(r)
+                return (
+                  <DraggableItem
+                    key={r.key}
+                    icon={REFERENCE_ICONS[r.key] ?? <Box className="w-4 h-4" />}
+                    name={r.displayName}
+                    sub={r.description}
+                    payload={payload}
+                    onDragStart={onWidgetDragStart}
+                    onDragEnd={onWidgetDragEnd}
+                    onClick={onAddModule}
+                  />
+                )
+              })}
+            </div>
+            <div className="px-3 pt-4 pb-2 text-[9px] text-muted-foreground text-center">
+              Reference widgets are placed directly — no popup.
+            </div>
+          </>
+        )}
       </div>
-      <div className="p-3 border-t border-border">
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full text-xs"
-          onClick={() => setReqOpen(true)}
-        >
-          Request new parameter
-        </Button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Draggable list item
+// ---------------------------------------------------------------------------
+
+function DraggableItem({
+  icon,
+  name,
+  sub,
+  badge,
+  badgeColor,
+  payload,
+  onDragStart,
+  onDragEnd,
+  onClick,
+}: {
+  icon: React.ReactNode
+  name: string
+  sub?: string
+  badge?: string
+  badgeColor?: string
+  payload: AnyDragPayload
+  onDragStart?: (mod: AnyDragPayload) => void
+  onDragEnd?: () => void
+  onClick?: (mod: AnyDragPayload) => void
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(SPM_WIDGET_DRAG_TYPE, JSON.stringify(payload))
+        e.dataTransfer.effectAllowed = "copy"
+        onDragStart?.(payload)
+      }}
+      onDragEnd={() => onDragEnd?.()}
+      onClick={() => onClick?.(payload)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick?.(payload)
+        }
+      }}
+      className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-secondary text-left cursor-grab active:cursor-grabbing select-none"
+    >
+      <div className="w-7 h-7 rounded bg-secondary flex items-center justify-center flex-shrink-0 text-muted-foreground">
+        {icon}
       </div>
-      <Dialog open={reqOpen} onOpenChange={setReqOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Request a new parameter</DialogTitle>
-          </DialogHeader>
-          <p className="text-xs text-muted-foreground">
-            This sends a request to the product team only (not shared with your organization).
-            {currentRole !== "product_team" && " You will not receive email; check with PM for follow-up."}
-          </p>
-          <Textarea
-            value={reqBody}
-            onChange={(e) => setReqBody(e.target.value)}
-            placeholder="Describe the parameter or data you need on dashboards…"
-            className="min-h-[100px] text-sm"
-          />
-          <input
-            value={reqCat}
-            onChange={(e) => setReqCat(e.target.value)}
-            placeholder="Category hint (optional)"
-            className="w-full h-9 px-2 rounded border border-border text-sm"
-          />
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setReqOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                submit({ body: reqBody, equipmentId, categoryHint: reqCat || null })
-                toast.success("Request submitted")
-                setReqOpen(false)
-                setReqBody("")
-                setReqCat("")
-                onRequestSubmitted?.()
-              }}
-            >
-              Submit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium truncate">{name}</span>
+          {badge && (
+            <span className={cn("text-[9px] px-1 py-0.5 rounded font-medium flex-shrink-0", badgeColor)}>
+              {badge}
+            </span>
+          )}
+        </div>
+        {sub && <div className="text-[10px] text-muted-foreground truncate">{sub}</div>}
+      </div>
+      <Plus className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 opacity-60" />
     </div>
   )
 }

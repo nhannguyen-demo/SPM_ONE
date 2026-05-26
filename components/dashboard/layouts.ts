@@ -6,10 +6,21 @@ export type WidgetData = {
   id: string
   viewType: string
   title?: string
-  /** Catalog template key (Coker v1+). When set, equipment pack renderer is used. */
+  // ---- Coker v1 legacy fields (templateKey-based) ----
+  /** @deprecated replaced by parameterId + visualTypeId */
   templateKey?: string
   packVersion?: string
+  /** @deprecated replaced by config */
   options?: Record<string, unknown>
+  // ---- Coker v2 parameter-driven fields (May 2026) ----
+  /** Stable parameter key, e.g. "temperature", "fatigue_damage". */
+  parameterId?: string
+  /** Visual-type template key, e.g. "time_series", "area_chart". */
+  visualTypeId?: string
+  /** Visual configuration — shape depends on visualTypeId. */
+  config?: Record<string, unknown>
+  /** For reference/tool widgets: CokerReferenceWidgetDef.key */
+  referenceWidgetId?: string
 }
 
 export type GridWidget = WidgetData & { layout: LayoutItem }

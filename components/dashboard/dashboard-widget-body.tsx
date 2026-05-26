@@ -12,13 +12,16 @@ type Props = {
   widget: GridWidget
   equipmentId: string
   scenarioRuns?: WhatIfRunSession[]
-  /** When set, drives What-If overlay series in legacy `WidgetViewResolver` tiles. */
   viewedDataIds?: string[]
   context?: DashboardTimeContext
 }
 
 /**
- * Resolves a grid tile: Coker catalog templates vs legacy `WidgetViewResolver`.
+ * Routes a grid tile to the correct renderer:
+ * 1. Parameter-driven (parameterId + visualTypeId) → CokerTemplateView
+ * 2. Reference widget (referenceWidgetId) → CokerTemplateView
+ * 3. Legacy Coker templateKey → CokerTemplateView
+ * 4. Everything else → WidgetViewResolver (legacy non-Coker widgets)
  */
 export function DashboardWidgetBody({
   widget,
@@ -27,12 +30,34 @@ export function DashboardWidgetBody({
   viewedDataIds,
   context,
 }: Props) {
-  if (widget.viewType === LEGACY_COKER_VIEW && !widget.templateKey) {
+  const isCoker = getEquipmentTypeKey(equipmentId) === "coker"
+
+  // 1. New parameter-driven widget
+  if (widget.parameterId && widget.visualTypeId) {
     return (
-      <div className="text-xs text-muted-foreground p-2">Catalog widget is missing a template key.</div>
+      <CokerTemplateView
+        parameterId={widget.parameterId}
+        visualTypeId={widget.visualTypeId}
+        config={widget.config}
+        equipmentId={equipmentId}
+        context={context}
+      />
     )
   }
-  if (widget.templateKey && getEquipmentTypeKey(equipmentId) === "coker") {
+
+  // 2. Reference / tool widget
+  if (widget.referenceWidgetId) {
+    return (
+      <CokerTemplateView
+        referenceWidgetId={widget.referenceWidgetId}
+        equipmentId={equipmentId}
+        context={context}
+      />
+    )
+  }
+
+  // 3. Legacy Coker templateKey widget
+  if (isCoker && widget.templateKey) {
     return (
       <CokerTemplateView
         templateKey={widget.templateKey}
@@ -41,6 +66,17 @@ export function DashboardWidgetBody({
       />
     )
   }
+
+  // Guard: viewType = "coker-template" but missing all routing keys
+  if (widget.viewType === LEGACY_COKER_VIEW) {
+    return (
+      <div className="text-xs text-muted-foreground p-2">
+        Catalog widget is missing routing information (templateKey, parameterId, or referenceWidgetId).
+      </div>
+    )
+  }
+
+  // 4. Legacy non-Coker widget
   return (
     <WidgetViewResolver
       viewType={widget.viewType}

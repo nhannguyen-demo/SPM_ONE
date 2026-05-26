@@ -1,8 +1,212 @@
-import type { CatalogParameterFamily, CatalogWidgetTemplateDef, EquipmentKnowledgePackDef } from "./types"
+import type {
+  CatalogParameterFamily,
+  CatalogWidgetTemplateDef,
+  CokerParameterDef,
+  CokerReferenceWidgetDef,
+  EquipmentKnowledgePackDef,
+} from "./types"
 
 export const COKER_V1_VERSION = "1.0.0"
 
-const families: CatalogParameterFamily[] = [
+// ---------------------------------------------------------------------------
+// PARAMETER DEFINITIONS  (new May 2026 model)
+// ---------------------------------------------------------------------------
+
+export const COKER_PARAMETERS: CokerParameterDef[] = [
+  {
+    key: "temperature",
+    displayName: "Temperature",
+    unit: "°C",
+    parameterType: "input",
+    librarySection: "operational_input",
+    validVisualTypeKeys: ["kpi_card", "time_series", "bar_chart"],
+    defaultVisualTypeKey: "time_series",
+    description: "Shell / skin temperature measured by thermocouple sensors along the vessel.",
+  },
+  {
+    key: "pressure",
+    displayName: "Pressure",
+    unit: "Barg",
+    parameterType: "input",
+    librarySection: "operational_input",
+    validVisualTypeKeys: ["kpi_card", "time_series", "bar_chart"],
+    defaultVisualTypeKey: "time_series",
+    description: "Internal coke drum operating pressure from pressure transmitters.",
+  },
+  {
+    key: "coke_level",
+    displayName: "Coke Level",
+    unit: "%",
+    parameterType: "input",
+    librarySection: "operational_input",
+    validVisualTypeKeys: ["kpi_card", "gauge", "time_series"],
+    defaultVisualTypeKey: "kpi_card",
+    description: "Coke bed height as a percentage of drum capacity.",
+  },
+  {
+    key: "steam_rate",
+    displayName: "Steam Rate",
+    unit: "t/h",
+    parameterType: "input",
+    librarySection: "operational_input",
+    validVisualTypeKeys: ["kpi_card", "time_series"],
+    defaultVisualTypeKey: "time_series",
+    description: "Steam injection flow rate during switch/cool-down phases.",
+  },
+  {
+    key: "flow_rate",
+    displayName: "Flow Rate",
+    unit: "m³/h",
+    parameterType: "input",
+    librarySection: "operational_input",
+    validVisualTypeKeys: ["kpi_card", "time_series"],
+    defaultVisualTypeKey: "time_series",
+    description: "Feed and quench water flow rate.",
+  },
+  {
+    key: "bulging",
+    displayName: "Bulging",
+    unit: "mm",
+    parameterType: "input",
+    librarySection: "inspection",
+    validVisualTypeKeys: ["heatmap_2d", "severity_table", "kpi_card"],
+    defaultVisualTypeKey: "heatmap_2d",
+    description: "Shell radial deformation measured by laser-scan inspection (TB 2023 campaign). Shows inspection campaign value — latest only.",
+  },
+  {
+    key: "fatigue_damage",
+    displayName: "Fatigue Damage",
+    unit: "%",
+    parameterType: "output",
+    librarySection: "analysis_output",
+    validVisualTypeKeys: ["kpi_card", "area_chart", "bar_chart", "damage_table", "heatmap_2d"],
+    defaultVisualTypeKey: "area_chart",
+    description: "Cumulative fatigue damage fraction from FEA, aggregated per thermocouple location and elevation.",
+  },
+  {
+    key: "stress",
+    displayName: "Stress",
+    unit: "MPa",
+    parameterType: "output",
+    librarySection: "analysis_output",
+    validVisualTypeKeys: ["kpi_card", "heatmap_2d", "time_series"],
+    defaultVisualTypeKey: "kpi_card",
+    description: "Von Mises equivalent stress from FEA at critical weld locations.",
+  },
+  {
+    key: "remaining_life",
+    displayName: "Remaining Life",
+    unit: "years",
+    parameterType: "output",
+    librarySection: "analysis_output",
+    validVisualTypeKeys: ["kpi_card", "gauge"],
+    defaultVisualTypeKey: "gauge",
+    description: "Estimated remaining fatigue life based on current damage rate and projected cycles.",
+  },
+  {
+    key: "pslf",
+    displayName: "PSLF",
+    unit: null,
+    parameterType: "output",
+    librarySection: "analysis_output",
+    validVisualTypeKeys: ["kpi_card"],
+    defaultVisualTypeKey: "kpi_card",
+    description: "Peak Stress Loss Factor — integrity risk index from bulging inspection, combined with PSLF and likelihood.",
+  },
+  {
+    key: "ovality",
+    displayName: "Ovality",
+    unit: "%",
+    parameterType: "output",
+    librarySection: "analysis_output",
+    validVisualTypeKeys: ["ovality_chart"],
+    defaultVisualTypeKey: "ovality_chart",
+    description: "Cross-sectional out-of-roundness at a chosen elevation. Shown as polar deviation from nominal bore.",
+  },
+  {
+    key: "displacement",
+    displayName: "Displacement",
+    unit: "mm",
+    parameterType: "output",
+    librarySection: "analysis_output",
+    validVisualTypeKeys: ["polar_plot", "kpi_card"],
+    defaultVisualTypeKey: "polar_plot",
+    description: "Top-drum lateral displacement from FEA — North/South/East/West components.",
+  },
+  {
+    key: "crack",
+    displayName: "Crack",
+    unit: null,
+    parameterType: "output",
+    librarySection: "analysis_output",
+    validVisualTypeKeys: ["crack_table", "fad_chart", "unwrapped_map"],
+    defaultVisualTypeKey: "crack_table",
+    description: "Crack assessment results (location, Lr, Kr FAD values) for detected flaws from UT inspection.",
+  },
+]
+
+// ---------------------------------------------------------------------------
+// REFERENCE / TOOL WIDGETS  (placed directly, no parameter popup)
+// ---------------------------------------------------------------------------
+
+export const COKER_REFERENCE_WIDGETS: CokerReferenceWidgetDef[] = [
+  {
+    key: "equipment_data",
+    displayName: "Equipment Data",
+    kind: "data_table",
+    description: "Fixed asset properties: diameter, thickness, height, last inspection, total cycles.",
+    defaultW: 4,
+    defaultH: 5,
+    minW: 3,
+    minH: 3,
+  },
+  {
+    key: "model_3d",
+    displayName: "3D Model",
+    kind: "raster_image",
+    description: "Coker drum 3D shell illustration with zone callouts.",
+    defaultW: 8,
+    defaultH: 5,
+    minW: 5,
+    minH: 4,
+  },
+  {
+    key: "sensor_location",
+    displayName: "Sensor Location",
+    kind: "schematic_3d",
+    description: "Vessel schematic showing thermocouple and pressure sensor positions.",
+    defaultW: 4,
+    defaultH: 5,
+    minW: 3,
+    minH: 4,
+  },
+  {
+    key: "time_range",
+    displayName: "Time Range",
+    kind: "control_time_range",
+    description: "Time range filter control — sets the date window for all time-series widgets.",
+    defaultW: 4,
+    defaultH: 3,
+    minW: 3,
+    minH: 2,
+  },
+  {
+    key: "cycle_selector",
+    displayName: "Cycle Selector",
+    kind: "control_cycle",
+    description: "Cycle picker — selects a specific drum cycle to display cycle-scoped widgets.",
+    defaultW: 4,
+    defaultH: 2,
+    minW: 3,
+    minH: 2,
+  },
+]
+
+// ---------------------------------------------------------------------------
+// LEGACY TEMPLATES  (kept for backward-compat of existing persisted widgets)
+// ---------------------------------------------------------------------------
+
+const legacyFamilies: CatalogParameterFamily[] = [
   { key: "eq_static", displayName: "Equipment static data", category: "asset_information" },
   { key: "eq_model", displayName: "3D / schematic model", category: "asset_information" },
   { key: "ops_kpi", displayName: "Operations KPIs", category: "asset_efficiency" },
@@ -21,7 +225,7 @@ const families: CatalogParameterFamily[] = [
   { key: "media_tabs", displayName: "Tabbed media", category: "other" },
 ]
 
-const templates: CatalogWidgetTemplateDef[] = [
+const legacyTemplates: CatalogWidgetTemplateDef[] = [
   {
     key: "coker_equipment_data_table",
     displayName: "Equipment data",
@@ -362,17 +566,49 @@ const templates: CatalogWidgetTemplateDef[] = [
   },
 ]
 
+// ---------------------------------------------------------------------------
+// PACK EXPORT
+// ---------------------------------------------------------------------------
+
 export const COKER_V1_PACK: EquipmentKnowledgePackDef = {
   equipmentTypeKey: "coker",
   version: COKER_V1_VERSION,
-  parameterFamilies: families,
-  templates,
+  parameterFamilies: legacyFamilies,
+  templates: legacyTemplates,
+  cokerParameters: COKER_PARAMETERS,
+  referenceWidgets: COKER_REFERENCE_WIDGETS,
 }
 
 const templateByKey: Map<string, CatalogWidgetTemplateDef> = new Map(
-  templates.map((t) => [t.key, t])
+  legacyTemplates.map((t) => [t.key, t])
 )
 
 export function getCokerTemplateDef(key: string): CatalogWidgetTemplateDef | undefined {
   return templateByKey.get(key)
+}
+
+export function getCokerParameter(key: string): CokerParameterDef | undefined {
+  return COKER_PARAMETERS.find((p) => p.key === key)
+}
+
+export function getCokerReferenceWidget(key: string): CokerReferenceWidgetDef | undefined {
+  return COKER_REFERENCE_WIDGETS.find((r) => r.key === key)
+}
+
+/** Human-readable display name for a visual type kind. */
+export const VISUAL_TYPE_DISPLAY: Record<string, string> = {
+  kpi_card: "KPI Card",
+  time_series: "Time Series",
+  bar_chart: "Bar Chart",
+  area_chart: "Area Chart",
+  gauge: "Gauge",
+  heatmap_2d: "Heatmap",
+  damage_table: "Damage Table",
+  severity_table: "Severity Table",
+  crack_table: "Crack Table",
+  fad_chart: "FAD Chart",
+  polar_plot: "Polar Plot",
+  ovality_chart: "Ovality Chart",
+  unwrapped_map: "Unwrapped Map",
+  data_table: "Data Table",
 }
