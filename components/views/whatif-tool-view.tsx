@@ -28,15 +28,16 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import {
+  ToolPageShell,
   ToolPageHeader,
   ToolsModuleHomeCrumb,
 } from "@/components/tools/tool-page-layout"
 import {
   Play, History, ChevronRight, GitCompareArrows,
   Upload, CheckCircle2, Loader2,
-  ArrowLeft, ExternalLink, MessageSquare, Check, Box,
+  ArrowLeft, ExternalLink, MessageSquare, Check,
   Search, LayoutDashboard, Info,
-  FileText, Trash2,
+  FileText, Trash2, Filter, X,
 } from "lucide-react"
 /* ═══════════════════════════════════════════════════════════════════════════
    CONSTANTS
@@ -90,7 +91,7 @@ function RunProgressOverlay({
   }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-8 p-12">
+    <div className="flex min-h-[400px] flex-col items-center justify-center gap-8 p-12">
       <div className="text-center">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -181,9 +182,9 @@ function ResultsPanel({
   const warningCount = session.results.filter((r) => r.col3 !== "Pass").length
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div>
       {/* Header with actions */}
-      <div className="px-6 py-4 border-b border-border bg-emerald-500/5 flex-shrink-0">
+      <div className="px-6 py-4 border-b border-border bg-emerald-500/5">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
@@ -244,7 +245,7 @@ function ResultsPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {/* Run session info */}
         <div className="px-6 pt-5 pb-4">
           <h4 className="text-sm font-semibold text-foreground mb-3">Run Session Information</h4>
@@ -465,7 +466,7 @@ function ConfigureRunPanel({
     ]
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div>
       <input
         ref={perFileRef}
         type="file"
@@ -695,8 +696,8 @@ function HistoryPanel({
   })
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="px-6 py-3 border-b border-border bg-muted/20 flex items-center gap-3 flex-shrink-0 flex-wrap">
+    <div>
+      <div className="px-6 py-3 border-b border-border bg-muted/20 flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
           {(["all", "success", "failed"] as const).map((s) => (
             <button key={s} onClick={() => setFilterStatus(s)}
@@ -713,7 +714,7 @@ function HistoryPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
             <History className="w-8 h-8" />
@@ -852,9 +853,9 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
 
   // Tabbed view
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div>
       {/* Scenario header */}
-      <div className="px-6 py-5 border-b border-border flex-shrink-0">
+      <div className="px-6 py-5 border-b border-border">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-foreground">{scenario.name}</h2>
@@ -876,7 +877,7 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center border-b border-border px-6 flex-shrink-0 bg-card">
+      <div className="flex items-center border-b border-border px-6 bg-card">
         {tabs.map((t) => {
           const active = panel.mode === t.id
           return (
@@ -894,7 +895,7 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
 
       {/* Tab content */}
       {panel.mode === "overview" && (
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="p-6">
           <div className="max-w-2xl space-y-6">
             <div className="bg-card border border-border rounded-2xl p-6">
               <h3 className="font-semibold text-foreground mb-3">About this Scenario</h3>
@@ -950,130 +951,102 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SCENARIO SIDEBAR LIST
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-function ScenarioSidebarList({
-  selectedId,
-  onSelect,
-}: {
-  selectedId: string | null
-  onSelect: (id: string) => void
-}) {
-  const { whatIfRunSessions } = useAppStore()
-  const [search, setSearch] = useState("")
-
-  const filtered = whatIfScenarios.filter((s) =>
-    !search || s.equipmentName.toLowerCase().includes(search.toLowerCase()) || s.name.toLowerCase().includes(search.toLowerCase())
-  )
-
-  return (
-    <div className="flex w-72 shrink-0 flex-col overflow-hidden border-r border-border bg-card/40">
-      <div className="border-b border-border/80 px-4 py-3.5">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">What-If Scenarios</h2>
-      </div>
-      <div className="px-3 py-2 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          <input type="text" placeholder="Search scenarios…" value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-secondary border border-border rounded-lg text-xs focus:outline-none focus:border-primary/50" />
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto py-2">
-        {filtered.map((scenario) => {
-          const runs = whatIfRunSessions.filter((s) => s.scenarioId === scenario.id)
-          const lastRun = runs[0]
-          const hasRunning = runs.some((s) => s.status === "running")
-          const selected = selectedId === scenario.id
-          return (
-            <button key={scenario.id} onClick={() => onSelect(scenario.id)}
-              className={cn(
-                "w-full text-left px-4 py-4 transition-all border-l-2 flex flex-col gap-1.5",
-                selected ? "bg-primary/10 border-l-primary" : "border-l-transparent hover:bg-secondary/60"
-              )}>
-              <div className="flex items-center gap-2">
-                <Box className="w-4 h-4 text-primary flex-shrink-0" />
-                <span className="font-semibold text-foreground text-sm truncate">{scenario.equipmentName}</span>
-                {hasRunning && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin ml-auto" />}
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>{scenario.site}</span>
-                <ChevronRight className="w-3 h-3" />
-                <span>{scenario.plant}</span>
-                <ChevronRight className="w-3 h-3" />
-                <Box className="w-3 h-3" />
-                <span>{scenario.equipmentName}</span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                {lastRun ? <StatusBadge status={lastRun.status} /> : <span className="text-[11px] text-muted-foreground">Never run</span>}
-                {runs.length > 0 && <span className="text-[11px] text-muted-foreground">{runs.length} run{runs.length !== 1 ? "s" : ""}</span>}
-              </div>
-            </button>
-          )
-        })}
-        <div className="mx-3 mt-3 mb-2 p-3 rounded-xl border border-dashed border-border bg-card">
-          <p className="text-xs text-muted-foreground text-center leading-relaxed">
-            To add more scenarios,{" "}
-            <a href="mailto:support@spmone.io" className="text-primary hover:underline">contact our Technical Team</a>
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
    ROOT EXPORT
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export function WhatIfToolView() {
   useSeedMockHistory()
-  const { whatIfSelectedScenarioId, setWhatIfSelectedScenarioId } = useAppStore()
+  const { whatIfSelectedScenarioId, setWhatIfSelectedScenarioId, whatIfRunSessions } = useAppStore()
+  const selectedScenario = whatIfScenarios.find((s) => s.id === whatIfSelectedScenarioId)
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-      <ScenarioSidebarList
-        selectedId={whatIfSelectedScenarioId}
-        onSelect={setWhatIfSelectedScenarioId}
-      />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gradient-to-b from-background via-background to-muted/25">
-        <div className="shrink-0 border-b border-border/60 px-4 py-8 sm:px-6 lg:px-8 lg:pt-10 lg:pb-6">
-          <ToolPageHeader
-            className="mb-0 border-0 pb-0"
-            title="What-If Scenario"
-            breadcrumb={
-              <Breadcrumb>
-                <BreadcrumbList className="text-xs">
-                  <ToolsModuleHomeCrumb />
+    <ToolPageShell>
+      <ToolPageHeader
+        title="What-If Scenario"
+        breadcrumb={
+          <Breadcrumb>
+            <BreadcrumbList className="text-xs">
+              <ToolsModuleHomeCrumb />
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>What-If Scenario</BreadcrumbPage>
+              </BreadcrumbItem>
+              {selectedScenario ? (
+                <>
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>What-If Scenario</BreadcrumbPage>
+                    <BreadcrumbPage>{selectedScenario.equipmentName}</BreadcrumbPage>
                   </BreadcrumbItem>
-                  {whatIfSelectedScenarioId ? (
-                    <>
-                      <BreadcrumbSeparator />
-                      <BreadcrumbItem>
-                        <BreadcrumbPage>
-                          {whatIfScenarios.find((s) => s.id === whatIfSelectedScenarioId)?.equipmentName ?? "Equipment"}
-                        </BreadcrumbPage>
-                      </BreadcrumbItem>
-                    </>
-                  ) : null}
-                </BreadcrumbList>
-              </Breadcrumb>
-            }
-          />
-        </div>
+                </>
+              ) : null}
+            </BreadcrumbList>
+          </Breadcrumb>
+        }
+      />
 
-        {whatIfSelectedScenarioId ? (
-          <ScenarioMainPanel scenarioId={whatIfSelectedScenarioId} />
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground">
-            <Info className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden />
-            <p className="text-sm">Select a scenario from the left panel</p>
+      {/* Scenario selector — same pattern as Data & Jobs equipment filter */}
+      <div className="mb-6 flex flex-col gap-3 rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Filter className="size-4 shrink-0 opacity-70" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground">Scenario</span>
           </div>
-        )}
+          <select
+            value={whatIfSelectedScenarioId ?? ""}
+            onChange={(e) => setWhatIfSelectedScenarioId(e.target.value || null)}
+            className={cn(
+              "h-10 min-w-[16rem] rounded-md border border-input bg-background px-3 text-sm shadow-xs transition-shadow",
+              "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
+              whatIfSelectedScenarioId && "border-primary/40 ring-1 ring-primary/15"
+            )}
+            aria-label="Select scenario"
+          >
+            <option value="">Select a scenario…</option>
+            {whatIfScenarios.map((scenario) => {
+              const runs = whatIfRunSessions.filter((s) => s.scenarioId === scenario.id)
+              const hasRunning = runs.some((s) => s.status === "running")
+              return (
+                <option key={scenario.id} value={scenario.id}>
+                  {scenario.name}{hasRunning ? " (running…)" : ""}
+                </option>
+              )
+            })}
+          </select>
+          {whatIfSelectedScenarioId && (
+            <button
+              type="button"
+              onClick={() => setWhatIfSelectedScenarioId(null)}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              <X className="size-3.5" />
+              Clear
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {selectedScenario ? (
+            <>Active: <span className="font-medium text-foreground">{selectedScenario.equipmentName}</span></>
+          ) : (
+            "Select a scenario to get started"
+          )}
+        </p>
       </div>
-    </div>
+
+      {/* Main content */}
+      {whatIfSelectedScenarioId ? (
+        <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-md">
+          <ScenarioMainPanel scenarioId={whatIfSelectedScenarioId} />
+        </div>
+      ) : (
+        <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/10 px-6 text-center text-muted-foreground">
+          <Info className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden />
+          <p className="text-sm">Select a scenario from the dropdown above to get started</p>
+          <p className="text-xs text-muted-foreground/70">
+            To add scenarios,{" "}
+            <a href="mailto:support@spmone.io" className="text-primary hover:underline">contact our Technical Team</a>
+          </p>
+        </div>
+      )}
+    </ToolPageShell>
   )
 }

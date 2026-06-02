@@ -83,7 +83,7 @@ Two image slots are ready and waiting. Place your files at exactly these paths i
 | Image | Path | Used on |
 |---|---|---|
 | Site aerial map | `public/images/site-map.jpg` | Site X Overview Dashboard (map background) |
-| P&ID process diagram | `public/images/pid-diagram.jpg` | Plant Overview (right panel diagram) |
+| P&ID process diagram | `public/images/pid-diagram.jpg` | Unit Overview dashboard (full card) |
 
 The app will automatically pick them up — no code changes needed. Supported formats: `.jpg`, `.png`, `.webp`.
 

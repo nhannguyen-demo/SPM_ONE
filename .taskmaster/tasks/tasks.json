@@ -1335,5 +1335,127 @@
       "updated": "2026-05-26T09:30:15.541Z",
       "description": "Tasks for dashboard-toolbar-access-may2026 context"
     }
+  },
+  "unit-overview-full-pid-jun2026": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Add collapsible state management to plant-overview component",
+        "description": "Implement local state management for the Unit Context Panel collapse/expand behavior using React useState hook in plant-overview.tsx",
+        "details": "Add a `contextPanelOpen` state variable in `components/views/plant-overview.tsx` using React useState, defaulting to `true`. This state will control the visibility and width of the right sidebar containing AI Health Summary, Plant/Unit Information, and unit documents.\n\nPseudo-code:\n```typescript\nconst [contextPanelOpen, setContextPanelOpen] = useState<boolean>(true);\n\nconst toggleContextPanel = () => {\n  setContextPanelOpen(prev => !prev);\n};\n```\n\nPass `contextPanelOpen` and `toggleContextPanel` as props to child components that need to control or respond to the panel state. Ensure this state is scoped to the component and does not persist across sessions (client-side only for v1).",
+        "testStrategy": "Unit test: Verify useState initializes to true. Test toggleContextPanel function flips state correctly. Integration test: Render plant-overview component and verify state changes trigger re-renders with correct prop values passed to children.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T03:38:38.783Z"
+      },
+      {
+        "id": "2",
+        "title": "Extract UnitContextPanel subcomponent",
+        "description": "Refactor the right sidebar (AI Health Summary, Plant/Unit Information, unit documents) into a reusable UnitContextPanel component with collapse/expand controls",
+        "details": "Create a new component `components/unit-context-panel.tsx` that encapsulates the right sidebar content. The component should accept props: `isOpen: boolean`, `onToggle: () => void`, and render the AI Health Summary (Feature3HealthSummary), Plant/Unit Information card, and unit documents list.\n\nImplement the panel header with a `PanelLeftClose` icon button (from lucide-react) that calls `onToggle` when clicked. Add accessible ARIA labels (e.g., 'Collapse unit context panel').\n\nWhen `isOpen` is true, render at `w-72` width. When false, render a collapsed state with minimal width showing only a reopen control on the right edge.\n\nPseudo-code:\n```typescript\ninterface UnitContextPanelProps {\n  isOpen: boolean;\n  onToggle: () => void;\n  unitData: UnitData;\n}\n\nexport function UnitContextPanel({ isOpen, onToggle, unitData }: UnitContextPanelProps) {\n  if (!isOpen) {\n    return (\n      <div className=\"w-8 border-l flex items-center justify-center\">\n        <button onClick={onToggle} aria-label=\"Open unit context panel\">\n          <PanelRightOpen className=\"h-5 w-5\" />\n        </button>\n      </div>\n    );\n  }\n  \n  return (\n    <div className=\"w-72 border-l flex flex-col\">\n      <div className=\"flex items-center justify-between p-4 border-b\">\n        <h3>Unit Context</h3>\n        <button onClick={onToggle} aria-label=\"Collapse unit context panel\">\n          <PanelLeftClose className=\"h-5 w-5\" />\n        </button>\n      </div>\n      {/* AI Health Summary, Unit Info, Documents */}\n    </div>\n  );\n}\n```",
+        "testStrategy": "Component test: Render UnitContextPanel with isOpen true/false and verify correct width classes applied. Test onToggle callback fires on button clicks. Verify PanelLeftClose icon renders when open, reopen control renders when collapsed. Accessibility test: Check ARIA labels are present and keyboard navigation works.",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T03:38:38.825Z"
+      },
+      {
+        "id": "3",
+        "title": "Remove left column chart placeholders from Overview Dashboard card",
+        "description": "Delete the left w-1/3 column containing MiniPieChart, MiniBarChart, and placeholder bars from the Overview Dashboard card body in plant-overview.tsx",
+        "details": "Locate the Overview Dashboard card body in `components/views/plant-overview.tsx` and remove the entire left column div that contains:\n- MiniPieChart component\n- MiniBarChart component\n- Placeholder bar elements\n- Any associated w-1/3 or similar width constraint classes\n\nRemove unused imports:\n```typescript\n// DELETE these imports\nimport { MiniPieChart } from '@/components/charts/mini-pie-chart';\nimport { MiniBarChart } from '@/components/charts/mini-bar-chart';\n```\n\nThe card body should now only contain the right column (P&ID image container) which will be expanded to full width in the next task. Ensure no orphaned CSS classes or wrapper divs remain.",
+        "testStrategy": "Visual regression test: Compare rendered Overview Dashboard card before/after to confirm left column is removed. Code review: Verify MiniPieChart and MiniBarChart imports are deleted and no references remain. Browser test: Load Unit 2006 DCU, Unit 2007 HCU, and Unit 2008 Hydrogen routes and confirm no chart placeholders render.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T03:38:38.837Z"
+      },
+      {
+        "id": "4",
+        "title": "Expand P&ID image to full card width",
+        "description": "Modify the Overview Dashboard card body to display the P&ID diagram edge-to-edge, filling the entire card content area",
+        "details": "Update the P&ID container in the Overview Dashboard card body to occupy full width. Remove any right column width constraints (e.g., w-2/3) and apply full-width layout.\n\nEnsure the image uses:\n- `object-contain` to maintain aspect ratio\n- Relative positioning for the container to support absolute-positioned overlays\n- Proper height constraints to fill available vertical space\n\nPseudo-code:\n```typescript\n<div className=\"relative w-full h-full min-h-[600px] bg-gray-50\">\n  <img \n    src=\"/images/pid-diagram.jpg\" \n    alt=\"Process & Instrumentation Diagram\"\n    className=\"w-full h-full object-contain\"\n  />\n  {/* PIDAnomalyOverlay renders here when Feature 5 enabled */}\n</div>\n```\n\nVerify the static asset path `/images/pid-diagram.jpg` is correct and the image loads from `public/images/pid-diagram.jpg`.",
+        "testStrategy": "Visual test: Load unit overview pages and verify P&ID fills entire card width with no left column. Test responsive behavior at different viewport widths. Verify image maintains aspect ratio with object-contain. Check that 'On' indicator and Feature 5 anomaly overlay still render correctly over the full-width image.",
+        "priority": "high",
+        "dependencies": [
+          "3"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T03:38:38.840Z"
+      },
+      {
+        "id": "5",
+        "title": "Preserve PIDAnomalyOverlay rendering with Feature 5",
+        "description": "Ensure the PIDAnomalyOverlay component continues to render correctly over the full-width P&ID image when Feature 5 is enabled",
+        "details": "Verify that the `PIDAnomalyOverlay` component (or equivalent anomaly visualization) still renders as an absolute-positioned overlay on top of the P&ID image after layout changes.\n\nThe overlay should:\n- Use absolute positioning within the relative P&ID container\n- Render conditionally based on Feature 5 flag\n- Display anomaly indicators at correct coordinates\n- Not be affected by the removal of the left column\n\nPseudo-code:\n```typescript\n<div className=\"relative w-full h-full min-h-[600px]\">\n  <img src=\"/images/pid-diagram.jpg\" className=\"w-full h-full object-contain\" />\n  \n  {isFeature5Enabled && (\n    <PIDAnomalyOverlay \n      className=\"absolute inset-0 pointer-events-none\"\n      anomalies={anomalyData}\n    />\n  )}\n</div>\n```\n\nEnsure the 'On' indicator (if separate from PIDAnomalyOverlay) also continues to render correctly.",
+        "testStrategy": "Feature flag test: Enable Feature 5 and verify PIDAnomalyOverlay renders over P&ID image. Test anomaly indicators appear at correct positions. Disable Feature 5 and confirm overlay does not render. Visual regression: Compare overlay positioning before/after layout changes. Test on all three unit routes (DCU, HCU, Hydrogen).",
+        "priority": "medium",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T03:38:38.844Z"
+      },
+      {
+        "id": "6",
+        "title": "Integrate UnitContextPanel with collapse state in plant-overview layout",
+        "description": "Wire the UnitContextPanel component into plant-overview.tsx with the collapse state, ensuring proper layout behavior and responsive width adjustments",
+        "details": "Replace the existing right sidebar markup in `plant-overview.tsx` with the new `UnitContextPanel` component. Pass the `contextPanelOpen` state and `toggleContextPanel` handler from Task 1.\n\nUpdate the main layout grid/flex to accommodate dynamic panel width:\n- When panel is open: main content area adjusts to accommodate w-72 panel\n- When panel is collapsed: main content area expands to use the additional space\n\nPseudo-code:\n```typescript\nreturn (\n  <div className=\"flex h-full\">\n    <div className={cn(\n      \"flex-1 transition-all duration-200\",\n      contextPanelOpen ? \"mr-72\" : \"mr-8\"\n    )}>\n      {/* Overview Dashboard card with full-width P&ID */}\n      {/* Dashboard tab stacks */}\n    </div>\n    \n    <UnitContextPanel \n      isOpen={contextPanelOpen}\n      onToggle={toggleContextPanel}\n      unitData={currentUnit}\n    />\n  </div>\n);\n```\n\nEnsure smooth transitions using Tailwind's transition utilities.",
+        "testStrategy": "Integration test: Render plant-overview and verify UnitContextPanel receives correct props. Test clicking collapse button reduces main content margin and panel width. Test clicking reopen button restores layout. Verify smooth CSS transitions. Test layout on all three unit routes. Verify no layout shift or content overflow issues.",
+        "priority": "high",
+        "dependencies": [
+          "2",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T03:38:38.848Z"
+      },
+      {
+        "id": "7",
+        "title": "Handle context panel behavior during dashboard expand/maximize mode",
+        "description": "Ensure the Unit Context Panel correctly hides when dashboard is maximized and restores to previous state when exiting expand mode",
+        "details": "Integrate the context panel collapse state with the existing `dashboardExpanded` state. When a user maximizes the Overview Dashboard card:\n- Hide the Unit Context Panel (regardless of its open/collapsed state)\n- Preserve the `contextPanelOpen` state in memory\n- When exiting maximize mode, restore the panel to its previous state\n\nPseudo-code:\n```typescript\nconst [dashboardExpanded, setDashboardExpanded] = useState(false);\nconst [contextPanelOpen, setContextPanelOpen] = useState(true);\n\nconst shouldShowPanel = !dashboardExpanded;\n\nreturn (\n  <div className=\"flex h-full\">\n    <div className=\"flex-1\">\n      <OverviewDashboard \n        expanded={dashboardExpanded}\n        onExpandToggle={() => setDashboardExpanded(!dashboardExpanded)}\n      />\n      {/* Dashboard stacks - hidden when expanded */}\n    </div>\n    \n    {shouldShowPanel && (\n      <UnitContextPanel \n        isOpen={contextPanelOpen}\n        onToggle={toggleContextPanel}\n        unitData={currentUnit}\n      />\n    )}\n  </div>\n);\n```\n\nEnsure no state is lost when toggling between expanded and normal modes.",
+        "testStrategy": "Test sequence: 1) Collapse context panel, 2) Maximize dashboard (panel should hide), 3) Exit maximize (panel should remain collapsed). Repeat with panel open. Verify `contextPanelOpen` state persists through expand/collapse cycles. Test on all unit routes. Verify no visual glitches or layout jumps during transitions.",
+        "priority": "medium",
+        "dependencies": [
+          "6"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T03:38:38.854Z"
+      },
+      {
+        "id": "8",
+        "title": "Verify existing navigation flows and cross-unit behavior",
+        "description": "Test and validate that all existing navigation flows (dashboard tab stack clicks, equipment navigation, popup behavior) work correctly across all unit routes with the new layout",
+        "details": "Comprehensive testing of existing functionality to ensure no regressions:\n\n1. **Dashboard tab stack navigation:**\n   - Click dashboard in tab stack → navigates to Equipment Home Page\n   - Auto-opens equipment popup on arrival\n   - Test on DCU, HCU, and Hydrogen units\n\n2. **Equipment name navigation:**\n   - Click equipment name → navigates to Equipment Home without popup\n   - Test from all three unit routes\n\n3. **Cross-unit consistency:**\n   - Verify P&ID full-width layout on unit-2006-dcu, unit-2007-hcu, unit-2008-hydrogen\n   - Verify context panel collapse/reopen on all three routes\n   - Confirm no DCU-only behavior forks\n\n4. **Dashboard data wiring:**\n   - Verify `getPublishedDashboardsForEquipment` still populates dashboard stacks\n   - Confirm dashboard cards render correctly below Overview Dashboard\n\n5. **Accessibility:**\n   - Keyboard navigation for collapse/expand controls\n   - Screen reader announces panel state changes\n   - Focus management when panel toggles\n\nCreate test matrix validation checklist per PRD requirements.",
+        "testStrategy": "Manual E2E testing: Execute test matrix from PRD for all three units (DCU, HCU, Hydrogen). Automated E2E tests: Write Playwright/Cypress tests covering dashboard tab click → EHP with popup, equipment name click → EHP without popup, panel collapse/reopen on each route. Regression suite: Run existing plant-overview test suite and verify no failures. Accessibility audit: Run axe-core or similar tool to check WCAG compliance.",
+        "priority": "medium",
+        "dependencies": [
+          "7"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T03:38:38.856Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-06-02T03:38:38.856Z",
+      "taskCount": 8,
+      "completedCount": 8,
+      "tags": [
+        "unit-overview-full-pid-jun2026"
+      ]
+    }
   }
 }

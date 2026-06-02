@@ -1,7 +1,7 @@
 // FEATURE 3 - AI Health Summary Card (Site Level + Plant Level)
 // Renders in: 
 //   - site-overview.tsx right panel — above "Site Information" header
-//   - plant-overview.tsx right panel — above "Plant Information" header
+//   - plant-overview.tsx Unit Context Panel — above "Unit Information" header
 // To remove this feature: delete this file and remove <AIHealthSummaryCard /> from both views
 
 "use client"

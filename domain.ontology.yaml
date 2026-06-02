@@ -498,6 +498,30 @@ entities:
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
+  UnitOverviewView:
+    comment: "Not a persisted entity — UI state for the Asset module **Unit**
+      level screen (implementation: `PlantOverview` at route
+      `/assets/plant/[siteId]/[unitId]`). Applies to every Unit in the hierarchy
+      (e.g. Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 - Hydrogen Unit), not
+      per-Equipment Home."
+    fields:
+      unitId: { type: uuid, references: Unit.id }
+      siteId: { type: uuid, references: Site.id }
+      overviewDashboardExpanded:
+        type: boolean
+        default: false
+        comment: "When true, the main overview card is maximized and the unit
+          dashboard tab stack slides up (existing `dashboardExpanded` behavior in
+          the client store)."
+      contextPanelOpen:
+        type: boolean
+        default: true
+        comment: "When false, the right-hand **Unit Context Panel** (AI summary,
+          unit information, unit documents) is collapsed; user can reopen via the
+          same collapse affordance pattern as the module contextual sidebar
+          (`PanelLeftClose` / edge reopen control). v1: client-only state (Zustand
+          or component state); not persisted."
+
   EquipmentHomeView:
     comment: "Not a persisted entity — represents the UI state/context for the
       Equipment Home Page. Captured here for relationship traceability."
@@ -1217,6 +1241,13 @@ business_rules:
   - "WorkspaceDashboard.widgets is the single widget layout source for Equipment Home Dashboard Popup, Full-Screen Viewer (/dashboards/[id]/full), and Workspace popup viewer. DEFAULT_WIDGET_SETS and buildDefaultGrid from layouts.ts are used only during Workspace seed generation; they must not be imported at render time by Equipment Home or Home modules."
   - "Home Page Recent Dashboards and Favorite Dashboards sections store WorkspaceDashboard.id values in useAppStore; display metadata (name, thumbnail, equipment name) is resolved from useWorkspaceStore at render time via getDashboardById."
   - "Site Overview and Plant Overview Dashboard Tab Stacks derive their card lists from published WorkspaceDashboard records using the same getPublishedDashboardsForEquipment adapter; dashboardCards is not consulted."
+  # ── Unit Overview — full P&ID dashboard & collapsible context panel (Jun 2026) ─
+  - "The Asset module **Unit Overview** screen (Plant Overview implementation) SHALL render the primary **Overview Dashboard** card as a **full-panel P&ID** only: the diagram fills the card body edge-to-edge. The legacy left-column mock charts (pie gauges, bar placeholders) in that card are **removed**."
+  - "Unit Overview P&ID source asset is the static image **`/images/pid-diagram.jpg`** (`public/images/pid-diagram.jpg`); object-fit **contain** within the card; same asset for all Units in the mock profile until unit-specific diagrams exist."
+  - "Feature 5 **P&ID Anomaly Overlay** (`PIDAnomalyOverlay`) MAY remain layered on the full P&ID when enabled for the active Unit; overlay coordinates are relative to the diagram container."
+  - "The Unit Overview **Unit Context Panel** (right column: AI Health Summary, unit information placeholders, unit document list) SHALL be **collapsible and reopenable** without leaving the page. Collapse control SHALL reuse the module sidebar pattern: header button with **`PanelLeftClose`** icon and `aria-label` for close; when collapsed, a slim **reopen** control on the right edge (mirror of contextual panel open semantics) restores the panel."
+  - "When `UnitOverviewView.overviewDashboardExpanded` is true, the Unit Context Panel MAY remain hidden (existing maximize behavior) independent of `contextPanelOpen`; when the user exits expanded overview mode, restore `contextPanelOpen` to its prior value if practical, otherwise default open."
+  - "Equipment Home Page does **not** host the Unit Context Panel; this rule applies only at Unit level. Site Overview right panel parity is **out of scope** unless explicitly requested."
   - "Dashboard identity is shared between the Workspace Module and all Asset Module surfaces via WorkspaceDashboard.id as the canonical key; recents, favorites, cross-tab presence signals, and auto-open state all use WorkspaceDashboard.id."
   - "The Equipment Home Page OpenElsewhereBadge and useDashboardOpenElsewhereCount hook use WorkspaceDashboard.id as the presence key; the legacy key format 'equipment-{equipId}-{tag}' is replaced."
   - "When the user completes a What-If Scenario run and chooses 'View Data' on the result, navigation goes to the Equipment Home Page scoped to that run's Equipment only; no Dashboard Popup opens automatically. The run remains queued for Viewed Data overlay via WhatIfRunSession auto-select so that when the user opens any dashboard popup on that Equipment, the scenario run can be selected in Viewed Data without forcing a specific WorkspaceDashboard."
