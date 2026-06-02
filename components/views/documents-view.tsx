@@ -14,7 +14,7 @@ import { buildAssetOptions, filterDocuments } from "@/lib/documents"
 import { cn } from "@/lib/utils"
 import {
   File, FileText, FileSpreadsheet, Link,
-  Upload, Users, BookOpen, Search, SlidersHorizontal,
+  Upload, Users, BookOpen, Search, SlidersHorizontal, Filter,
   Share2, Download, X, Check,
   Tag,
 } from "lucide-react"
@@ -386,6 +386,12 @@ export function DocumentsView() {
 
   const whatIfCount = savedDocuments.filter((d) => isWhatIfDocument(d.name)).length
 
+  const breadcrumbEquipmentName = useMemo(() => {
+    if (!assetFilter.startsWith("equip-")) return null
+    const label = assetOptions.find((o) => o.value === assetFilter)?.label
+    return label?.trim() ?? null
+  }, [assetFilter, assetOptions])
+
   return (
     <ToolPageShell className="overflow-hidden">
       <ToolPageHeader
@@ -399,6 +405,14 @@ export function DocumentsView() {
               <BreadcrumbItem>
                 <BreadcrumbPage>Documents</BreadcrumbPage>
               </BreadcrumbItem>
+              {breadcrumbEquipmentName && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{breadcrumbEquipmentName}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         }
@@ -451,12 +465,16 @@ export function DocumentsView() {
           </div>
 
           {/* Asset filter */}
-          <select value={assetFilter} onChange={(e) => setAssetFilter(e.target.value)}
-            className="h-8 px-2 bg-secondary border border-border rounded-lg text-xs text-foreground">
-            {assetOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <Filter className="size-3.5 shrink-0 text-muted-foreground opacity-70" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground">Equipment</span>
+            <select value={assetFilter} onChange={(e) => setAssetFilter(e.target.value)}
+              className="h-8 px-2 bg-secondary border border-border rounded-lg text-xs text-foreground">
+              {assetOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
 
           {/* Search */}
           <div className="relative ml-auto">

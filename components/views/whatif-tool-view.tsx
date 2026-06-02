@@ -1,8 +1,10 @@
 "use client"
 
 /**
- * What-If Scenario Tool View  (v2)
- * Scenario management: configure & run, live progress, history, results (with back/save/discard/report), compare.
+ * What-If Scenario Tool View  (v3 — Jun 2026)
+ * Layout aligned with other tool pages: ToolPageShell + ToolPageHeader,
+ * equipment scope filter bar (same pattern as Data & Jobs), scenario card grid,
+ * then scenario detail (Overview / Configure & Run / History / Results).
  */
 
 import { useState, useEffect, useRef, useMemo } from "react"
@@ -35,13 +37,10 @@ import {
 import {
   Play, History, ChevronRight, GitCompareArrows,
   Upload, CheckCircle2, Loader2,
-  ArrowLeft, ExternalLink, MessageSquare, Check,
+  ArrowLeft, ExternalLink, MessageSquare, Check, Box,
   Search, LayoutDashboard, Info,
   FileText, Trash2, Filter, X,
 } from "lucide-react"
-/* ═══════════════════════════════════════════════════════════════════════════
-   CONSTANTS
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    RUN PROGRESS OVERLAY
@@ -91,7 +90,7 @@ function RunProgressOverlay({
   }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center gap-8 p-12">
+    <div className="flex flex-col items-center justify-center gap-8 py-16">
       <div className="text-center">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -179,12 +178,10 @@ function ResultsPanel({
     setReportGenerated(true)
   }
 
-  const warningCount = session.results.filter((r) => r.col3 !== "Pass").length
-
   return (
-    <div>
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       {/* Header with actions */}
-      <div className="px-6 py-4 border-b border-border bg-emerald-500/5">
+      <div className="px-6 py-4 border-b border-border bg-emerald-500/5 flex-shrink-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
@@ -207,7 +204,6 @@ function ResultsPanel({
               View Data
             </button>
 
-            {/* Generate Report */}
             {reportGenerated ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 rounded-lg text-sm">
                 <CheckCircle2 className="w-4 h-4" />
@@ -223,7 +219,6 @@ function ResultsPanel({
               </button>
             )}
 
-            {/* Discard */}
             <button
               type="button"
               onClick={onDiscard}
@@ -245,9 +240,9 @@ function ResultsPanel({
         </div>
       </div>
 
-      <div>
+      <div className="p-6 space-y-6">
         {/* Run session info */}
-        <div className="px-6 pt-5 pb-4">
+        <div>
           <h4 className="text-sm font-semibold text-foreground mb-3">Run Session Information</h4>
           <div className="border border-border rounded-xl overflow-hidden">
             <table className="w-full text-sm">
@@ -273,7 +268,7 @@ function ResultsPanel({
         </div>
 
         {/* Input params used */}
-        <div className="px-6 pb-8">
+        <div>
           <h4 className="text-sm font-semibold text-foreground mb-3">Input parameters used</h4>
           {session.parameterInputMode && (
             <p className="text-xs text-muted-foreground mb-3">
@@ -466,7 +461,7 @@ function ConfigureRunPanel({
     ]
 
   return (
-    <div>
+    <div className="overflow-y-auto">
       <input
         ref={perFileRef}
         type="file"
@@ -696,7 +691,7 @@ function HistoryPanel({
   })
 
   return (
-    <div>
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="px-6 py-3 border-b border-border bg-muted/20 flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
           {(["all", "success", "failed"] as const).map((s) => (
@@ -714,15 +709,15 @@ function HistoryPanel({
         </div>
       </div>
 
-      <div>
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
-            <History className="w-8 h-8" />
-            <span className="text-sm">No run history yet</span>
-          </div>
-        ) : (
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
+          <History className="w-8 h-8" />
+          <span className="text-sm">No run history yet</span>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-card border-b border-border z-10">
+            <thead className="bg-card border-b border-border">
               <tr>
                 {["Run Name", "Status", "Started", "Duration", "User", "Source", "Action"].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
@@ -757,14 +752,14 @@ function HistoryPanel({
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN CONTENT — tabbed scenario panel, reads whatIfInitialTab from store
+   SCENARIO DETAIL PANEL — tabbed
    ═══════════════════════════════════════════════════════════════════════════ */
 
 type MainPanelMode =
@@ -772,7 +767,13 @@ type MainPanelMode =
   | { mode: "results"; session: WhatIfRunSession }
   | { mode: "running"; sessionId: string }
 
-function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
+function ScenarioDetailPanel({
+  scenarioId,
+  onBack,
+}: {
+  scenarioId: string
+  onBack: () => void
+}) {
   const router = useRouter()
   const scenario = whatIfScenarios.find((s) => s.id === scenarioId)
   const {
@@ -785,7 +786,6 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
     removeWhatIfRunSession,
   } = useAppStore()
 
-  // Consume the initial tab set by external navigation (e.g. equipment dashboard)
   const [panel, setPanel] = useState<MainPanelMode>(() => {
     const init = useAppStore.getState().whatIfInitialTab
     return { mode: init ?? "overview" }
@@ -794,11 +794,10 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
   useEffect(() => {
     if (whatIfInitialTab) {
       setPanel({ mode: whatIfInitialTab })
-      setWhatIfInitialTab(null) // consume once
+      setWhatIfInitialTab(null)
     }
   }, [whatIfInitialTab, setWhatIfInitialTab])
 
-  // Reset panel when scenario changes, but preserve an externally requested initial tab.
   useEffect(() => {
     const init = useAppStore.getState().whatIfInitialTab
     setPanel({ mode: init ?? "overview" })
@@ -851,14 +850,16 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
     )
   }
 
-  // Tabbed view
   return (
-    <div>
+    <div className="space-y-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       {/* Scenario header */}
       <div className="px-6 py-5 border-b border-border">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-foreground">{scenario.name}</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              {scenario.site} <ChevronRight className="w-3 h-3 inline" /> {scenario.plant}
+            </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {lastSuccess && (
@@ -951,18 +952,169 @@ function ScenarioMainPanel({ scenarioId }: { scenarioId: string }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   SCENARIO CARD LIST — replaces the old sidebar
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function ScenarioCardList({
+  equipmentFilter,
+  onSelect,
+}: {
+  equipmentFilter: string | null
+  onSelect: (id: string) => void
+}) {
+  const { whatIfRunSessions } = useAppStore()
+  const [search, setSearch] = useState("")
+
+  const filtered = whatIfScenarios.filter((s) => {
+    if (equipmentFilter && s.equipmentId !== equipmentFilter) return false
+    if (search) {
+      const q = search.toLowerCase()
+      return s.equipmentName.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
+    }
+    return true
+  })
+
+  const equipmentLabel = equipmentFilter
+    ? whatIfScenarios.find((s) => s.equipmentId === equipmentFilter)?.equipmentName ?? equipmentFilter
+    : null
+
+  return (
+    <div className="space-y-4">
+      {/* Search */}
+      <div className="relative max-w-xs">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search scenarios…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-8 pr-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:border-primary/50"
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-muted/10 px-6 py-14 text-center">
+          {equipmentLabel ? (
+            <>
+              <p className="text-sm text-muted-foreground">No scenarios available for <span className="font-medium text-foreground">{equipmentLabel}</span>.</p>
+              <a href="mailto:support@spmone.io" className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                Contact our Technical Team to request one ↗
+              </a>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">No scenarios match your search.</p>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((scenario) => {
+            const runs = whatIfRunSessions.filter((s) => s.scenarioId === scenario.id)
+            const lastRun = runs[0]
+            const hasRunning = runs.some((s) => s.status === "running")
+            return (
+              <button
+                key={scenario.id}
+                type="button"
+                onClick={() => onSelect(scenario.id)}
+                className="text-left rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Box className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span className="font-semibold text-foreground text-sm truncate">{scenario.equipmentName}</span>
+                  </div>
+                  {hasRunning && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin flex-shrink-0" />}
+                </div>
+                <p className="text-xs font-medium text-foreground mb-1 leading-snug">{scenario.name}</p>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-3">
+                  <span>{scenario.site}</span>
+                  <ChevronRight className="w-3 h-3" />
+                  <span className="truncate">{scenario.plant}</span>
+                </div>
+                <div className="flex items-center gap-2 pt-3 border-t border-border/60">
+                  {lastRun
+                    ? <StatusBadge status={lastRun.status} />
+                    : <span className="text-[11px] text-muted-foreground">Never run</span>
+                  }
+                  {runs.length > 0 && (
+                    <span className="text-[11px] text-muted-foreground ml-auto">
+                      {runs.length} run{runs.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Contact prompt */}
+      <div className="rounded-xl border border-dashed border-border bg-card p-4 text-center">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          To add more scenarios,{" "}
+          <a href="mailto:support@spmone.io" className="text-primary hover:underline">contact our Technical Team</a>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    ROOT EXPORT
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export function WhatIfToolView() {
   useSeedMockHistory()
-  const { whatIfSelectedScenarioId, setWhatIfSelectedScenarioId, whatIfRunSessions } = useAppStore()
-  const selectedScenario = whatIfScenarios.find((s) => s.id === whatIfSelectedScenarioId)
+  const {
+    whatIfSelectedScenarioId,
+    setWhatIfSelectedScenarioId,
+    whatIfEquipmentFilter,
+    setWhatIfEquipmentFilter,
+    preFilterEquipmentId,
+    setPreFilterEquipmentId,
+  } = useAppStore()
+
+  // Consume pre-filter from Equipment Home; generic tool entry shows all-equipment browse.
+  useEffect(() => {
+    if (preFilterEquipmentId) {
+      setWhatIfEquipmentFilter(preFilterEquipmentId)
+      setPreFilterEquipmentId(null)
+    } else {
+      setWhatIfSelectedScenarioId(null)
+      setWhatIfEquipmentFilter(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Unique equipment options derived from scenario list
+  const equipmentOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const opts: { id: string; name: string }[] = []
+    for (const s of whatIfScenarios) {
+      if (!seen.has(s.equipmentId)) {
+        seen.add(s.equipmentId)
+        opts.push({ id: s.equipmentId, name: s.equipmentName })
+      }
+    }
+    return opts
+  }, [])
+
+  const activeEquipmentName = whatIfEquipmentFilter
+    ? equipmentOptions.find((o) => o.id === whatIfEquipmentFilter)?.name ?? whatIfEquipmentFilter
+    : null
+
+  const selectedScenario = whatIfSelectedScenarioId
+    ? whatIfScenarios.find((s) => s.id === whatIfSelectedScenarioId)
+    : null
+
+  const breadcrumbEquipmentName =
+    activeEquipmentName ?? selectedScenario?.equipmentName ?? null
 
   return (
     <ToolPageShell>
       <ToolPageHeader
         title="What-If Scenario"
+        description="Configure operating scenarios, run simulations, and compare predicted outcomes against current equipment data."
         breadcrumb={
           <Breadcrumb>
             <BreadcrumbList className="text-xs">
@@ -971,81 +1123,91 @@ export function WhatIfToolView() {
               <BreadcrumbItem>
                 <BreadcrumbPage>What-If Scenario</BreadcrumbPage>
               </BreadcrumbItem>
-              {selectedScenario ? (
+              {breadcrumbEquipmentName && (
                 <>
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>{selectedScenario.equipmentName}</BreadcrumbPage>
+                    <BreadcrumbPage>{breadcrumbEquipmentName}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </>
-              ) : null}
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         }
       />
 
-      {/* Scenario selector — same pattern as Data & Jobs equipment filter */}
+      {/* Equipment filter bar — same pattern as Data & Jobs */}
       <div className="mb-6 flex flex-col gap-3 rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Filter className="size-4 shrink-0 opacity-70" aria-hidden />
-            <span className="text-xs font-semibold uppercase tracking-wide text-foreground">Scenario</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground">Equipment</span>
           </div>
           <select
-            value={whatIfSelectedScenarioId ?? ""}
-            onChange={(e) => setWhatIfSelectedScenarioId(e.target.value || null)}
+            value={whatIfEquipmentFilter ?? "all"}
+            onChange={(e) => {
+              const val = e.target.value
+              setWhatIfEquipmentFilter(val === "all" ? null : val)
+              // Clear scenario selection when equipment filter changes
+              setWhatIfSelectedScenarioId(null)
+            }}
             className={cn(
-              "h-10 min-w-[16rem] rounded-md border border-input bg-background px-3 text-sm shadow-xs transition-shadow",
+              "h-10 min-w-[12rem] rounded-md border border-input bg-background px-3 text-sm shadow-xs transition-shadow",
               "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
-              whatIfSelectedScenarioId && "border-primary/40 ring-1 ring-primary/15"
+              whatIfEquipmentFilter && "border-primary/40 ring-1 ring-primary/15"
             )}
-            aria-label="Select scenario"
+            aria-label="Filter by equipment"
           >
-            <option value="">Select a scenario…</option>
-            {whatIfScenarios.map((scenario) => {
-              const runs = whatIfRunSessions.filter((s) => s.scenarioId === scenario.id)
-              const hasRunning = runs.some((s) => s.status === "running")
-              return (
-                <option key={scenario.id} value={scenario.id}>
-                  {scenario.name}{hasRunning ? " (running…)" : ""}
-                </option>
-              )
-            })}
+            <option value="all">All equipment</option>
+            {equipmentOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>{opt.name}</option>
+            ))}
           </select>
-          {whatIfSelectedScenarioId && (
+          {whatIfEquipmentFilter && (
             <button
               type="button"
-              onClick={() => setWhatIfSelectedScenarioId(null)}
+              onClick={() => {
+                setWhatIfEquipmentFilter(null)
+                setWhatIfSelectedScenarioId(null)
+              }}
               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
             >
               <X className="size-3.5" />
-              Clear
+              Reset filter
             </button>
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          {selectedScenario ? (
-            <>Active: <span className="font-medium text-foreground">{selectedScenario.equipmentName}</span></>
-          ) : (
-            "Select a scenario to get started"
-          )}
+          Active equipment:{" "}
+          <span className="font-medium text-foreground">
+            {activeEquipmentName ?? "All equipment"}
+          </span>
         </p>
       </div>
 
-      {/* Main content */}
+      {/* Content: scenario card list OR scenario detail */}
       {whatIfSelectedScenarioId ? (
-        <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-md">
-          <ScenarioMainPanel scenarioId={whatIfSelectedScenarioId} />
+        <div className="space-y-4">
+          {/* Back navigation */}
+          <button
+            type="button"
+            onClick={() => setWhatIfSelectedScenarioId(null)}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {activeEquipmentName ? `Back to ${activeEquipmentName} scenarios` : "All scenarios"}
+          </button>
+
+          <ScenarioDetailPanel
+            scenarioId={whatIfSelectedScenarioId}
+            onBack={() => setWhatIfSelectedScenarioId(null)}
+          />
         </div>
       ) : (
-        <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/10 px-6 text-center text-muted-foreground">
-          <Info className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden />
-          <p className="text-sm">Select a scenario from the dropdown above to get started</p>
-          <p className="text-xs text-muted-foreground/70">
-            To add scenarios,{" "}
-            <a href="mailto:support@spmone.io" className="text-primary hover:underline">contact our Technical Team</a>
-          </p>
-        </div>
+        <ScenarioCardList
+          equipmentFilter={whatIfEquipmentFilter}
+          onSelect={setWhatIfSelectedScenarioId}
+        />
       )}
     </ToolPageShell>
   )

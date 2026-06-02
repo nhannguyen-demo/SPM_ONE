@@ -565,6 +565,9 @@ export function DataSyncView() {
   const filterSummary =
     filterAsset === ALL_ASSETS ? "All equipment" : filterAsset
 
+  const breadcrumbEquipmentName =
+    filterAsset === ALL_ASSETS ? null : filterAsset
+
   return (
     <ToolPageShell>
       <ToolPageHeader
@@ -577,6 +580,14 @@ export function DataSyncView() {
               <BreadcrumbItem>
                 <BreadcrumbPage>Data & Jobs</BreadcrumbPage>
               </BreadcrumbItem>
+              {breadcrumbEquipmentName && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{breadcrumbEquipmentName}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         }
@@ -586,7 +597,7 @@ export function DataSyncView() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Filter className="size-4 shrink-0 opacity-70" aria-hidden />
-              <span className="text-xs font-semibold uppercase tracking-wide text-foreground">Equipment scope</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-foreground">Equipment</span>
             </div>
             <select
               value={filterAsset}
@@ -617,7 +628,7 @@ export function DataSyncView() {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Active scope: <span className="font-medium text-foreground">{filterSummary}</span>
+            Active equipment: <span className="font-medium text-foreground">{filterSummary}</span>
           </p>
         </div>
 

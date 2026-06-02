@@ -379,7 +379,8 @@
         "auth-shell-notifications-may2026"
       ],
       "created": "2026-05-02T03:32:02.579Z",
-      "description": "Tasks for auth-shell-notifications-may2026 context"
+      "description": "Tasks for auth-shell-notifications-may2026 context",
+      "updated": "2026-05-02T03:32:02.579Z"
     }
   },
   "notification-preview-anchor-may2026": {
@@ -430,7 +431,8 @@
         "notification-preview-anchor-may2026"
       ],
       "created": "2026-05-02T07:49:30.483Z",
-      "description": "Tasks for notification-preview-anchor-may2026 context"
+      "description": "Tasks for notification-preview-anchor-may2026 context",
+      "updated": "2026-05-02T07:49:30.483Z"
     }
   },
   "data-jobs-may2026": {
@@ -783,7 +785,8 @@
         "alert-setting-may2026"
       ],
       "created": "2026-05-26T01:55:20.966Z",
-      "description": "Tasks for alert-setting-may2026 context"
+      "description": "Tasks for alert-setting-may2026 context",
+      "updated": "2026-05-26T01:55:20.966Z"
     }
   },
   "whatif-published-dashboards-may2026": {
@@ -894,7 +897,7 @@
   "dashboard-toolbar-access-may2026": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Create reusable AccessRequestDialog component",
         "description": "Build a shared modal dialog component that allows users to request permissions (comment or edit) with an optional message field (max 500 chars) and Request/Cancel actions.",
         "details": "Create `components/workspace/AccessRequestDialog.tsx` as a reusable component.\n\n**Props interface:**\n```typescript\ninterface AccessRequestDialogProps {\n  isOpen: boolean;\n  onClose: () => void;\n  dashboardId: string;\n  requestedPermission: 'comment' | 'edit';\n  dashboardTitle?: string;\n  onSuccess?: () => void;\n}\n```\n\n**Implementation:**\n- Use controlled dialog/modal component (e.g., Radix UI Dialog, shadcn/ui Dialog, or MUI Dialog)\n- Display title based on permission type: \"Request Comment Access\" or \"Request Edit Access\"\n- Show explanation text: \"You don't have permission to [action]. Request access from the dashboard owner.\"\n- Include optional textarea for message with character counter (max 500 chars)\n- Validate message length client-side\n- \"Request\" button calls `requestPermission({ dashboardId, requestedPermission, message })` API function\n- Show loading state during submission\n- On success: close dialog, show success toast (\"Access request sent\"), call onSuccess callback\n- On error: display error message inline without closing dialog\n- \"Cancel\" button closes dialog without action\n\n**Styling:**\n- Match existing workspace UI patterns\n- Responsive layout for mobile/desktop\n- Accessible (ARIA labels, focus management, ESC to close)",
@@ -906,7 +909,7 @@
         "updatedAt": "2026-05-26T02:00:41.678Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Implement requestPermission API function and endpoint",
         "description": "Create or update the API endpoint POST /api/workspace/permission-requests to accept dashboardId, requestedPermission, and message fields, persisting the request in the data store.",
         "details": "**API Route:** `POST /api/workspace/permission-requests`\n\n**Request body schema:**\n```typescript\ninterface PermissionRequestBody {\n  dashboardId: string;\n  requestedPermission: 'comment' | 'edit';\n  message?: string; // optional, max 500 chars\n}\n```\n\n**Implementation:**\n- Validate request body (dashboardId required, requestedPermission enum, message max 500 chars)\n- Authenticate user from session/token\n- Verify dashboard exists and user has at least view access\n- Check if user already has requested permission (return early with appropriate message)\n- Check for duplicate pending requests (optional: prevent spam)\n- Persist to database:\n  - If Prisma: verify `PermissionRequest` model has `message` field (String?, optional)\n  - If missing, add migration: `message String? @db.VarChar(500)`\n  - Create record with userId, dashboardId, requestedPermission, message, status='pending', createdAt\n- Optionally create notification for dashboard owner\n- Return 201 with created request object\n\n**Client function:**\n```typescript\n// lib/api/workspace.ts or similar\nexport async function requestPermission(params: {\n  dashboardId: string;\n  requestedPermission: 'comment' | 'edit';\n  message?: string;\n}): Promise<PermissionRequest> {\n  const response = await fetch('/api/workspace/permission-requests', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify(params),\n  });\n  if (!response.ok) throw new Error('Failed to request permission');\n  return response.json();\n}\n```\n\n**Mock store:** If using mock/local mode, store requests in memory/localStorage for testing.",
@@ -918,7 +921,7 @@
         "updatedAt": "2026-05-26T02:00:41.708Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Add permission checking utilities and hooks",
         "description": "Create utility functions and React hooks to check user permissions (canComment, canEdit, isOwner) for a given dashboard, to be used throughout the toolbar components.",
         "details": "**Create utility file:** `lib/permissions/dashboard-permissions.ts`\n\n```typescript\nimport { Dashboard, User, Permission } from '@/types';\n\nexport function canComment(dashboard: Dashboard, user: User): boolean {\n  if (!user || !dashboard) return false;\n  if (dashboard.ownerId === user.id) return true;\n  const permission = dashboard.permissions?.find(p => p.userId === user.id);\n  return permission?.level === 'comment' || permission?.level === 'edit';\n}\n\nexport function canEdit(dashboard: Dashboard, user: User): boolean {\n  if (!user || !dashboard) return false;\n  if (dashboard.ownerId === user.id) return true;\n  const permission = dashboard.permissions?.find(p => p.userId === user.id);\n  return permission?.level === 'edit';\n}\n\nexport function isOwner(dashboard: Dashboard, user: User): boolean {\n  if (!user || !dashboard) return false;\n  return dashboard.ownerId === user.id;\n}\n\nexport function canPublish(dashboard: Dashboard, user: User): boolean {\n  // Only owner can publish/unpublish per spec\n  return isOwner(dashboard, user);\n}\n\nexport function canShare(dashboard: Dashboard, user: User): boolean {\n  // Owner or edit permission can share\n  return isOwner(dashboard, user) || canEdit(dashboard, user);\n}\n```\n\n**Create React hook:** `hooks/use-dashboard-permissions.ts`\n\n```typescript\nimport { useMemo } from 'react';\nimport { useCurrentUser } from '@/hooks/use-current-user';\nimport { Dashboard } from '@/types';\nimport * as perms from '@/lib/permissions/dashboard-permissions';\n\nexport function useDashboardPermissions(dashboard: Dashboard | null) {\n  const user = useCurrentUser();\n  \n  return useMemo(() => {\n    if (!dashboard || !user) {\n      return {\n        canComment: false,\n        canEdit: false,\n        isOwner: false,\n        canPublish: false,\n        canShare: false,\n      };\n    }\n    \n    return {\n      canComment: perms.canComment(dashboard, user),\n      canEdit: perms.canEdit(dashboard, user),\n      isOwner: perms.isOwner(dashboard, user),\n      canPublish: perms.canPublish(dashboard, user),\n      canShare: perms.canShare(dashboard, user),\n    };\n  }, [dashboard, user]);\n}\n```",
@@ -930,7 +933,7 @@
         "updatedAt": "2026-05-26T02:00:41.714Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Refactor dashboard-popup toolbar to fixed order with all four buttons",
         "description": "Update the dashboard popup toolbar in components/workspace/dashboard-popup.tsx to display Comments, Publish/Unpublish, Edit, and Share buttons in fixed order for all users, removing any disabled states based on permissions.",
         "details": "**Update:** `components/workspace/dashboard-popup.tsx`\n\n**Toolbar structure:**\n```tsx\nimport { useDashboardPermissions } from '@/hooks/use-dashboard-permissions';\nimport { MessageSquare, Globe, Edit, Share2 } from 'lucide-react';\n\nfunction DashboardPopupToolbar({ dashboard }: { dashboard: Dashboard }) {\n  const permissions = useDashboardPermissions(dashboard);\n  const [showAccessDialog, setShowAccessDialog] = useState(false);\n  const [requestType, setRequestType] = useState<'comment' | 'edit'>('edit');\n  \n  const handleCommentsClick = () => {\n    if (permissions.canComment) {\n      // Toggle comments panel\n      toggleCommentsPanel();\n    } else {\n      setRequestType('comment');\n      setShowAccessDialog(true);\n    }\n  };\n  \n  const handlePublishClick = () => {\n    if (permissions.canPublish) {\n      // Execute publish/unpublish\n      togglePublishStatus(dashboard.id);\n    } else {\n      setRequestType('edit');\n      setShowAccessDialog(true);\n    }\n  };\n  \n  const handleEditClick = () => {\n    if (permissions.canEdit) {\n      // Navigate to editor\n      router.push(`/dashboard/${dashboard.id}/edit`);\n    } else {\n      setRequestType('edit');\n      setShowAccessDialog(true);\n    }\n  };\n  \n  const handleShareClick = () => {\n    if (permissions.canShare) {\n      // Open share dialog\n      setShowShareDialog(true);\n    } else {\n      setRequestType('edit');\n      setShowAccessDialog(true);\n    }\n  };\n  \n  return (\n    <div className=\"toolbar\">\n      <Button onClick={handleCommentsClick} variant=\"ghost\">\n        <MessageSquare /> Comments\n      </Button>\n      <Button onClick={handlePublishClick} variant=\"ghost\">\n        <Globe /> {dashboard.lifecycleStatus === 'published' ? 'Unpublish' : 'Publish'}\n      </Button>\n      <Button onClick={handleEditClick} variant=\"ghost\">\n        <Edit /> Edit\n      </Button>\n      <Button onClick={handleShareClick} variant=\"ghost\">\n        <Share2 /> Share\n      </Button>\n      \n      <AccessRequestDialog\n        isOpen={showAccessDialog}\n        onClose={() => setShowAccessDialog(false)}\n        dashboardId={dashboard.id}\n        requestedPermission={requestType}\n        dashboardTitle={dashboard.title}\n      />\n    </div>\n  );\n}\n```\n\n**Key changes:**\n- Remove all `disabled={!canX}` attributes\n- Fixed order: Comments · Publish/Unpublish · Edit · Share\n- All buttons always clickable\n- Conditional logic inside click handlers",
@@ -944,7 +947,7 @@
         "updatedAt": "2026-05-26T02:00:41.757Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Implement Comments button behavior with access request flow",
         "description": "Wire up the Comments button to toggle the comments panel for users with comment permission, or show the access request dialog for users without comment permission.",
         "details": "**Implementation in dashboard-popup.tsx:**\n\nThe Comments button handler is already outlined in task 4. This task focuses on:\n\n1. **Comments panel state management:**\n   - Use existing comments panel state (likely in workspace context or local state)\n   - Toggle function: `toggleCommentsPanel()` or `setCommentsPanelOpen(prev => !prev)`\n\n2. **Visual feedback:**\n   - Button should show active/selected state when comments panel is open\n   - Use `variant=\"ghost\"` normally, `variant=\"secondary\"` or add `data-active` when panel open\n\n3. **Access request flow:**\n   - Already handled in task 4 click handler\n   - Opens AccessRequestDialog with `requestedPermission='comment'`\n\n4. **Optional cleanup:**\n   - If comments panel has inline \"Request comment access\" button/footer, consider:\n     - Removing it in favor of toolbar button only, OR\n     - Making it delegate to same AccessRequestDialog for consistency\n   - Update `comments-panel.tsx` to import and use AccessRequestDialog if keeping inline request\n\n**Example active state:**\n```tsx\n<Button \n  onClick={handleCommentsClick} \n  variant={commentsPanelOpen ? \"secondary\" : \"ghost\"}\n  className={commentsPanelOpen ? \"bg-accent\" : \"\"}\n>\n  <MessageSquare /> Comments\n</Button>\n```",
@@ -959,7 +962,7 @@
         "updatedAt": "2026-05-26T02:00:41.762Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Implement Publish/Unpublish button with owner-only execution and access request",
         "description": "Add Publish/Unpublish button functionality that allows only the dashboard owner to execute publish/unpublish transitions, while non-owners see the access request dialog.",
         "details": "**Implementation in dashboard-popup.tsx:**\n\n1. **Button label logic:**\n   - Show \"Publish\" when `dashboard.lifecycleStatus !== 'published'`\n   - Show \"Unpublish\" when `dashboard.lifecycleStatus === 'published'`\n   - Icon: `Globe` or `Eye`/`EyeOff` for published/unpublished\n\n2. **Owner publish/unpublish:**\n```typescript\nconst togglePublishStatus = async (dashboardId: string) => {\n  try {\n    const newStatus = dashboard.lifecycleStatus === 'published' ? 'draft' : 'published';\n    await updateDashboardLifecycle(dashboardId, newStatus);\n    // Update local state/store\n    toast.success(newStatus === 'published' ? 'Dashboard published' : 'Dashboard unpublished');\n  } catch (error) {\n    toast.error('Failed to update publish status');\n  }\n};\n```\n\n3. **API integration:**\n   - Use existing store/API for lifecycle updates\n   - Likely: `PATCH /api/workspace/dashboards/${id}` with `{ lifecycleStatus: 'published' | 'draft' }`\n   - Ensure Asset visibility updates per existing logic (published → visible in Asset module)\n\n4. **Non-owner behavior:**\n   - Per spec: non-owners (including edit users) request edit access\n   - Click handler opens AccessRequestDialog with `requestedPermission='edit'`\n   - Dialog explanation: \"Only the dashboard owner can publish. Request edit access to collaborate.\"\n\n5. **Loading state:**\n   - Show spinner/disable button during API call\n   - Re-enable after success/error\n\n**Note:** This is additive to existing editor publish button; both can coexist.",
@@ -974,7 +977,7 @@
         "updatedAt": "2026-05-26T02:00:41.765Z"
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Implement Edit button navigation with access request flow",
         "description": "Wire up the Edit button to navigate users with edit permission to the dashboard editor, or show the access request dialog for users without edit permission.",
         "details": "**Implementation in dashboard-popup.tsx:**\n\n1. **Edit navigation for authorized users:**\n```typescript\nconst handleEditClick = () => {\n  if (permissions.canEdit) {\n    // Navigate to editor\n    router.push(`/dashboard/${dashboard.id}/edit`);\n    // Or if using Next.js Link:\n    // Already handled by router.push in click handler\n  } else {\n    setRequestType('edit');\n    setShowAccessDialog(true);\n  }\n};\n```\n\n2. **Route validation:**\n   - Ensure `/dashboard/[id]/edit` route exists and is protected\n   - Editor page should verify edit permission server-side\n   - Redirect to view mode if permission revoked between click and navigation\n\n3. **Access request dialog:**\n   - Opens with `requestedPermission='edit'`\n   - Explanation: \"You don't have permission to edit this dashboard. Request edit access from the owner.\"\n\n4. **Visual feedback:**\n   - Optional: Show loading indicator during navigation\n   - Consider closing popup after navigation starts\n\n5. **Keyboard shortcut (optional enhancement):**\n   - Consider adding `Cmd/Ctrl+E` shortcut for edit (if user has permission)\n   - Show tooltip with shortcut hint",
@@ -989,7 +992,7 @@
         "updatedAt": "2026-05-26T02:00:41.769Z"
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Implement Share button with dialog and access request flow",
         "description": "Wire up the Share button to open the share dialog for users with edit permission or owner, or show the access request dialog for users without sufficient permissions.",
         "details": "**Implementation in dashboard-popup.tsx:**\n\n1. **Share dialog for authorized users:**\n```typescript\nconst [showShareDialog, setShowShareDialog] = useState(false);\n\nconst handleShareClick = () => {\n  if (permissions.canShare) {\n    setShowShareDialog(true);\n  } else {\n    setRequestType('edit');\n    setShowAccessDialog(true);\n  }\n};\n```\n\n2. **Share dialog component:**\n   - Use existing share dialog component (likely already exists for workspace)\n   - Import: `import { ShareDialog } from '@/components/workspace/share-dialog'`\n   - Pass dashboard ID and current permissions\n   - Dialog should allow:\n     - Adding users by email with permission level (view/comment/edit)\n     - Removing existing shares (if owner)\n     - Copying share link\n     - Managing permission levels for existing shares\n\n3. **Access request for non-edit users:**\n   - Opens AccessRequestDialog with `requestedPermission='edit'`\n   - Explanation: \"You need edit permission to share this dashboard. Request access from the owner.\"\n   - Per spec: Share requires edit permission (not just comment)\n\n4. **Integration:**\n```tsx\n<ShareDialog\n  isOpen={showShareDialog}\n  onClose={() => setShowShareDialog(false)}\n  dashboardId={dashboard.id}\n  currentPermissions={dashboard.permissions}\n  isOwner={permissions.isOwner}\n/>\n```\n\n5. **Permission updates:**\n   - Share dialog should call API to update permissions\n   - Refresh dashboard permissions after changes\n   - Show success toast on share update",
@@ -1339,7 +1342,7 @@
   "unit-overview-full-pid-jun2026": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Add collapsible state management to plant-overview component",
         "description": "Implement local state management for the Unit Context Panel collapse/expand behavior using React useState hook in plant-overview.tsx",
         "details": "Add a `contextPanelOpen` state variable in `components/views/plant-overview.tsx` using React useState, defaulting to `true`. This state will control the visibility and width of the right sidebar containing AI Health Summary, Plant/Unit Information, and unit documents.\n\nPseudo-code:\n```typescript\nconst [contextPanelOpen, setContextPanelOpen] = useState<boolean>(true);\n\nconst toggleContextPanel = () => {\n  setContextPanelOpen(prev => !prev);\n};\n```\n\nPass `contextPanelOpen` and `toggleContextPanel` as props to child components that need to control or respond to the panel state. Ensure this state is scoped to the component and does not persist across sessions (client-side only for v1).",
@@ -1351,7 +1354,7 @@
         "updatedAt": "2026-06-02T03:38:38.783Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Extract UnitContextPanel subcomponent",
         "description": "Refactor the right sidebar (AI Health Summary, Plant/Unit Information, unit documents) into a reusable UnitContextPanel component with collapse/expand controls",
         "details": "Create a new component `components/unit-context-panel.tsx` that encapsulates the right sidebar content. The component should accept props: `isOpen: boolean`, `onToggle: () => void`, and render the AI Health Summary (Feature3HealthSummary), Plant/Unit Information card, and unit documents list.\n\nImplement the panel header with a `PanelLeftClose` icon button (from lucide-react) that calls `onToggle` when clicked. Add accessible ARIA labels (e.g., 'Collapse unit context panel').\n\nWhen `isOpen` is true, render at `w-72` width. When false, render a collapsed state with minimal width showing only a reopen control on the right edge.\n\nPseudo-code:\n```typescript\ninterface UnitContextPanelProps {\n  isOpen: boolean;\n  onToggle: () => void;\n  unitData: UnitData;\n}\n\nexport function UnitContextPanel({ isOpen, onToggle, unitData }: UnitContextPanelProps) {\n  if (!isOpen) {\n    return (\n      <div className=\"w-8 border-l flex items-center justify-center\">\n        <button onClick={onToggle} aria-label=\"Open unit context panel\">\n          <PanelRightOpen className=\"h-5 w-5\" />\n        </button>\n      </div>\n    );\n  }\n  \n  return (\n    <div className=\"w-72 border-l flex flex-col\">\n      <div className=\"flex items-center justify-between p-4 border-b\">\n        <h3>Unit Context</h3>\n        <button onClick={onToggle} aria-label=\"Collapse unit context panel\">\n          <PanelLeftClose className=\"h-5 w-5\" />\n        </button>\n      </div>\n      {/* AI Health Summary, Unit Info, Documents */}\n    </div>\n  );\n}\n```",
@@ -1365,7 +1368,7 @@
         "updatedAt": "2026-06-02T03:38:38.825Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Remove left column chart placeholders from Overview Dashboard card",
         "description": "Delete the left w-1/3 column containing MiniPieChart, MiniBarChart, and placeholder bars from the Overview Dashboard card body in plant-overview.tsx",
         "details": "Locate the Overview Dashboard card body in `components/views/plant-overview.tsx` and remove the entire left column div that contains:\n- MiniPieChart component\n- MiniBarChart component\n- Placeholder bar elements\n- Any associated w-1/3 or similar width constraint classes\n\nRemove unused imports:\n```typescript\n// DELETE these imports\nimport { MiniPieChart } from '@/components/charts/mini-pie-chart';\nimport { MiniBarChart } from '@/components/charts/mini-bar-chart';\n```\n\nThe card body should now only contain the right column (P&ID image container) which will be expanded to full width in the next task. Ensure no orphaned CSS classes or wrapper divs remain.",
@@ -1377,7 +1380,7 @@
         "updatedAt": "2026-06-02T03:38:38.837Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Expand P&ID image to full card width",
         "description": "Modify the Overview Dashboard card body to display the P&ID diagram edge-to-edge, filling the entire card content area",
         "details": "Update the P&ID container in the Overview Dashboard card body to occupy full width. Remove any right column width constraints (e.g., w-2/3) and apply full-width layout.\n\nEnsure the image uses:\n- `object-contain` to maintain aspect ratio\n- Relative positioning for the container to support absolute-positioned overlays\n- Proper height constraints to fill available vertical space\n\nPseudo-code:\n```typescript\n<div className=\"relative w-full h-full min-h-[600px] bg-gray-50\">\n  <img \n    src=\"/images/pid-diagram.jpg\" \n    alt=\"Process & Instrumentation Diagram\"\n    className=\"w-full h-full object-contain\"\n  />\n  {/* PIDAnomalyOverlay renders here when Feature 5 enabled */}\n</div>\n```\n\nVerify the static asset path `/images/pid-diagram.jpg` is correct and the image loads from `public/images/pid-diagram.jpg`.",
@@ -1391,7 +1394,7 @@
         "updatedAt": "2026-06-02T03:38:38.840Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Preserve PIDAnomalyOverlay rendering with Feature 5",
         "description": "Ensure the PIDAnomalyOverlay component continues to render correctly over the full-width P&ID image when Feature 5 is enabled",
         "details": "Verify that the `PIDAnomalyOverlay` component (or equivalent anomaly visualization) still renders as an absolute-positioned overlay on top of the P&ID image after layout changes.\n\nThe overlay should:\n- Use absolute positioning within the relative P&ID container\n- Render conditionally based on Feature 5 flag\n- Display anomaly indicators at correct coordinates\n- Not be affected by the removal of the left column\n\nPseudo-code:\n```typescript\n<div className=\"relative w-full h-full min-h-[600px]\">\n  <img src=\"/images/pid-diagram.jpg\" className=\"w-full h-full object-contain\" />\n  \n  {isFeature5Enabled && (\n    <PIDAnomalyOverlay \n      className=\"absolute inset-0 pointer-events-none\"\n      anomalies={anomalyData}\n    />\n  )}\n</div>\n```\n\nEnsure the 'On' indicator (if separate from PIDAnomalyOverlay) also continues to render correctly.",
@@ -1405,7 +1408,7 @@
         "updatedAt": "2026-06-02T03:38:38.844Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Integrate UnitContextPanel with collapse state in plant-overview layout",
         "description": "Wire the UnitContextPanel component into plant-overview.tsx with the collapse state, ensuring proper layout behavior and responsive width adjustments",
         "details": "Replace the existing right sidebar markup in `plant-overview.tsx` with the new `UnitContextPanel` component. Pass the `contextPanelOpen` state and `toggleContextPanel` handler from Task 1.\n\nUpdate the main layout grid/flex to accommodate dynamic panel width:\n- When panel is open: main content area adjusts to accommodate w-72 panel\n- When panel is collapsed: main content area expands to use the additional space\n\nPseudo-code:\n```typescript\nreturn (\n  <div className=\"flex h-full\">\n    <div className={cn(\n      \"flex-1 transition-all duration-200\",\n      contextPanelOpen ? \"mr-72\" : \"mr-8\"\n    )}>\n      {/* Overview Dashboard card with full-width P&ID */}\n      {/* Dashboard tab stacks */}\n    </div>\n    \n    <UnitContextPanel \n      isOpen={contextPanelOpen}\n      onToggle={toggleContextPanel}\n      unitData={currentUnit}\n    />\n  </div>\n);\n```\n\nEnsure smooth transitions using Tailwind's transition utilities.",
@@ -1420,7 +1423,7 @@
         "updatedAt": "2026-06-02T03:38:38.848Z"
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Handle context panel behavior during dashboard expand/maximize mode",
         "description": "Ensure the Unit Context Panel correctly hides when dashboard is maximized and restores to previous state when exiting expand mode",
         "details": "Integrate the context panel collapse state with the existing `dashboardExpanded` state. When a user maximizes the Overview Dashboard card:\n- Hide the Unit Context Panel (regardless of its open/collapsed state)\n- Preserve the `contextPanelOpen` state in memory\n- When exiting maximize mode, restore the panel to its previous state\n\nPseudo-code:\n```typescript\nconst [dashboardExpanded, setDashboardExpanded] = useState(false);\nconst [contextPanelOpen, setContextPanelOpen] = useState(true);\n\nconst shouldShowPanel = !dashboardExpanded;\n\nreturn (\n  <div className=\"flex h-full\">\n    <div className=\"flex-1\">\n      <OverviewDashboard \n        expanded={dashboardExpanded}\n        onExpandToggle={() => setDashboardExpanded(!dashboardExpanded)}\n      />\n      {/* Dashboard stacks - hidden when expanded */}\n    </div>\n    \n    {shouldShowPanel && (\n      <UnitContextPanel \n        isOpen={contextPanelOpen}\n        onToggle={toggleContextPanel}\n        unitData={currentUnit}\n      />\n    )}\n  </div>\n);\n```\n\nEnsure no state is lost when toggling between expanded and normal modes.",
@@ -1434,7 +1437,7 @@
         "updatedAt": "2026-06-02T03:38:38.854Z"
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Verify existing navigation flows and cross-unit behavior",
         "description": "Test and validate that all existing navigation flows (dashboard tab stack clicks, equipment navigation, popup behavior) work correctly across all unit routes with the new layout",
         "details": "Comprehensive testing of existing functionality to ensure no regressions:\n\n1. **Dashboard tab stack navigation:**\n   - Click dashboard in tab stack → navigates to Equipment Home Page\n   - Auto-opens equipment popup on arrival\n   - Test on DCU, HCU, and Hydrogen units\n\n2. **Equipment name navigation:**\n   - Click equipment name → navigates to Equipment Home without popup\n   - Test from all three unit routes\n\n3. **Cross-unit consistency:**\n   - Verify P&ID full-width layout on unit-2006-dcu, unit-2007-hcu, unit-2008-hydrogen\n   - Verify context panel collapse/reopen on all three routes\n   - Confirm no DCU-only behavior forks\n\n4. **Dashboard data wiring:**\n   - Verify `getPublishedDashboardsForEquipment` still populates dashboard stacks\n   - Confirm dashboard cards render correctly below Overview Dashboard\n\n5. **Accessibility:**\n   - Keyboard navigation for collapse/expand controls\n   - Screen reader announces panel state changes\n   - Focus management when panel toggles\n\nCreate test matrix validation checklist per PRD requirements.",
@@ -1455,6 +1458,153 @@
       "completedCount": 8,
       "tags": [
         "unit-overview-full-pid-jun2026"
+      ],
+      "created": "2026-06-02T04:41:38.994Z",
+      "description": "Tasks for unit-overview-full-pid-jun2026 context",
+      "updated": "2026-06-02T04:41:38.994Z"
+    }
+  },
+  "wis-tools-alignment-jun2026": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Add `whatIfEquipmentFilter` state to Zustand store",
+        "description": "Add equipment filter state for the What-If tool page, mirroring the `preFilterEquipmentId` consumption pattern used by Data & Jobs and Alert Setting.",
+        "details": "In `lib/store.ts`:\n1. Add `whatIfEquipmentFilter: string | null` field to the store state (type and initial value `null`).\n2. Add `setWhatIfEquipmentFilter: (id: string | null) => void` action.\n3. Keep existing `whatIfSelectedScenarioId` and `whatIfInitialTab` slices unchanged.\n\nNo persistence needed — filter resets on navigation away (same as Data & Jobs `filterAsset`).\n\nThe `preFilterEquipmentId` mechanism is NOT changed — it will be consumed by `WhatIfToolView` on mount (next task) to seed `whatIfEquipmentFilter`.",
+        "testStrategy": "Verify store slice compiles and the initial value is null. Unit test: call `setWhatIfEquipmentFilter('equipment-a')` and confirm `whatIfEquipmentFilter` returns 'equipment-a'. Call with null to reset.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T04:44:25.611Z"
+      },
+      {
+        "id": 2,
+        "title": "Refactor WhatIfToolView: remove sidebar, add ToolPageShell + equipment scope filter bar",
+        "description": "The primary layout change: remove `ScenarioSidebarList` left sidebar from the What-If Scenario tool and replace it with a standard `ToolPageShell` + `ToolPageHeader` layout matching the other three tool pages, plus an Equipment scope filter bar identical in visual style to Data & Jobs.",
+        "details": "File: `components/views/whatif-tool-view.tsx`\n\n**Remove:**\n- The entire `ScenarioSidebarList` component definition (lines ~956–1023)\n- The `<ScenarioSidebarList>` JSX node from `WhatIfToolView` root return\n- The `flex min-h-0 min-w-0 flex-1 overflow-hidden` outer wrapper (was side-by-side layout)\n- The inner `<div className=\"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gradient-to-b ...\">` that held the custom header and scenario panel\n- The custom `ToolPageHeader` + `Breadcrumb` block that was nested inside the flex container\n\n**Add / restructure `WhatIfToolView`:**\n1. Wrap the entire view in `<ToolPageShell>` from `components/tools/tool-page-layout.tsx`.\n2. Add `<ToolPageHeader title=\"What-If Scenario\" breadcrumb={...} />` — breadcrumb: Tools → What-If Scenario [→ Equipment Name when scenario selected]. Breadcrumb uses `ToolsModuleHomeCrumb`.\n3. Add Equipment scope filter bar below `ToolPageHeader` (same visual structure as Data & Jobs `mb-6 flex ... rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm` row):\n   - `Filter` icon + label `Equipment scope`\n   - `<select>` (or shadcn `Select`) with `All equipment` default + one `<option>` per unique equipment in `whatIfScenarios` (use `equipmentId` as value, `equipmentName` as label)\n   - When `whatIfEquipmentFilter !== null`: show `X Reset filter` button (clears to null)\n   - Active scope text: `Active scope: [name]` or `Active scope: All equipment`\n4. On component mount: consume `preFilterEquipmentId` from Zustand, call `setWhatIfEquipmentFilter(preFilterEquipmentId)`, then `setPreFilterEquipmentId(null)`.\n5. Below the filter bar, show scenario cards list (see Task 3 for card design) filtered by `whatIfEquipmentFilter`.\n6. When `whatIfSelectedScenarioId` is set, render `ScenarioMainPanel` full-width (replacing card list or below it with a Back control).\n7. Update the `ScenarioMainPanel`'s scenario header block if needed to remove any layout assumptions from the old sidebar context.\n\n**Breadcrumb extension:** when `whatIfSelectedScenarioId` is set, append the equipment name as a third breadcrumb segment (existing behavior from the old custom header, preserved here).\n\n**Imports:** Add `ToolPageShell` to the import from `components/tools/tool-page-layout.tsx` (already imports `ToolPageHeader` and `ToolsModuleHomeCrumb`).",
+        "testStrategy": "1. Visit /tools/what-if — confirm no left sidebar; full-width layout matches Data & Jobs page structure.\n2. Equipment scope dropdown shows 'All equipment' + Coker 01 + HCU 01 options.\n3. Select 'Coker 01' — only Coker scenarios appear; Reset filter restores all.\n4. Navigate from Equipment Home 'What-If Scenario' tile — confirm equipment is pre-selected.\n5. Click a scenario card — ScenarioMainPanel renders full-width with correct tabs.\n6. All existing tabs (Overview, Configure & Run, History) function normally.\n7. Breadcrumb reads 'Tools > What-If Scenario > Coker 01' when scenario selected.",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T04:47:43.511Z"
+      },
+      {
+        "id": 3,
+        "title": "Add scenario card grid / detail navigation to replace sidebar scenario list",
+        "description": "Replace the scenario list rendered by the old `ScenarioSidebarList` with a scenario card grid/list in the main content area, shown below the Equipment scope filter bar and above (or replaced by) the scenario detail panel.",
+        "details": "New `ScenarioCardList` component (can live inside `whatif-tool-view.tsx` as a local component):\n\n**Card design (each `WhatIfScenarioDefinition`):**\n- Equipment name (bold, with `Box` icon) + site → unit → equipment breadcrumb (text-xs, muted)\n- Scenario name (text-sm, font-medium)\n- Last run status badge (`StatusBadge`) + run count from `whatIfRunSessions`\n- Running indicator (`Loader2` animate-spin) if any session is `running`\n- Hover: `bg-secondary/60`; Selected: `border-primary bg-primary/8`\n- Card is a `<button>` with `onClick={() => setWhatIfSelectedScenarioId(scenario.id)}`\n\n**Card grid layout:** `grid gap-4 sm:grid-cols-2 lg:grid-cols-3` for browsing mode. When `whatIfSelectedScenarioId` is non-null, hide the card grid and show a slim 'scenario context bar' or simply show the `ScenarioMainPanel` alone (designer preference: full-width detail with a back/change button at top).\n\n**Back / breadcrumb navigation in detail view:**\n- Below `ToolPageHeader` breadcrumb, add a `<button onClick={() => setWhatIfSelectedScenarioId(null)}>` with `ArrowLeft` icon + 'All scenarios' (or the equipment name if filtered) to return to the card list.\n- This replaces the old sidebar selection mechanism.\n\n**Empty state:** when no scenarios match the equipment filter, show a bordered dashed card: 'No scenarios available for [Equipment]. Contact our Technical Team to request one.'\n\n**Contact prompt (bottom of card list):** preserve the existing 'To add more scenarios, contact our Technical Team' card that was in `ScenarioSidebarList`, moved to the bottom of the card grid.",
+        "testStrategy": "1. With 'All equipment' selected, both Coker 01 and HCU 01 scenario cards are visible.\n2. Select 'Coker 01' filter — only Coker 01 scenario card visible.\n3. Click a card — cards disappear (or remain collapsed) and ScenarioMainPanel expands full-width.\n4. Back button returns to card list with filter preserved.\n5. `whatIfSelectedScenarioId` in Zustand is set when card is clicked.\n6. External navigation (from Equipment Home) sets scenario and equipment filter correctly via `preFilterEquipmentId` / `whatIfSelectedScenarioId`.",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T04:47:47.013Z"
+      },
+      {
+        "id": 4,
+        "title": "Align Alert Setting equipment selector: move from header trailing to dedicated filter bar",
+        "description": "Move the Alert Setting equipment selector from the `trailing` prop of `ToolPageHeader` to a dedicated Equipment scope filter bar placed below the header — aligning it with the Data & Jobs and refactored What-If Scenario page chrome.",
+        "details": "File: `components/views/alert-setting-view.tsx`\n\n1. Remove the `trailing` prop from the `<ToolPageHeader>` call (delete the JSX block containing `<Label htmlFor=\"eq-filter\">Equipment</Label>` and the shadcn `<Select>` inside `trailing`).\n2. Add an Equipment scope filter bar below `<ToolPageHeader>` and above the `<div className=\"space-y-6\">` content block:\n   ```jsx\n   <div className=\"mb-6 flex flex-col gap-3 rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-5\">\n     <div className=\"flex flex-wrap items-center gap-3\">\n       <div className=\"flex items-center gap-2 text-muted-foreground\">\n         <Filter className=\"size-4 shrink-0 opacity-70\" />\n         <span className=\"text-xs font-semibold uppercase tracking-wide text-foreground\">Equipment scope</span>\n       </div>\n       <Select value={equipmentId} onValueChange={setEquipmentId}>\n         <SelectTrigger className=\"h-10 min-w-[12rem]\">\n           <SelectValue placeholder=\"Select equipment\" />\n         </SelectTrigger>\n         <SelectContent>\n           {equipOptions.map((o) => (\n             <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>\n           ))}\n         </SelectContent>\n       </Select>\n     </div>\n     <p className=\"text-xs text-muted-foreground\">\n       Active scope: <span className=\"font-medium text-foreground\">{equipOptions.find(o => o.id === equipmentId)?.label ?? 'Select equipment'}</span>\n     </p>\n   </div>\n   ```\n3. Import `Filter` from `lucide-react` if not already imported.\n4. Update `ToolPageHeader` `description` to remove 'Equipment alerts for Coker 01 —' prefix (since equipment is now shown in the filter bar, not the description) OR keep generic copy and remove the hard-coded 'Coker 01' reference.\n5. Ensure `equipmentId` state initialization and `preFilterEquipmentId` consumption on mount remain unchanged.",
+        "testStrategy": "1. Visit /tools/alert-setting — header no longer has equipment select in top-right trailing area.\n2. Filter bar appears below the header with same visual style as Data & Jobs.\n3. Selecting equipment still triggers the 'coming soon' or full-mock behavior correctly.\n4. Navigating from Equipment Home pre-selects the equipment (preFilterEquipmentId still consumed on mount).\n5. Page is responsive and correct on mobile breakpoints.",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T04:48:32.202Z"
+      },
+      {
+        "id": 5,
+        "title": "Documents filter bar: minor visual alignment with Data & Jobs equipment scope pattern",
+        "description": "Audit the Documents tool filter bar for visual consistency with the Data & Jobs equipment scope filter bar. Add a `Filter` icon + label before the asset `<select>` if missing. Ensure the bar's card-like container styling matches the other tools.",
+        "details": "File: `components/views/documents-view.tsx`\n\nAudit the filter bar starting at `<div className=\"mb-6 shrink-0 flex flex-wrap items-center gap-3 rounded-xl border ...\">` (around line 426):\n\n1. Add a `Filter` icon + 'Asset scope' label before the `<select value={assetFilter} ...>` to match the Data & Jobs filter bar label pattern.\n2. Confirm the wrapping container already uses `rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm backdrop-blur-sm` (same as Data & Jobs). If not, update to match.\n3. Minor: if the asset `<select>` uses a different height (`h-8`) than Data & Jobs (`h-10`), align to `h-10` or keep consistent across tool filter bar elements.\n\nThis is a polish task — do not break existing filter functionality.",
+        "testStrategy": "1. Visit /tools/documents — the filter bar shows a Filter icon and 'Asset scope' or 'Equipment scope' label before the asset dropdown.\n2. The filter bar container style matches Data & Jobs (rounded-xl border bg-card/80 shadow-sm).\n3. Existing filters (Category, File type, Asset, Search) still function correctly.",
+        "status": "done",
+        "dependencies": [
+          "4"
+        ],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T04:49:22.773Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-06-02T04:49:22.774Z",
+      "taskCount": 5,
+      "completedCount": 5,
+      "tags": [
+        "wis-tools-alignment-jun2026"
+      ],
+      "created": "2026-06-02T05:06:25.431Z",
+      "description": "Tasks for wis-tools-alignment-jun2026 context"
+    }
+  },
+  "wis-tools-polish-jun2026": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Fix WIS generic entry: show all-equipment browse, not Coker scenario",
+        "description": "When users open What-If from the module rail or direct URL, show the scenario card grid with All equipment — not Coker 01 scenario detail.",
+        "details": "sidebar.tsx: setWhatIfSelectedScenarioId(null) on What-If click (remove scenario-coke-drum default). whatif-tool-view.tsx mount: if preFilterEquipmentId consume filter; else clear whatIfSelectedScenarioId and whatIfEquipmentFilter. main-route-sync.tsx: do not clear preFilter on whatIfTool route. equipment-home.tsx: setPreFilterEquipmentId on What-If tile and popup Run history.",
+        "testStrategy": "Click What-If in Insights rail → scenario card grid, filter All equipment. From Equipment Home What-If tile → equipment filtered + scenario detail. Refresh /tools/what-if → card grid.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T05:06:35.722Z"
+      },
+      {
+        "id": "2",
+        "title": "Rename filter bar labels to Equipment and Active equipment",
+        "description": "Unify copy on all four tool filter bars: left label Equipment, right summary Active equipment.",
+        "details": "Update data-sync.tsx, whatif-tool-view.tsx, alert-setting-view.tsx, documents-view.tsx filter bar strings.",
+        "testStrategy": "Visit each tool page; confirm labels read Equipment and Active equipment.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T05:06:35.729Z"
+      },
+      {
+        "id": "3",
+        "title": "Remove Alert Setting title icon from ToolPageHeader",
+        "description": "Remove Siren titleAdornment from Alert Setting ToolPageHeader.",
+        "details": "alert-setting-view.tsx: delete titleAdornment prop.",
+        "testStrategy": "Alert Setting page title shows text only, no Siren icon.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T05:06:35.735Z"
+      },
+      {
+        "id": "4",
+        "title": "Add equipment breadcrumb segment on all tool pages",
+        "description": "Third breadcrumb segment Tools > Tool > Equipment when equipment is selected in filter.",
+        "details": "data-sync: when filterAsset !== all. whatif: activeEquipmentName or scenario equipment. documents: equip-* filter. alert-setting: activeEquipmentLabel always.",
+        "testStrategy": "Select Coker 01 on each tool; breadcrumb shows third segment. Data & Jobs All equipment hides segment.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T05:06:35.740Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-06-02T05:06:35.740Z",
+      "taskCount": 4,
+      "completedCount": 4,
+      "tags": [
+        "wis-tools-polish-jun2026"
       ]
     }
   }

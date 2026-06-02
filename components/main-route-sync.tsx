@@ -34,7 +34,7 @@ function applyParsedRoute(apply: MainRouteApply) {
       break
     case "whatIfTool":
       store.setEquipmentHomeAutoOpenTab(null)
-      store.setPreFilterEquipmentId(null)
+      // Keep preFilterEquipmentId until WhatIfToolView consumes it (Equipment Home deep link).
       store.setCurrentView("whatIfTool")
       break
     case "documents-tool":

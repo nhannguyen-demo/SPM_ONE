@@ -610,7 +610,7 @@ function InsightsPanel({ searchQuery }: { searchQuery: string }) {
 
   const handleWhatIfClick = () => {
     router.push(mainRoutes.whatIf())
-    setWhatIfSelectedScenarioId("scenario-coke-drum")
+    setWhatIfSelectedScenarioId(null)
     setCurrentView("whatIfTool")
     setViewMode("view")
   }

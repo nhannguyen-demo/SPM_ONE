@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Siren, Trash2, RotateCcw, FlaskConical, Plus, Pencil } from "lucide-react"
+import { Siren, Trash2, RotateCcw, FlaskConical, Plus, Pencil, Filter } from "lucide-react"
 import { useAppStore } from "@/lib/store"
 import { sites } from "@/lib/data"
 import { cn } from "@/lib/utils"
@@ -391,6 +391,13 @@ export function AlertSettingView() {
     return () => window.removeEventListener("storage", handler)
   }, [])
 
+  const activeEquipmentLabel = useMemo(() => {
+    const row = equipOptions.find((o) => o.id === equipmentId)
+    if (!row) return null
+    const name = row.label.split("·")[0]?.trim()
+    return name || row.label
+  }, [equipmentId, equipOptions])
+
   const fullMock = isAlertSettingFullMockEquipment(equipmentId)
   const comingSoon = isAlertSettingComingSoonEquipment(equipmentId)
 
@@ -499,10 +506,9 @@ export function AlertSettingView() {
     <ToolPageShell>
       <ToolPageHeader
         title="Alert Setting"
-        titleAdornment={<Siren className="h-8 w-8 text-amber-500" aria-hidden />}
         description={
           <>
-            Equipment alerts for Coker 01 — assign people, compose conditions, schedules, and review
+            Equipment alert rules — assign people, compose conditions, schedules, and review
             history. Rules saved with assignees are published as <strong>active</strong> so they see
             the rule immediately; owner-only rules start as <strong>draft</strong> until you activate
             them in Edit. Threshold crossing is not evaluated here;{" "}
@@ -517,27 +523,46 @@ export function AlertSettingView() {
               <BreadcrumbItem>
                 <BreadcrumbPage>Alert Setting</BreadcrumbPage>
               </BreadcrumbItem>
+              {activeEquipmentLabel && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{activeEquipmentLabel}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         }
-        trailing={
-          <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:max-w-xs sm:items-end">
-            <Label htmlFor="eq-filter">Equipment</Label>
-            <Select value={equipmentId} onValueChange={setEquipmentId}>
-              <SelectTrigger id="eq-filter" className="w-full min-w-0 sm:min-w-[16rem]">
-                <SelectValue placeholder="Select equipment" />
-              </SelectTrigger>
-              <SelectContent>
-                {equipOptions.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        }
       />
+
+      {/* Equipment filter bar — same pattern as Data & Jobs */}
+      <div className="mb-6 flex flex-col gap-3 rounded-xl border border-border/80 bg-card/80 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Filter className="size-4 shrink-0 opacity-70" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground">Equipment</span>
+          </div>
+          <Select value={equipmentId} onValueChange={setEquipmentId}>
+            <SelectTrigger className="h-10 min-w-[12rem]">
+              <SelectValue placeholder="Select equipment" />
+            </SelectTrigger>
+            <SelectContent>
+              {equipOptions.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Active equipment:{" "}
+          <span className="font-medium text-foreground">
+            {activeEquipmentLabel ?? "Select equipment"}
+          </span>
+        </p>
+      </div>
 
       <div className="space-y-6">
         {comingSoon && (
