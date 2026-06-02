@@ -308,7 +308,7 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   // ─────────────────────────────────────────────────────────────────────────
   
-  // Dashboard edit mode
+  // Dashboard edit mod
   viewMode: "view",
   setViewMode: (mode) => set({ viewMode: mode }),
 
