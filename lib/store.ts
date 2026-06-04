@@ -115,6 +115,9 @@ interface AppState {
   whatIfRunSessions: WhatIfRunSession[]
   addWhatIfRunSession: (session: WhatIfRunSession) => void
   updateWhatIfRunSession: (id: string, updates: Partial<WhatIfRunSession>) => void
+  /** Equipment id selected in the What-If tool's equipment scope filter bar. Null = all equipment. */
+  whatIfEquipmentFilter: string | null
+  setWhatIfEquipmentFilter: (id: string | null) => void
   whatIfSelectedScenarioId: string | null
   setWhatIfSelectedScenarioId: (id: string | null) => void
   whatIfActiveRunId: string | null
@@ -259,7 +262,9 @@ export const useAppStore = create<AppState>((set) => ({
         s.id === id ? { ...s, ...updates } : s
       ),
     })),
-  whatIfSelectedScenarioId: "scenario-coke-drum",
+  whatIfEquipmentFilter: null,
+  setWhatIfEquipmentFilter: (id) => set({ whatIfEquipmentFilter: id }),
+  whatIfSelectedScenarioId: null,
   setWhatIfSelectedScenarioId: (id) => set({ whatIfSelectedScenarioId: id }),
   whatIfActiveRunId: null,
   setWhatIfActiveRunId: (id) => set({ whatIfActiveRunId: id }),
@@ -303,7 +308,7 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   // ─────────────────────────────────────────────────────────────────────────
   
-  // Dashboard edit mode
+  // Dashboard edit mod
   viewMode: "view",
   setViewMode: (mode) => set({ viewMode: mode }),
 

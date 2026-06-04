@@ -498,6 +498,30 @@ entities:
       createdAt: { type: datetime }
       updatedAt: { type: datetime }
 
+  UnitOverviewView:
+    comment: "Not a persisted entity — UI state for the Asset module **Unit**
+      level screen (implementation: `PlantOverview` at route
+      `/assets/plant/[siteId]/[unitId]`). Applies to every Unit in the hierarchy
+      (e.g. Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 - Hydrogen Unit), not
+      per-Equipment Home."
+    fields:
+      unitId: { type: uuid, references: Unit.id }
+      siteId: { type: uuid, references: Site.id }
+      overviewDashboardExpanded:
+        type: boolean
+        default: false
+        comment: "When true, the main overview card is maximized and the unit
+          dashboard tab stack slides up (existing `dashboardExpanded` behavior in
+          the client store)."
+      contextPanelOpen:
+        type: boolean
+        default: true
+        comment: "When false, the right-hand **Unit Context Panel** (AI summary,
+          unit information, unit documents) is collapsed; user can reopen via the
+          same collapse affordance pattern as the module contextual sidebar
+          (`PanelLeftClose` / edge reopen control). v1: client-only state (Zustand
+          or component state); not persisted."
+
   EquipmentHomeView:
     comment: "Not a persisted entity — represents the UI state/context for the
       Equipment Home Page. Captured here for relationship traceability."
@@ -1099,9 +1123,16 @@ business_rules:
   - "The old rule requiring selected dashboards for a run is removed."
   - "What-If results can be surfaced through Viewed Data on the **Equipment Home Page** read-only dashboard popup (and any other read-only grid that wires `viewedDataIds` into widgets)."
   - "What-If Scenarios are accessed from the Tools module."
+  - "The What-If Scenario Tool page (`/tools/what-if`) MUST NOT render a persistent left-hand sidebar for equipment/scenario selection. Equipment selection is done via an **Equipment filter bar** placed below `ToolPageHeader` and above the scenario content — identical visual pattern to the Data & Jobs (`/tools/data-sync`) filter bar: a `<select>` or `Select` dropdown labeled **Equipment** (not \"Equipment scope\"), an **All equipment** default option, per-equipment options, a right-hand summary labeled **Active equipment** (value = selected equipment name or \"All equipment\"), and a **Reset filter** inline button when a specific equipment is chosen. The legacy `ScenarioSidebarList` component (and its `w-72 shrink-0 flex-col border-r` panel) is **removed**."
+  - "Generic navigation into `/tools/what-if` (module rail, Tools menu, direct URL) MUST open the **all-equipment browse** state: equipment filter = all, no scenario detail panel, scenario card grid visible. The app MUST NOT default to a pre-selected scenario (e.g. Coker 01) on generic entry. Equipment Home deep links MAY set `preFilterEquipmentId` and `whatIfSelectedScenarioId` to open a specific equipment and scenario; `MainRouteSync` MUST NOT clear `preFilterEquipmentId` before `WhatIfToolView` consumes it."
+  - "After selecting an Equipment scope in the What-If tool, matching `WhatIfScenario` rows are displayed as scenario cards (or a compact list) in the main content area. Clicking a scenario card opens the scenario detail view (Overview / Configure & Run / History tabs + Run progress + Results panel) inline within the same page — the equipment filter bar remains visible above. An empty-state card is shown when no scenarios exist for the selected equipment."
+  - "The What-If Scenario Tool page MUST use `ToolPageShell` + `ToolPageHeader` from `components/tools/tool-page-layout.tsx` for outer chrome, matching all other Tools module pages (Data & Jobs, Alert Setting, Documents). The equipment scope filter bar is placed as a direct child of the shell's content area, below `ToolPageHeader`, above the scenario list — consistent with the Data & Jobs filter bar placement."
+  - "The `preFilterEquipmentId` Zustand state used by other tools (Data & Jobs, Documents, Alert Setting) is also consumed by the What-If tool on mount to pre-select the equipment scope when navigating from Equipment Home Page tool tiles."
   - "What-If Tool Overview **Available Result Dashboards** MUST list live published dashboards for the selected scenario's Equipment (via the same adapter as Equipment Home: getPublishedDashboardsForEquipment over useWorkspaceStore.dashboards), not hard-coded scenario labels. Each entry SHOULD be actionable (e.g. navigate to Equipment Home and open that dashboard popup, or open Full-Screen Viewer) so the section is an active function, not decorative chips."
   - "What-If **Dashboards Available** stat on Overview MUST use the count of published dashboards for that Equipment, not a static array length on WhatIfScenario."
   - "Primary Tools module App Router pages (Data & Jobs, What-If Scenario, Documents, Alert Setting) use a **shared page chrome** (breadcrumb **Tools** → tool name, shared title and description styling, optional route chip) for consistency; **navigation and tool behavior** (including the first breadcrumb targeting `/tools/data-sync` with `MainRouteSync`) remain as before."
+  - "**Tools page UI alignment (Jun 2026):** All four primary tool pages (Data & Jobs, What-If Scenario, Documents, Alert Setting) MUST share the same outer layout structure: `ToolPageShell` > `ToolPageHeader` > equipment filter bar > content. Equipment selection MUST use the **Equipment filter bar** pattern: left label **Equipment**, `<select>` or `Select` with `All equipment` default (where applicable), optional reset, right summary **Active equipment** with the current selection. Placing equipment selection inside the `ToolPageHeader` `trailing` prop is **not** aligned. **Alert Setting** MUST NOT use a decorative title icon (`titleAdornment`) on `ToolPageHeader`."
+  - "**Tools breadcrumb parity (Jun 2026):** All four tool pages SHALL append a third breadcrumb segment after the tool name when the user has selected a specific equipment in that tool's filter (or, for Alert Setting, the active equipment row). Pattern: **Tools** → **{Tool name}** → **{Equipment display name}**. What-If MAY show the equipment segment when the equipment filter is set and/or when a scenario detail is open for that equipment. Documents shows the segment when the asset filter targets a leaf `equip-{equipmentId}` row."
   - "Documents generated from runs are stored in the same document library."
   - "For the current mock profile, Site 2000 has three units: Unit 2006 - DCU, Unit 2007 - HCU, Unit 2008 - Hydrogen Unit. Primary equipment are Coker 01 (ex Coke Drum, id equipment-a), HCU 01 (id equipment-b), SMR Pigtails (ex SMR Unit A, id equipment-c), with all prior tab sets and seed dashboards preserved for those ids."
   - "For the current mock profile, SMR Pigtails (equipment-c) has a dashboard tab named 'SMR Pigtail Integrity'."
@@ -1217,6 +1248,13 @@ business_rules:
   - "WorkspaceDashboard.widgets is the single widget layout source for Equipment Home Dashboard Popup, Full-Screen Viewer (/dashboards/[id]/full), and Workspace popup viewer. DEFAULT_WIDGET_SETS and buildDefaultGrid from layouts.ts are used only during Workspace seed generation; they must not be imported at render time by Equipment Home or Home modules."
   - "Home Page Recent Dashboards and Favorite Dashboards sections store WorkspaceDashboard.id values in useAppStore; display metadata (name, thumbnail, equipment name) is resolved from useWorkspaceStore at render time via getDashboardById."
   - "Site Overview and Plant Overview Dashboard Tab Stacks derive their card lists from published WorkspaceDashboard records using the same getPublishedDashboardsForEquipment adapter; dashboardCards is not consulted."
+  # ── Unit Overview — full P&ID dashboard & collapsible context panel (Jun 2026) ─
+  - "The Asset module **Unit Overview** screen (Plant Overview implementation) SHALL render the primary **Overview Dashboard** card as a **full-panel P&ID** only: the diagram fills the card body edge-to-edge. The legacy left-column mock charts (pie gauges, bar placeholders) in that card are **removed**."
+  - "Unit Overview P&ID source asset is the static image **`/images/pid-diagram.jpg`** (`public/images/pid-diagram.jpg`); object-fit **contain** within the card; same asset for all Units in the mock profile until unit-specific diagrams exist."
+  - "Feature 5 **P&ID Anomaly Overlay** (`PIDAnomalyOverlay`) MAY remain layered on the full P&ID when enabled for the active Unit; overlay coordinates are relative to the diagram container."
+  - "The Unit Overview **Unit Context Panel** (right column: AI Health Summary, unit information placeholders, unit document list) SHALL be **collapsible and reopenable** without leaving the page. Collapse control SHALL reuse the module sidebar pattern: header button with **`PanelLeftClose`** icon and `aria-label` for close; when collapsed, a slim **reopen** control on the right edge (mirror of contextual panel open semantics) restores the panel."
+  - "When `UnitOverviewView.overviewDashboardExpanded` is true, the Unit Context Panel MAY remain hidden (existing maximize behavior) independent of `contextPanelOpen`; when the user exits expanded overview mode, restore `contextPanelOpen` to its prior value if practical, otherwise default open."
+  - "Equipment Home Page does **not** host the Unit Context Panel; this rule applies only at Unit level. Site Overview right panel parity is **out of scope** unless explicitly requested."
   - "Dashboard identity is shared between the Workspace Module and all Asset Module surfaces via WorkspaceDashboard.id as the canonical key; recents, favorites, cross-tab presence signals, and auto-open state all use WorkspaceDashboard.id."
   - "The Equipment Home Page OpenElsewhereBadge and useDashboardOpenElsewhereCount hook use WorkspaceDashboard.id as the presence key; the legacy key format 'equipment-{equipId}-{tag}' is replaced."
   - "When the user completes a What-If Scenario run and chooses 'View Data' on the result, navigation goes to the Equipment Home Page scoped to that run's Equipment only; no Dashboard Popup opens automatically. The run remains queued for Viewed Data overlay via WhatIfRunSession auto-select so that when the user opens any dashboard popup on that Equipment, the scenario run can be selected in Viewed Data without forcing a specific WorkspaceDashboard."

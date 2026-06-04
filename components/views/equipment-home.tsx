@@ -330,6 +330,7 @@ function DashboardPopup({
   const {
     whatIfRunSessions,
     addDocument,
+    setPreFilterEquipmentId,
     setWhatIfSelectedScenarioId,
     setWhatIfInitialTab,
     setCurrentView,
@@ -488,6 +489,7 @@ function DashboardPopup({
                   <button
                     type="button"
                     onClick={() => {
+                      setPreFilterEquipmentId(equipment.id)
                       setWhatIfSelectedScenarioId(scenarioForEquipment.id)
                       setWhatIfInitialTab("history")
                       router.push(mainRoutes.whatIf())
@@ -725,6 +727,7 @@ function ToolsSection({
       ),
       onClick: scenario
         ? () => {
+            setPreFilterEquipmentId(equipment.id)
             setWhatIfSelectedScenarioId(scenario.id)
             router.push(mainRoutes.whatIf())
             setCurrentView("whatIfTool")
