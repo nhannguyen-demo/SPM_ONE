@@ -28,10 +28,6 @@ Next.js 16 App Router | React 19 | TypeScript | Tailwind CSS v4 | shadcn/ui | Zu
 - Reuse existing patterns (Zustand slices, seed hooks, `cn()` helper, error boundaries).
 - Do not invent backend behavior; clearly mark mocked/fake data paths.
 
-### Product Constraints
-- Current app is frontend-only: no backend/API/DB persistence yet.
-- Navigation is currently view-state driven (`currentView`) and not URL-driven.
-
 ---
 
 ## Self-Improvement Rules
