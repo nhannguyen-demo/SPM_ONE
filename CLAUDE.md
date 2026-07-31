@@ -18,7 +18,7 @@ Next.js 16 App Router | React 19 | TypeScript | Tailwind CSS v4 | shadcn/ui | Zu
 - UI primitives: `components/ui/`
 - State: `lib/store.ts`
 - Mock/static data: `lib/data.ts`
-- Domain docs: `PROJECT.md`, `domain.ontology.yaml`, `AUDIT.md`
+- Domain docs: `PROJECT.md`, `domain.ontology.yaml`
 
 ### Code Rules
 - Default to server components in `app/`; add `"use client"` only when interactivity/state/browser APIs are required.
